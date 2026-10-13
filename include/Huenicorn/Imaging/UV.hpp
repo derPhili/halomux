@@ -15,6 +15,8 @@ namespace Huenicorn::Imaging
   {
     UV min;
     UV max;
+
+    bool operator==(const UVs& other) const = default;
   };
 
 

@@ -1,12 +1,16 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <glm/vec2.hpp>
 
+#include <Huenicorn/Imaging/Color.hpp>
 #include <Huenicorn/Imaging/ImageData.hpp>
+#include <Huenicorn/Imaging/UV.hpp>
 #include <Huenicorn/Core/Logger.hpp>
 
 
@@ -42,6 +46,11 @@ namespace Huenicorn::Grabber
     using Resolution = glm::ivec2;
     using Resolutions = std::vector<Resolution>;
     using RefreshRate = unsigned;
+
+    // Normalized screen region of a channel, keyed by channel ID
+    using ChannelRegions = std::vector<std::pair<uint8_t, Imaging::UVs>>;
+    // Average color of a channel's region, keyed by channel ID
+    using ChannelColors = std::vector<std::pair<uint8_t, Imaging::Color>>;
 
     // Constructor / Destructor
     /**
@@ -90,12 +99,27 @@ namespace Huenicorn::Grabber
 
     // Methods
     /**
-     * @brief Takes a screen capture and returns a subsample of it as bitmap
-     * 
-     * @param imageData Subsample of screen capture
+     * @brief Sets the screen regions whose average colors grabChannelColors() returns
+     *
+     * @param regions Regions of the active channels
      */
-    virtual void grabFrameSubsample(
-      Imaging::ImageData& imageData
+    virtual void setChannelRegions(
+      const ChannelRegions& regions
+    ) = 0;
+
+
+    /**
+     * @brief Returns the average color of each channel region in the last captured frame
+     *
+     * Frames are captured asynchronously: right after setChannelRegions(), colors may still
+     * come from the previous regions, or miss newly added channels.
+     *
+     * @param colors Average color per channel
+     * @return true At least one frame was processed
+     * @return false No frame was processed yet
+     */
+    virtual bool grabChannelColors(
+      ChannelColors& colors
     ) = 0;
 
 

@@ -68,16 +68,46 @@ namespace Huenicorn::Imaging
 
 
     /**
+     * @brief Returns the pixels covered by normalized coordinates in an image
+     *
+     * Shared by the CPU and GPU paths so both average the very same pixels.
+     *
+     * @param width Image width
+     * @param height Image height
+     * @param uvs Normalized region
+     * @return cv::Rect Pixel region, clamped to the image (possibly empty)
+     */
+    cv::Rect subImageRect(
+      int width,
+      int height,
+      const UVs& uvs
+    );
+
+
+    /**
      * @brief Outputs a rectangular portion of the source Image
      * 
-     * @param sourceImage Input image
-     * @param a Top-left coordinates
-     * @param b Bottom-right coordinates
+     * @param sourceImageData Input image
+     * @param destImage View on the region of the input image
+     * @param uvs Normalized region
      */
     void getSubImage(
       const ImageData& sourceImageData,
       ImageData& destImage,
       const UVs& uvs
+    );
+
+
+    /**
+     * @brief Returns the average color of each region of a BGR image
+     *
+     * @param bgrImageData BGR image
+     * @param regions Normalized regions
+     * @return std::vector<Color> Average color per region, black for empty regions
+     */
+    std::vector<Color> averageRegions(
+      const ImageData& bgrImageData,
+      const std::vector<UVs>& regions
     );
 
 

@@ -55,6 +55,75 @@ void main()
 )";
 
 
+    // Regions are averaged in two parallel passes, so no GPU thread walks a whole region:
+    // a long serial loop makes the GPU slower to finish, and the driver busy-waits for it.
+
+    // Pass 1: one fragment per (region, subsample row) averages the region's texels in that row
+    constexpr const char* RowMeansFragmentShaderSource = R"(#version 300 es
+precision highp float;
+precision highp int;
+
+#define MAX_REGIONS 32
+
+uniform sampler2D u_subsample;
+uniform ivec4 u_regions[MAX_REGIONS]; // x, y, width, height
+
+out vec4 fragColor;
+
+void main()
+{
+  ivec4 region = u_regions[int(gl_FragCoord.x)];
+  int row = int(gl_FragCoord.y);
+
+  if(region.z <= 0 || region.w <= 0 || row < region.y || row >= region.y + region.w){
+    fragColor = vec4(0.0);
+    return;
+  }
+
+  vec4 sum = vec4(0.0);
+  for(int x = region.x; x < region.x + region.z; x++){
+    sum += texelFetch(u_subsample, ivec2(x, row), 0);
+  }
+
+  fragColor = sum / float(region.z);
+}
+)";
+
+
+    // Pass 2: one fragment per region averages its row means (all rows have the same width).
+    // The result is floored to 8 bits like the CPU path, which truncates cv::mean.
+    constexpr const char* RegionMeansFragmentShaderSource = R"(#version 300 es
+precision highp float;
+precision highp int;
+
+#define MAX_REGIONS 32
+
+uniform sampler2D u_rowMeans;
+uniform ivec4 u_regions[MAX_REGIONS]; // x, y, width, height
+
+out vec4 fragColor;
+
+void main()
+{
+  int index = int(gl_FragCoord.x);
+  ivec4 region = u_regions[index];
+
+  if(region.z <= 0 || region.w <= 0){
+    fragColor = vec4(0.0);
+    return;
+  }
+
+  vec4 sum = vec4(0.0);
+  for(int y = region.y; y < region.y + region.w; y++){
+    sum += texelFetch(u_rowMeans, ivec2(index, y), 0);
+  }
+
+  vec4 mean = sum / float(region.w);
+  fragColor = floor(mean * 255.0 + 0.001) / 255.0;
+}
+)";
+
+
     bool hasExtension(
       const char* extensions,
       const char* name
@@ -101,6 +170,44 @@ void main()
   }
 
 
+  namespace
+  {
+    GLuint linkProgram(
+      const char* vertexSource,
+      const char* fragmentSource
+    )
+    {
+      GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
+      GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
+
+      if(vertexShader == 0 || fragmentShader == 0){
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        return 0;
+      }
+
+      GLuint program = glCreateProgram();
+      glAttachShader(program, vertexShader);
+      glAttachShader(program, fragmentShader);
+      glLinkProgram(program);
+      glDeleteShader(vertexShader);
+      glDeleteShader(fragmentShader);
+
+      GLint linked = GL_FALSE;
+      glGetProgramiv(program, GL_LINK_STATUS, &linked);
+      if(linked != GL_TRUE){
+        char log[1024] = {};
+        glGetProgramInfoLog(program, sizeof(log), nullptr, log);
+        Core::Logger::error("[gpu] Shader program link failed: ", log);
+        glDeleteProgram(program);
+        return 0;
+      }
+
+      return program;
+    }
+  }
+
+
   EglDownscaler::~EglDownscaler()
   {
     _shutdown();
@@ -109,7 +216,7 @@ void main()
 
   bool EglDownscaler::init()
   {
-    if(!_initDisplay() || !_initContext() || !_initProgram()){
+    if(!_initDisplay() || !_initContext() || !_initProgram() || !_initRegionsProgram()){
       _shutdown();
       return false;
     }
@@ -207,6 +314,95 @@ void main()
     cv::Mat& output
   )
   {
+    if(!_renderSubsample(image, outputWidth, outputHeight)){
+      return false;
+    }
+
+    // Synchronous: once it returns, the GPU is done with the source buffer
+    output.create(outputHeight, outputWidth, CV_8UC4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, outputWidth, outputHeight, GL_RGBA, GL_UNSIGNED_BYTE, output.data);
+
+    if(GLenum error = glGetError(); error != GL_NO_ERROR){
+      Core::Logger::error("[gpu] Downscale failed (GL error 0x", std::hex, error, std::dec, ")");
+      return false;
+    }
+
+    return true;
+  }
+
+
+  bool EglDownscaler::averageRegions(
+    const Image& image,
+    int subsampleWidth,
+    int subsampleHeight,
+    const std::vector<cv::Rect>& regions,
+    std::vector<cv::Vec4b>& colors
+  )
+  {
+    colors.clear();
+    if(regions.empty()){
+      return true;
+    }
+
+    if(regions.size() > MaxRegions){
+      Core::Logger::error("[gpu] Too many regions: ", regions.size());
+      return false;
+    }
+
+    const int regionCount = static_cast<int>(regions.size());
+
+    if(!_renderSubsample(image, subsampleWidth, subsampleHeight) || !_ensureRegionsTarget(regionCount, subsampleHeight)){
+      return false;
+    }
+
+    GLint packedRegions[MaxRegions * 4] = {};
+    for(int i = 0; i < regionCount; i++){
+      const cv::Rect& region = regions[static_cast<size_t>(i)];
+      packedRegions[i * 4 + 0] = region.x;
+      packedRegions[i * 4 + 1] = region.y;
+      packedRegions[i * 4 + 2] = region.width;
+      packedRegions[i * 4 + 3] = region.height;
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+
+    // Pass 1: row means of each region
+    glBindFramebuffer(GL_FRAMEBUFFER, m_rowMeansFramebuffer);
+    glViewport(0, 0, regionCount, subsampleHeight);
+    glUseProgram(m_rowMeansProgram);
+    glUniform4iv(m_rowMeansRegionsLocation, regionCount, packedRegions);
+    glBindTexture(GL_TEXTURE_2D, m_targetTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    // Pass 2: mean of the row means
+    glBindFramebuffer(GL_FRAMEBUFFER, m_regionsFramebuffer);
+    glViewport(0, 0, regionCount, 1);
+    glUseProgram(m_regionMeansProgram);
+    glUniform4iv(m_regionMeansRegionsLocation, regionCount, packedRegions);
+    glBindTexture(GL_TEXTURE_2D, m_rowMeansTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    // Synchronous: once it returns, the GPU is done with the source buffer
+    colors.resize(static_cast<size_t>(regionCount));
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, regionCount, 1, GL_RGBA, GL_UNSIGNED_BYTE, colors.data());
+
+    if(GLenum error = glGetError(); error != GL_NO_ERROR){
+      Core::Logger::error("[gpu] Region averaging failed (GL error 0x", std::hex, error, std::dec, ")");
+      return false;
+    }
+
+    return true;
+  }
+
+
+  bool EglDownscaler::_renderSubsample(
+    const Image& image,
+    int outputWidth,
+    int outputHeight
+  )
+  {
     if(!_ensureTarget(outputWidth, outputHeight)){
       return false;
     }
@@ -230,16 +426,6 @@ void main()
     glBindTexture(GL_TEXTURE_EXTERNAL_OES, image.texture);
 
     glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    // Synchronous: once it returns, the GPU is done with the source buffer
-    output.create(outputHeight, outputWidth, CV_8UC4);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    glReadPixels(0, 0, outputWidth, outputHeight, GL_RGBA, GL_UNSIGNED_BYTE, output.data);
-
-    if(GLenum error = glGetError(); error != GL_NO_ERROR){
-      Core::Logger::error("[gpu] Downscale failed (GL error 0x", std::hex, error, std::dec, ")");
-      return false;
-    }
 
     return true;
   }
@@ -349,28 +535,8 @@ void main()
 
   bool EglDownscaler::_initProgram()
   {
-    GLuint vertexShader = compileShader(GL_VERTEX_SHADER, VertexShaderSource);
-    GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, FragmentShaderSource);
-
-    if(vertexShader == 0 || fragmentShader == 0){
-      glDeleteShader(vertexShader);
-      glDeleteShader(fragmentShader);
-      return false;
-    }
-
-    m_program = glCreateProgram();
-    glAttachShader(m_program, vertexShader);
-    glAttachShader(m_program, fragmentShader);
-    glLinkProgram(m_program);
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    GLint linked = GL_FALSE;
-    glGetProgramiv(m_program, GL_LINK_STATUS, &linked);
-    if(linked != GL_TRUE){
-      char log[1024] = {};
-      glGetProgramInfoLog(m_program, sizeof(log), nullptr, log);
-      Core::Logger::error("[gpu] Shader program link failed: ", log);
+    m_program = linkProgram(VertexShaderSource, FragmentShaderSource);
+    if(m_program == 0){
       return false;
     }
 
@@ -383,6 +549,78 @@ void main()
     glGenFramebuffers(1, &m_framebuffer);
 
     return glGetError() == GL_NO_ERROR;
+  }
+
+
+  bool EglDownscaler::_initRegionsProgram()
+  {
+    m_rowMeansProgram = linkProgram(VertexShaderSource, RowMeansFragmentShaderSource);
+    m_regionMeansProgram = linkProgram(VertexShaderSource, RegionMeansFragmentShaderSource);
+    if(m_rowMeansProgram == 0 || m_regionMeansProgram == 0){
+      return false;
+    }
+
+    glUseProgram(m_rowMeansProgram);
+    glUniform1i(glGetUniformLocation(m_rowMeansProgram, "u_subsample"), 0);
+    m_rowMeansRegionsLocation = glGetUniformLocation(m_rowMeansProgram, "u_regions");
+
+    glUseProgram(m_regionMeansProgram);
+    glUniform1i(glGetUniformLocation(m_regionMeansProgram, "u_rowMeans"), 0);
+    m_regionMeansRegionsLocation = glGetUniformLocation(m_regionMeansProgram, "u_regions");
+
+    glGenFramebuffers(1, &m_rowMeansFramebuffer);
+    glGenFramebuffers(1, &m_regionsFramebuffer);
+
+    return glGetError() == GL_NO_ERROR;
+  }
+
+
+  bool EglDownscaler::_ensureRegionsTarget(
+    int regionCount,
+    int rowCount
+  )
+  {
+    if(m_regionsTexture != 0 && m_regionsTargetCount == regionCount && m_rowMeansRowCount == rowCount){
+      return true;
+    }
+
+    for(GLuint* texture : {&m_regionsTexture, &m_rowMeansTexture}){
+      if(*texture != 0){
+        glDeleteTextures(1, texture);
+        *texture = 0;
+      }
+    }
+
+    // Row means keep full precision (float color buffers are renderable in GLES 3.2)
+    glGenTextures(1, &m_rowMeansTexture);
+    glBindTexture(GL_TEXTURE_2D, m_rowMeansTexture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, regionCount, rowCount);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_rowMeansFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_rowMeansTexture, 0);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+      Core::Logger::error("[gpu] Incomplete row means framebuffer");
+      return false;
+    }
+
+    glGenTextures(1, &m_regionsTexture);
+    glBindTexture(GL_TEXTURE_2D, m_regionsTexture);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, regionCount, 1);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_regionsFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_regionsTexture, 0);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+      Core::Logger::error("[gpu] Incomplete framebuffer for ", regionCount, " regions");
+      return false;
+    }
+
+    m_regionsTargetCount = regionCount;
+    m_rowMeansRowCount = rowCount;
+    return true;
   }
 
 
@@ -403,6 +641,9 @@ void main()
     glGenTextures(1, &m_targetTexture);
     glBindTexture(GL_TEXTURE_2D, m_targetTexture);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
+    // Read back with texelFetch by the regions stage
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_targetTexture, 0);
@@ -439,6 +680,28 @@ void main()
         glDeleteProgram(m_program);
       }
 
+      if(m_regionsTexture != 0){
+        glDeleteTextures(1, &m_regionsTexture);
+      }
+
+      if(m_regionsFramebuffer != 0){
+        glDeleteFramebuffers(1, &m_regionsFramebuffer);
+      }
+
+      if(m_rowMeansTexture != 0){
+        glDeleteTextures(1, &m_rowMeansTexture);
+      }
+
+      if(m_rowMeansFramebuffer != 0){
+        glDeleteFramebuffers(1, &m_rowMeansFramebuffer);
+      }
+
+      for(GLuint program : {m_rowMeansProgram, m_regionMeansProgram}){
+        if(program != 0){
+          glDeleteProgram(program);
+        }
+      }
+
       eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
       eglDestroyContext(m_display, m_context);
       m_context = EGL_NO_CONTEXT;
@@ -449,5 +712,13 @@ void main()
     m_targetTexture = 0;
     m_framebuffer = 0;
     m_program = 0;
+    m_regionsTexture = 0;
+    m_regionsFramebuffer = 0;
+    m_regionsTargetCount = 0;
+    m_rowMeansTexture = 0;
+    m_rowMeansFramebuffer = 0;
+    m_rowMeansRowCount = 0;
+    m_rowMeansProgram = 0;
+    m_regionMeansProgram = 0;
   }
 }

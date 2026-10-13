@@ -184,6 +184,6 @@ namespace Huenicorn::Core
 
     //  Image Processing
     Grabber::IGrabber* m_grabber;
-    Imaging::ImageData m_frameData;
+    Grabber::IGrabber::ChannelRegions m_channelRegions;
   };
 }

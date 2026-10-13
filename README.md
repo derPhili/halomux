@@ -80,7 +80,13 @@ ctest --test-dir build
 
 #### Bildverarbeitung auf der GPU
 
-KWin liefert die Bilder als DMA-BUF direkt im Grafikspeicher. Huenicorn importiert sie ohne Kopie per EGL, mittelt jeden Bildblock exakt in einem GLES-Shader und liest nur das verkleinerte Bild (z. B. 160×90) zurück. Im Log steht der aktive Pfad:
+KWin liefert die Bilder als DMA-BUF direkt im Grafikspeicher. Huenicorn importiert sie ohne Kopie per EGL und rechnet die Lampenfarben vollständig auf der GPU aus:
+
+1. Ein GLES-Shader mittelt jeden Bildblock exakt auf die eingestellte Subsample-Auflösung (z. B. 160×90).
+2. Zwei weitere Durchläufe mitteln den Bereich jeder Lampe: erst pro Zeile, dann über die Zeilen. So läuft keine lange Schleife in einem einzelnen GPU-Thread, auf die der Treiber aktiv warten müsste.
+3. Zurückgelesen wird nur ein Pixel pro Lampe.
+
+Die Lampenbereiche werden auf CPU und GPU identisch in Pixel umgerechnet (`ImageProcessing::subImageRect`), beide Pfade liefern dieselben Farben. Im Log steht der aktive Pfad:
 
 ```
 [gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)

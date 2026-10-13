@@ -7,8 +7,6 @@
 #include <glm/common.hpp>
 
 #include <Huenicorn/Network/Http/Client/Client.hpp>
-#include <Huenicorn/Imaging/ImageProcessing.hpp>
-#include <Huenicorn/Imaging/Interpolation.hpp>
 #include <Huenicorn/Core/Logger.hpp>
 #include <Huenicorn/Platform/Selector.hpp>
 
@@ -294,31 +292,38 @@ namespace Huenicorn::Core
 
   void Runtime::_update()
   {
-    m_grabber->grabFrameSubsample(m_frameData);
-    if(!m_frameData.hasData()){
+    std::lock_guard channelsLock(m_channelsMutex);
+
+    // The grabber averages the regions of the active channels on each captured frame
+    Grabber::IGrabber::ChannelRegions regions;
+    for(const auto& [channelId, channel] : m_channels){
+      if(channel.state == Hue::Api::Channel::State::Active){
+        regions.emplace_back(channelId, channel.uvs);
+      }
+    }
+
+    if(regions != m_channelRegions){
+      m_grabber->setChannelRegions(regions);
+      m_channelRegions = std::move(regions);
+    }
+
+    Grabber::IGrabber::ChannelColors channelColors;
+    if(!m_grabber->grabChannelColors(channelColors)){
       // Grabbers with asynchronous capture may produce slower than the core consumes
       return;
     }
 
-    Imaging::ImageData source = m_frameData;
-
-    const auto subsampleWidth = static_cast<int>(m_config.subsampleWidth());
-
-    if(m_frameData.width() > subsampleWidth){
-      Imaging::ImageData resized;
-      Imaging::ImageProcessing::rescale(m_frameData, resized, subsampleWidth, m_config.interpolation());
-
-      if(resized.hasData()){
-        source = std::move(resized);
-      }
-    }
-
-    Imaging::ImageProcessing::toBgr(source, source);
-
-    std::lock_guard channelsLock(m_channelsMutex);
-
     for(auto& [channelId, channel] : m_channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
+        continue;
+      }
+
+      auto colorIt = std::find_if(channelColors.begin(), channelColors.end(), [channelId](const auto& channelColor){
+        return channelColor.first == channelId;
+      });
+
+      if(channel.state == Hue::Api::Channel::State::Active && colorIt == channelColors.end()){
+        // Activated after the last captured frame: wait for the next one
         continue;
       }
 
@@ -344,9 +349,7 @@ namespace Huenicorn::Core
         channel.acknowledgeShutdown();
       }
       else{
-        Imaging::ImageData crop;
-        Imaging::ImageProcessing::getSubImage(source, crop, channel.uvs);
-        auto color = Imaging::ImageProcessing::getDominantColor(crop);
+        const Imaging::Color& color = colorIt->second;
 
         glm::vec3 correctedColor;
         /*/
