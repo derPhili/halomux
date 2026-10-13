@@ -41,10 +41,11 @@ namespace Huenicorn::Core
     const std::string& bridgeAddress
   )
   {
+    // Trailing slashes are already stripped by the sanitization
     std::string sanitizedAddress = Hue::Api::sanitizeBridgeAddress(bridgeAddress);
 
-    while(sanitizedAddress.back() == '/'){
-      sanitizedAddress.pop_back();
+    if(sanitizedAddress.empty()){
+      return false;
     }
 
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "");
