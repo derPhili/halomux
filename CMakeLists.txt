@@ -146,9 +146,6 @@ set(CORE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 )
 
-set(GRABBER_SOURCE
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/DummyGrabber.cpp
-)
 
 set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
@@ -194,7 +191,6 @@ set(TIMING_SOURCE
 add_executable(huenicorn
   ${APP_SOURCE}
   ${CORE_SOURCE}
-  ${GRABBER_SOURCE}
   ${HUE_SOURCE}
   ${IMAGING_SOURCE}
   ${NETWORK_SOURCE}
