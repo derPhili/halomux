@@ -66,14 +66,6 @@ namespace Huenicorn::Grabber
       // Highest framerate the compositor offered (written by the Pipewire thread)
       std::atomic<unsigned> displayMaxFramerate{0};
 
-      // Gamescope direct-capture support: gamescope exposes its composited
-      // output as a plain (non-portal-gated) Pipewire node named "gamescope".
-      // xdg-desktop-portal's ScreenCast implementation isn't wired up inside
-      // a gamescope session, which is why the portal path black-screens there.
-      bool useGamescope{false};
-      bool discoveryMode{false};
-      int discoverySyncSeq{0};
-      uint32_t gamescopeNodeId{0};
     };
 
 
@@ -83,8 +75,7 @@ namespace Huenicorn::Grabber
      * PipewireGrabber constructor
     */
     PipewireGrabber(
-      Core::Config* config,
-      bool useGamescope = false
+      Core::Config* config
     );
 
 
@@ -161,12 +152,6 @@ namespace Huenicorn::Grabber
       const pw_core_info* info
     );
 
-    static void _onCoreDoneCallback(
-      void* userData,
-      uint32_t id,
-      int seq
-    );
-
     static void _onCoreErrorCallback(
       void* userData,
       uint32_t id,
@@ -193,18 +178,6 @@ namespace Huenicorn::Grabber
       void* userdata,
       uint32_t id,
       const spa_pod* param
-    );
-
-    /**
-     * Registry listener used to find gamescope's "gamescope" Pipewire node
-    */
-    static void _onRegistryGlobal(
-      void* userdata,
-      uint32_t id,
-      uint32_t permissions,
-      const char* type,
-      uint32_t version,
-      const spa_dict* props
     );
 
     /**
