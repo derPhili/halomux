@@ -79,6 +79,18 @@ namespace Huenicorn::Platform
 
 
     /**
+     * @brief Destroys the grabber, if any
+     *
+     * Must be called before leaving main(): the grabber's teardown relies on
+     * other static objects that would otherwise be destroyed first.
+     */
+    inline void releaseGrabber()
+    {
+      m_grabber.reset();
+    }
+
+
+    /**
      * @brief Getter to instanciate / store valid grabber
      * 
      * @param config Huenicorn current configuration

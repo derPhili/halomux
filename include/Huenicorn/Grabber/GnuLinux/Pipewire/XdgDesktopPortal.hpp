@@ -210,7 +210,8 @@ namespace Huenicorn::Grabber
     static GDBusConnection* m_connection;
     static GDBusProxy* m_screencastProxy;
 
-    static const std::string ObjectPath;
-    static const std::string BusName;
+    // Plain constants: they must stay valid whatever the static destruction order
+    static constexpr const char* ObjectPath = "/org/freedesktop/portal/desktop";
+    static constexpr const char* BusName = "org.freedesktop.portal.Desktop";
   };
 }
