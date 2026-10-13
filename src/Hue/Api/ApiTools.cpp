@@ -1,5 +1,6 @@
 #include <Huenicorn/Hue/Api/ApiTools.hpp>
 
+#include <Huenicorn/Core/Logger.hpp>
 #include <Huenicorn/Hue/Api/BridgeAddress.hpp>
 #include <Huenicorn/Hue/Auth/Credentials.hpp>
 #include <Huenicorn/Network/Http/Client/Client.hpp>
@@ -38,7 +39,13 @@ namespace Huenicorn::Hue::Api
           for(auto& device : entConf.devices){
             std::string lightUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/light/" + device.id;
 
-            auto jsonLightData = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers).value().asJson();
+            auto lightResponse = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers);
+            if(!lightResponse.has_value()){
+              Core::Logger::warn("Could not load the metadata of light ", device.id);
+              continue;
+            }
+
+            auto jsonLightData = lightResponse.value().asJson();
             auto deviceId = device.id;
             device = jsonLightData.at("data").at(0).at("metadata").get<Device>();
             device.id = deviceId;

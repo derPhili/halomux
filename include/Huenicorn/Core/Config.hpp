@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <mutex>
 #include <optional>
 
 #include <Huenicorn/Imaging/Interpolation.hpp>
@@ -244,6 +245,12 @@ namespace Huenicorn::Core
     // Attributes
     std::filesystem::path m_configFilePath;
     std::optional<Data> m_configData;
+
+    // Guards the runtime-tunable values (refresh rate, subsample width,
+    // interpolation, smoothing...) which are written by the web UI threads
+    // while the streaming loop reads them. Values returned by reference are
+    // only written during initial setup, before any concurrent access.
+    mutable std::mutex m_mutex;
 
     template<typename T>
     friend struct Huenicorn::Serialization::JsonSerializer;

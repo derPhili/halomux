@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -58,8 +59,32 @@ namespace Huenicorn::Stream
 
 
   private:
+    // Private methods
+    /**
+     * @brief Converts a normalized value to the 16 bits range, clamping it to [0, 1]
+     *
+     * @param value Normalized value
+     * @return uint16_t Value in [0, 0xffff]
+     */
+    static uint16_t _toUint16(
+      float value
+    );
+
+
+    /**
+     * @brief (Re)establishes the DTLS connection, at most once per reconnection interval
+     *
+     * @return true The client is connected
+     * @return false The client is not connected
+     */
+    bool _ensureConnection();
+
+
     // Attributes
     std::unique_ptr<Stream::DtlsClient> m_dtlsClient;
     HuestreamHeader m_header;
+    std::vector<std::byte> m_requestBuffer;
+    std::chrono::steady_clock::time_point m_lastConnectionAttempt{};
+    bool m_connectionLossReported{false};
   };
 }

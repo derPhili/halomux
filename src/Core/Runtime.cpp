@@ -1,5 +1,6 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <future>
 
@@ -49,12 +50,16 @@ namespace Huenicorn::Core
 
   void Runtime::start()
   {
-    if(!m_coreService->ensureInitialSetup()){
+    if(!m_coreService->ensureInitialSetup() || !m_keepLooping){
       return;
     }
 
     if(!_initGrabber()){
       Logger::error("Could not start any grabber");
+      return;
+    }
+
+    if(!m_keepLooping){
       return;
     }
 
@@ -69,7 +74,14 @@ namespace Huenicorn::Core
     }
 
     bool spawnBrowser = (!m_coreService->getProfile().has_value() && !m_openedSetup);
-    _initWebUI(spawnBrowser);
+    // Created before the web UI, which can change its interval
+    m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
+
+    if(!_initWebUI(spawnBrowser)){
+      Logger::error("Could not start the web UI on ", m_config.boundBackendIP(), ":", m_config.restServerPort(), ". Is the port already in use?");
+      _shutdown();
+      return;
+    }
 
     _startStreamingLoop();
   }
@@ -78,6 +90,7 @@ namespace Huenicorn::Core
   void Runtime::stop()
   {
     m_keepLooping = false;
+    m_coreService->abortInitialSetup();
   }
 
 
@@ -85,7 +98,10 @@ namespace Huenicorn::Core
   bool Runtime::_initSettings()
   {
     if(m_config.refreshRate() == 0){
-      m_config.setRefreshRate(m_grabber->displayRefreshRate());
+      // The bridge forwards colors to the lights at about 25 Hz, Philips recommends streaming
+      // at 50-60 Hz. Following a high refresh rate display would only waste resources.
+      static constexpr unsigned DefaultMaxRefreshRate = 60;
+      m_config.setRefreshRate(std::min(m_grabber->displayRefreshRate(), DefaultMaxRefreshRate));
     }
 
     if(m_config.subsampleWidth() == 0){
@@ -144,7 +160,7 @@ namespace Huenicorn::Core
   }
 
 
-  void Runtime::_initWebUI(
+  bool Runtime::_initWebUI(
     bool spawnBrowser
   )
   {
@@ -158,7 +174,9 @@ namespace Huenicorn::Core
       server->start(restServerPort, boundBackendIP, std::move(readyWebUIPromise));
     });
 
-    readyWebUIFuture.wait();
+    if(!readyWebUIFuture.get()){
+      return false;
+    }
 
     if(spawnBrowser){
       std::stringstream serviceUrlStream;
@@ -168,6 +186,8 @@ namespace Huenicorn::Core
 
       Platform::adapter.openWebBrowser(serviceURL);
     }
+
+    return true;
   }
 
 
@@ -205,49 +225,56 @@ namespace Huenicorn::Core
       }
     }
 
+    std::lock_guard lock(m_channelsMutex);
     m_channels = std::move(channels);
-    _updateStreamChannelsSize();
+    m_channelStreams.clear();
   }
 
 
-  void Runtime::_enableEntertainmentConfiguration(
+  bool Runtime::_enableEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )
   {
     if(!m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return;
+      return false;
     }
 
     const auto& credentials = m_config.credentials().value();
 
+    // The DTLS handshake can take seconds: perform it before taking the lock the streaming loop waits on
+    auto streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
+    streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
+
     {
       std::lock_guard lock(m_streamerMutex);
-      m_streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
-      m_streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
+      m_streamer = std::move(streamer);
     }
 
-    auto pp = m_coreService->profilePath();
     Serialization::Json jsonChannels = Serialization::Json::object();
 
-    if(std::filesystem::is_regular_file(pp)){
-      Serialization::Json jsonProfile = Serialization::Json::parse(std::ifstream(pp));
-      if(jsonProfile.contains("channels")){
-        jsonChannels = jsonProfile.at("channels");
-      }
+    auto optJsonProfile = m_coreService->getProfile();
+    if(optJsonProfile.has_value() && optJsonProfile->contains("channels")){
+      jsonChannels = optJsonProfile->at("channels");
     }
 
     _initChannels(jsonChannels);
+
+    return true;
   }
 
 
   void Runtime::_startStreamingLoop()
   {
-    m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
     m_loopRegulator->start();
 
-    m_keepLooping = true;
     while(m_keepLooping){
-      _update();
+      try{
+        _update();
+      }
+      catch(const std::exception& e){
+        // An exception escaping this thread would terminate the whole application
+        Logger::error("Failed to update channels: ", e.what());
+      }
 
       if(!m_loopRegulator->sync()){
         const auto& lastExcess = m_loopRegulator->lastExcess();
@@ -284,16 +311,27 @@ namespace Huenicorn::Core
       }
     }
 
-    if(source.format == Imaging::PixelFormat::RGBA){
-      Imaging::ImageProcessing::rgbaToRgb(source, source);
-    }
+    Imaging::ImageProcessing::toBgr(source, source);
+
+    std::lock_guard channelsLock(m_channelsMutex);
 
     for(auto& [channelId, channel] : m_channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
         continue;
       }
 
-      auto& channelStream = m_channelStreams.at(channelId);
+      // Streams are only created once a channel has been active, so channels
+      // that were never enabled are left untouched on the bridge. Shut down
+      // channels keep being streamed as black.
+      auto streamIt = std::find_if(m_channelStreams.begin(), m_channelStreams.end(), [channelId](const auto& stream){
+        return stream.id == channelId;
+      });
+
+      if(streamIt == m_channelStreams.end()){
+        streamIt = m_channelStreams.insert(m_channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
+      }
+
+      auto& channelStream = *streamIt;
 
       if(channel.state == Hue::Api::Channel::State::PendingShutdown){
         channelStream.id = channelId;
@@ -352,12 +390,8 @@ namespace Huenicorn::Core
 
   void Runtime::_shutdown()
   {
+    std::lock_guard lock(m_selectorMutex);
     m_selector->disableStreaming();
   }
 
-
-  void Runtime::_updateStreamChannelsSize()
-  {
-    m_channelStreams.resize(m_channels.size());
-  }
 }

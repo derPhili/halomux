@@ -54,22 +54,36 @@ namespace Huenicorn::Grabber
 
     size_t size = static_cast<size_t>(m_ximage->bytes_per_line * m_ximage->height);
 
-    m_shmInfo->shmid = shmget(IPC_PRIVATE, size, IPC_CREAT | 0777);
+    // The segment holds screen contents: keep it private to the current user
+    m_shmInfo->shmid = shmget(IPC_PRIVATE, size, IPC_CREAT | 0600);
+    if(m_shmInfo->shmid == -1){
+      throw std::runtime_error("Failed to allocate X11 shared memory segment");
+    }
+
     m_shmInfo->readOnly = False;
 
-    char* addr = reinterpret_cast<char*>(shmat(m_shmInfo->shmid, nullptr, 0));
-    m_shmInfo->shmaddr = addr;
-    m_ximage->data = addr;
+    void* addr = shmat(m_shmInfo->shmid, nullptr, 0);
+    if(addr == reinterpret_cast<void*>(-1)){
+      shmctl(m_shmInfo->shmid, IPC_RMID, nullptr);
+      throw std::runtime_error("Failed to attach X11 shared memory segment");
+    }
+
+    m_shmInfo->shmaddr = static_cast<char*>(addr);
+    m_ximage->data = m_shmInfo->shmaddr;
 
     XShmAttach(m_display, m_shmInfo.get());
+    XSync(m_display, False);
+
+    // Both ends are attached: mark the segment for removal so it doesn't leak if the process dies
+    shmctl(m_shmInfo->shmid, IPC_RMID, nullptr);
   }
 
 
   X11Grabber::XShmData::~XShmData()
   {
-    shmdt(m_shmInfo->shmaddr);
-    shmctl(m_shmInfo->shmid, IPC_RMID, 0);
     XShmDetach(m_display, m_shmInfo.get());
+    XSync(m_display, False);
+    shmdt(m_shmInfo->shmaddr);
     m_shmInfo.reset();
   }
 
@@ -160,17 +174,20 @@ namespace Huenicorn::Grabber
 
     XShmGetImage(m_display.get(), RootWindow(m_display.get(), m_screenId), ximage, selectedMonitor->xPos, selectedMonitor->yPos, AllPlanes);
 
+    // On little-endian hosts with the usual 0xff0000 red mask, pixels are laid out in memory as B, G, R(, X)
+    bool bgrOrder = (ximage->red_mask == 0xff0000);
+
     int cvFormat;
     if(ximage->bits_per_pixel > 24){
       cvFormat = CV_8UC4;
-      m_lastFullScreenFrame.format = Imaging::PixelFormat::RGBA;
+      m_lastFullScreenFrame.format = bgrOrder ? Imaging::PixelFormat::BGRA : Imaging::PixelFormat::RGBA;
     }
     else{
       cvFormat = CV_8UC3;
-      m_lastFullScreenFrame.format = Imaging::PixelFormat::RGB;
+      m_lastFullScreenFrame.format = bgrOrder ? Imaging::PixelFormat::BGR : Imaging::PixelFormat::RGB;
     }
 
-    m_lastFullScreenFrame.imageMatrix = cv::Mat(height, width, cvFormat, ximage->data);
+    m_lastFullScreenFrame.imageMatrix = cv::Mat(height, width, cvFormat, ximage->data, static_cast<size_t>(ximage->bytes_per_line));
 
     imageData = m_lastFullScreenFrame;
   }

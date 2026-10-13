@@ -29,6 +29,7 @@ namespace Huenicorn::Network::Http::Server
     )
     {
       if(!m_httpServer.bind(boundBackendIP, port)){
+        readyPromise.set_value(false);
         return false;
       }
 

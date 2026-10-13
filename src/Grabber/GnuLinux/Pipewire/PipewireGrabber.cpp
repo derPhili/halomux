@@ -100,7 +100,15 @@ namespace Huenicorn::Grabber
 
   IGrabber::RefreshRate PipewireGrabber::displayRefreshRate() const
   {
-    return m_pwData.format.info.raw.max_framerate.num;
+    // Variable framerate streams advertise their bound in max_framerate, fixed ones in framerate
+    for(const auto& fraction : {m_pwData.format.info.raw.max_framerate, m_pwData.format.info.raw.framerate}){
+      if(fraction.num > 0 && fraction.denom > 0){
+        return static_cast<IGrabber::RefreshRate>(fraction.num / fraction.denom);
+      }
+    }
+
+    static constexpr IGrabber::RefreshRate FallbackRefreshRate = 60;
+    return FallbackRefreshRate;
   }
 
 
@@ -175,13 +183,38 @@ namespace Huenicorn::Grabber
     }
 
     spa_buffer* spaBuffer = pwBuffer->buffer;
-    if(spaBuffer->datas[0].data == NULL){
+
+    // Prefer our own read-only mapping of MemFd buffers (see _onStreamAddBuffer)
+    const auto* bufferMapping = static_cast<const BufferMapping*>(pwBuffer->user_data);
+    const uint8_t* readPtr = bufferMapping
+      ? bufferMapping->data
+      : static_cast<const uint8_t*>(spaBuffer->datas[0].data);
+
+    if(readPtr == nullptr){
       pw_stream_queue_buffer(pw->stream, pwBuffer);
       return;
     }
 
     const auto width = static_cast<int>(pw->format.info.raw.size.width);
     const auto height = static_cast<int>(pw->format.info.raw.size.height);
+
+    // Only 4 bytes per pixel formats are negotiated (see _pipewireThread)
+    Imaging::PixelFormat pixelFormat;
+    switch(pw->format.info.raw.format){
+      case SPA_VIDEO_FORMAT_BGRx:
+      case SPA_VIDEO_FORMAT_BGRA:
+        pixelFormat = Imaging::PixelFormat::BGRA;
+        break;
+
+      case SPA_VIDEO_FORMAT_RGBx:
+      case SPA_VIDEO_FORMAT_RGBA:
+        pixelFormat = Imaging::PixelFormat::RGBA;
+        break;
+
+      default:
+        pw_stream_queue_buffer(pw->stream, pwBuffer);
+        return;
+    }
 
     if(width == 0 || height == 0){
       pw_stream_queue_buffer(pw->stream, pwBuffer);
@@ -199,40 +232,21 @@ namespace Huenicorn::Grabber
       ? static_cast<size_t>(chunk->stride)
       : static_cast<size_t>(width) * 4;
 
-    // Some xdg-desktop-portal / pipewire combinations advertise SPA_DATA_MemFd
-    // buffers without auto-mapping them with PROT_READ even when
-    // PW_STREAM_FLAG_MAP_BUFFERS is set. Reading via the provided
-    // datas[0].data pointer then segfaults. Map the fd ourselves for the
-    // duration of this frame as a defensive fallback.
-    void* readPtr = spaBuffer->datas[0].data;
-    void* localMap = MAP_FAILED;
-    size_t localMapSize = 0;
-    const bool needRemap = spaBuffer->datas[0].type == SPA_DATA_MemFd
-      && spaBuffer->datas[0].fd >= 0;
+    // View on the Pipewire memory, which becomes invalid after queue_buffer()
+    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + chunk->offset, step);
+    const Imaging::ImageData frameViewData{.imageMatrix = frameView, .format = pixelFormat};
 
-    if(needRemap){
-      localMapSize = static_cast<size_t>(spaBuffer->datas[0].maxsize) + chunk->offset;
-      localMap = mmap(nullptr, localMapSize, PROT_READ, MAP_SHARED,
-                      static_cast<int>(spaBuffer->datas[0].fd), 0);
-      if(localMap != MAP_FAILED){
-        readPtr = localMap;
-      }
+    // Downscale straight from the shared memory instead of copying the full
+    // resolution frame first: only the subsample is copied out.
+    Imaging::ImageData capturedFrame;
+    const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
+
+    if(width > subsampleWidth){
+      Imaging::ImageProcessing::rescale(frameViewData, capturedFrame, subsampleWidth, pw->config->interpolation());
     }
-
-    cv::Mat rgbaFrame(height, width, CV_8UC4, static_cast<uint8_t*>(readPtr) + chunk->offset, step);
-
-    // CRITICAL:
-    // Pipewire memory becomes invalid after queue_buffer()
-    cv::Mat ownedFrame = rgbaFrame.clone();
-
-    if(localMap != MAP_FAILED){
-      munmap(localMap, localMapSize);
+    else{
+      capturedFrame = {.imageMatrix = frameView.clone(), .format = pixelFormat};
     }
-
-    Imaging::ImageData capturedFrame{
-      .imageMatrix = cv::Mat(ownedFrame),
-      .format = Imaging::PixelFormat::RGBA,
-    };
 
     {
       auto lock = std::lock_guard(pw->frameDoubleBuffer.mutex);
@@ -240,6 +254,52 @@ namespace Huenicorn::Grabber
       pw->frameDoubleBuffer.frame[0] = std::move(capturedFrame);
     }
     pw_stream_queue_buffer(pw->stream, pwBuffer);
+  }
+
+
+  void PipewireGrabber::_onStreamAddBuffer(
+    void* /*userdata*/,
+    pw_buffer* buffer
+  )
+  {
+    // Some xdg-desktop-portal / pipewire combinations advertise SPA_DATA_MemFd
+    // buffers without auto-mapping them with PROT_READ even when
+    // PW_STREAM_FLAG_MAP_BUFFERS is set. Reading via the provided
+    // datas[0].data pointer then segfaults. Map the fd ourselves, once for
+    // the lifetime of the buffer.
+    const spa_data& data = buffer->buffer->datas[0];
+    if(data.type != SPA_DATA_MemFd || data.fd < 0){
+      return;
+    }
+
+    // The buffer data starts at mapoffset within the fd
+    const size_t mapSize = data.mapoffset + static_cast<size_t>(data.maxsize);
+    void* map = mmap(nullptr, mapSize, PROT_READ, MAP_SHARED, static_cast<int>(data.fd), 0);
+    if(map == MAP_FAILED){
+      return;
+    }
+
+    buffer->user_data = new BufferMapping{
+      .map = map,
+      .size = mapSize,
+      .data = static_cast<const uint8_t*>(map) + data.mapoffset
+    };
+  }
+
+
+  void PipewireGrabber::_onStreamRemoveBuffer(
+    void* /*userdata*/,
+    pw_buffer* buffer
+  )
+  {
+    auto* bufferMapping = static_cast<BufferMapping*>(buffer->user_data);
+    if(!bufferMapping){
+      return;
+    }
+
+    munmap(bufferMapping->map, bufferMapping->size);
+    delete bufferMapping;
+    buffer->user_data = nullptr;
   }
 
 
@@ -327,8 +387,10 @@ namespace Huenicorn::Grabber
 
     GMainLoop* gmain = g_main_loop_new(NULL, FALSE);
 
+    // Block until an event is dispatched: the portal dialog may stay open for a long time.
+    // _stop() wakes the context up after clearing updateXdgContext.
     while(capture->updateXdgContext){
-      g_main_context_iteration(g_main_loop_get_context(gmain), false);
+      g_main_context_iteration(g_main_loop_get_context(gmain), TRUE);
     }
 
     g_main_loop_unref(gmain);
@@ -353,6 +415,8 @@ namespace Huenicorn::Grabber
     streamEvents.version = PW_VERSION_STREAM_EVENTS;
     streamEvents.param_changed = _onStreamParamChanged;
     streamEvents.process = _onStreamProcess;
+    streamEvents.add_buffer = _onStreamAddBuffer;
+    streamEvents.remove_buffer = _onStreamRemoveBuffer;
 
     pw->loop = pw_main_loop_new(NULL);
     pw->context = pw_context_new(pw_main_loop_get_loop(pw->loop), NULL, 0);
@@ -450,15 +514,15 @@ namespace Huenicorn::Grabber
           SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat,
           SPA_FORMAT_mediaType,       SPA_POD_Id(SPA_MEDIA_TYPE_video),
           SPA_FORMAT_mediaSubtype,    SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+          // The frame processing only handles packed 4 bytes per pixel formats.
+          // The first value is the preferred (default) one.
           SPA_FORMAT_VIDEO_format,    SPA_POD_CHOICE_ENUM_Id(
-            7,
-            SPA_VIDEO_FORMAT_RGB,
-            SPA_VIDEO_FORMAT_RGB,
-            SPA_VIDEO_FORMAT_RGBA,
-            SPA_VIDEO_FORMAT_RGBx,
+            5,
             SPA_VIDEO_FORMAT_BGRx,
-            SPA_VIDEO_FORMAT_YUY2,
-            SPA_VIDEO_FORMAT_I420
+            SPA_VIDEO_FORMAT_BGRx,
+            SPA_VIDEO_FORMAT_BGRA,
+            SPA_VIDEO_FORMAT_RGBx,
+            SPA_VIDEO_FORMAT_RGBA
           ),
           SPA_FORMAT_VIDEO_size,
           SPA_POD_CHOICE_RANGE_Rectangle(
@@ -520,6 +584,7 @@ namespace Huenicorn::Grabber
     // Stop XdgPortal (not used when capturing gamescope's node directly)
     if(!m_pwData.useGamescope){
       m_capture.updateXdgContext = false; // Making sure
+      g_main_context_wakeup(nullptr);
       XdgDesktopPortal::screencastPortalCaptureDestroy(&m_capture);
       if(m_xdgThread.has_value()){
         m_xdgThread.value().join();

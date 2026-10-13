@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <optional>
 
 #include <httplib.h>
@@ -16,9 +17,36 @@ namespace Huenicorn::Network::Http::Server
   {
     friend HttpServer;
 
+    /**
+     * @brief Checks that a browser request originates from the web UI itself
+     *
+     * @param req Incoming request
+     * @return true The request carries no Origin header (non-browser client) or it matches the Host header
+     * @return false The request was issued by a page from another origin
+     */
+    static bool _isSameOrigin(const httplib::Request& req)
+    {
+      if(!req.has_header("Origin")){
+        return true;
+      }
+
+      const std::string origin = req.get_header_value("Origin");
+      const std::string host = req.get_header_value("Host");
+
+      return !host.empty() && (origin == "http://" + host || origin == "https://" + host);
+    }
+
+
     static httplib::Server::Handler _wrapHandler(Handler handler, HttpMethod method)
     {
       return [handler = std::move(handler), method](const httplib::Request& req, httplib::Response& res){
+        if(method != HttpMethod::Get && !_isSameOrigin(req)){
+          // Prevents other web pages open in the user's browser from driving the API (CSRF)
+          res.status = 403;
+          res.set_content("{\"succeeded\": false, \"error\": \"cross-origin request rejected\"}", "application/json");
+          return;
+        }
+
         Request r;
         Response w;
 
@@ -92,8 +120,16 @@ namespace Huenicorn::Network::Http::Server
         return false;
       }
 
+      // httplib asserts when stopped again while still shutting down
+      if(m_stopRequested.exchange(true)){
+        return true;
+      }
+
+      // Only signal the server to stop. The httplib::Server instance must outlive
+      // the thread blocked in listen() and the worker currently running a handler
+      // (e.g. /api/finishSetup stops the server from inside its own handler).
+      // It is destroyed along with this Impl.
       m_service->stop();
-      m_service.reset();
 
       return true;
     }
@@ -110,7 +146,7 @@ namespace Huenicorn::Network::Http::Server
 
     bool listen()
     {
-      if(!m_service){
+      if(!m_service || m_stopRequested){
         return false;
       }
 
@@ -118,5 +154,6 @@ namespace Huenicorn::Network::Http::Server
     }
 
     std::optional<httplib::Server> m_service;
+    std::atomic<bool> m_stopRequested{false};
   };
 }

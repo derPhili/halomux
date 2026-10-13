@@ -223,7 +223,7 @@ Beide Dateien sind im JSON-Format.
 
 Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert werden können.
 
-* **boundBackendIP**: (String) IP-Adresse, an die der Dienst gebunden wird
+* **boundBackendIP**: (String) IP-Adresse, an die der Dienst gebunden wird. Standard ist `127.0.0.1` (nur lokaler Zugriff). Mit `0.0.0.0` ist die Weboberfläche auch von anderen Geräten erreichbar – bedenke dabei, dass sie keine Authentifizierung hat
 * **bridgeAddress**: (String) Adresse der Philips Hue Bridge
 * **credentials**:
   * **clientkey**: (String) Schlüssel aus 32 Hexadezimalzeichen, erzeugt bei der Ersteinrichtung
@@ -243,7 +243,7 @@ Ein Beispiel:
 
 ```json
 {
-  "boundBackendIP": "0.0.0.0",
+  "boundBackendIP": "127.0.0.1",
   "bridgeAddress": "192.168.0.10",
   "credentials": {
     "clientkey": "01234567890ABCDEF0123456789ABCDE",

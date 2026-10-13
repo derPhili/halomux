@@ -1,4 +1,7 @@
 #pragma once
+
+#include <atomic>
+
 /*
   This code is an adapation from https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c
   It consists on an extraction from OBS Source code achieving the call and management of a xdg-portal capture query
@@ -56,7 +59,8 @@ namespace Huenicorn::Grabber
       uint32_t pwFd{0};
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
-      bool updateXdgContext{true};
+      bool fdReadyResolved{false};
+      std::atomic<bool> updateXdgContext{true};
       Core::Config* config;
     };
 
@@ -82,6 +86,17 @@ namespace Huenicorn::Grabber
       Capture* capture,
       CaptureType captureType,
       bool cursorVisible
+    );
+
+    /**
+     * @brief Fulfills the capture's fd promise once and stops the portal context loop
+     *
+     * @param capture Capture to resolve
+     * @param succeeded Whether a Pipewire fd was obtained
+     */
+    static void resolveCapture(
+      Capture* capture,
+      bool succeeded
     );
 
     static void screencastPortalCaptureDestroy(

@@ -1,5 +1,7 @@
 #include <Huenicorn/Imaging/ImageProcessing.hpp>
 
+#include <algorithm>
+
 
 namespace Huenicorn::Imaging
 {
@@ -15,14 +17,14 @@ namespace Huenicorn::Imaging
       int sourceHeight = inputImageData.height();
       int sourceWidth = inputImageData.width();
 
-      if(sourceWidth < outputWidth){
+      if(outputWidth < 1 || sourceWidth < outputWidth){
         outputImageData = inputImageData;
         return;
       }
 
       float scaleRatio = static_cast<float>(outputWidth) / static_cast<float>(sourceWidth);
 
-      int targetHeight = static_cast<int>(static_cast<float>(sourceHeight) * scaleRatio);
+      int targetHeight = std::max(1, static_cast<int>(static_cast<float>(sourceHeight) * scaleRatio));
 
       cv::InterpolationFlags interpolationFlag = cv::InterpolationFlags::INTER_AREA;
 
@@ -41,15 +43,34 @@ namespace Huenicorn::Imaging
       }
 
       cv::resize(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, interpolationFlag);
+      outputImageData.format = inputImageData.format;
     }
 
 
-    void rgbaToRgb(
+    void toBgr(
       const ImageData& inputImageData,
       ImageData& outputImageData
     )
     {
-      cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_RGBA2RGB);
+      switch(inputImageData.format){
+        case PixelFormat::RGBA:
+          cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_RGBA2BGR);
+          break;
+
+        case PixelFormat::BGRA:
+          cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_BGRA2BGR);
+          break;
+
+        case PixelFormat::RGB:
+          cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_RGB2BGR);
+          break;
+
+        case PixelFormat::BGR:
+          outputImageData.imageMatrix = inputImageData.imageMatrix;
+          break;
+      }
+
+      outputImageData.format = PixelFormat::BGR;
     }
 
 
@@ -67,7 +88,9 @@ namespace Huenicorn::Imaging
       cv::Range cols(std::max(0, a.x), std::min(b.x, inputImageData.width()));
       cv::Range rows(std::max(0, a.y), std::min(b.y, inputImageData.height()));
 
-      outputImageData.imageMatrix = inputImageData.imageMatrix(rows, cols).clone();
+      // View on the input data (no copy): the output must not outlive the input's buffer
+      outputImageData.imageMatrix = inputImageData.imageMatrix(rows, cols);
+      outputImageData.format = inputImageData.format;
     }
 
 
@@ -89,6 +112,7 @@ namespace Huenicorn::Imaging
         const ImageData& imageData
       )
       {
+        // Expects a BGR image (see toBgr)
         auto mean = cv::mean(imageData.imageMatrix);
 
         return Color{

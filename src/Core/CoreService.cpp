@@ -1,4 +1,6 @@
+#include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <optional>
 
 #include <Huenicorn/Version.hpp>
@@ -41,10 +43,11 @@ namespace Huenicorn::Core
     const std::string& bridgeAddress
   )
   {
+    // Trailing slashes are already stripped by the sanitization
     std::string sanitizedAddress = Hue::Api::sanitizeBridgeAddress(bridgeAddress);
 
-    while(sanitizedAddress.back() == '/'){
-      sanitizedAddress.pop_back();
+    if(sanitizedAddress.empty()){
+      return false;
     }
 
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "");
@@ -126,6 +129,7 @@ namespace Huenicorn::Core
 
   std::optional<std::string> CoreService::currentEntertainmentConfigurationId() const
   {
+    std::lock_guard lock(m_runtime.m_selectorMutex);
     return m_runtime.m_selector->currentEntertainmentConfigurationId();
   }
 
@@ -135,6 +139,7 @@ namespace Huenicorn::Core
     bool active
   )
   {
+    std::lock_guard lock(m_runtime.m_channelsMutex);
     auto& channels = m_runtime.m_channels;
     if(channels.find(channelId) == channels.end()){
       return false;
@@ -142,14 +147,13 @@ namespace Huenicorn::Core
 
     channels.at(channelId).setActive(active);
 
-    m_runtime._updateStreamChannelsSize();
-
     return true;
   }
 
 
-  const Hue::Api::Channels& CoreService::channels() const
+  Hue::Api::Channels CoreService::channels() const
   {
+    std::lock_guard lock(m_runtime.m_channelsMutex);
     return m_runtime.m_channels;
   }
 
@@ -163,6 +167,7 @@ namespace Huenicorn::Core
 
   const Hue::Api::EntertainmentConfiguration& CoreService::currentEntertainmentConfiguration() const
   {
+    std::lock_guard lock(m_runtime.m_selectorMutex);
     return m_runtime.m_selector->currentEntertainmentConfiguration();
   }
 
@@ -221,23 +226,24 @@ namespace Huenicorn::Core
     const std::string& entertainmentConfigurationId
   )
   {
-    if(!m_runtime.m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return false;
-    }
-
-    m_runtime._enableEntertainmentConfiguration(entertainmentConfigurationId);
-
-    return true;
+    std::lock_guard lock(m_runtime.m_selectorMutex);
+    return m_runtime._enableEntertainmentConfiguration(entertainmentConfigurationId);
   }
 
 
-  const Imaging::UVs& CoreService::setChannelUV(
+  std::optional<Imaging::UVs> CoreService::setChannelUV(
     uint8_t channelId,
     Imaging::UV&& uv,
     Imaging::UVCorner uvCorner
   )
   {
-    return m_runtime.m_channels.at(channelId).setUV(std::move(uv), uvCorner);
+    std::lock_guard lock(m_runtime.m_channelsMutex);
+    auto channelIt = m_runtime.m_channels.find(channelId);
+    if(channelIt == m_runtime.m_channels.end()){
+      return std::nullopt;
+    }
+
+    return channelIt->second.setUV(std::move(uv), uvCorner);
   }
 
 
@@ -246,6 +252,11 @@ namespace Huenicorn::Core
     float gammaExponent
   )
   {
+    if(!std::isfinite(gammaExponent)){
+      return false;
+    }
+
+    std::lock_guard lock(m_runtime.m_channelsMutex);
     auto& channels = m_runtime.m_channels;
 
     if(channels.find(channelId) == channels.end()){
@@ -274,7 +285,9 @@ namespace Huenicorn::Core
     m_config.setRefreshRate(refreshRate);
     refreshRate = m_config.refreshRate();
 
-    m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
+    if(m_runtime.m_loopRegulator){
+      m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
+    }
   }
 
 
@@ -296,6 +309,9 @@ namespace Huenicorn::Core
 
   void CoreService::saveProfile()
   {
+    std::lock_guard selectorLock(m_runtime.m_selectorMutex);
+    std::lock_guard channelsLock(m_runtime.m_channelsMutex);
+
     if(!m_runtime.m_selector->validSelection()){
       Logger::error("There is currently no valid entertainment configuration selected.");
       return;
@@ -313,9 +329,21 @@ namespace Huenicorn::Core
       m_config.setProfileName("profile");
     }
 
-    std::ofstream profileFile(profilePath(), std::ofstream::out);
-    profileFile << profile.dump(2) << "\n";
-    profileFile.close();
+    // Write then rename, so an interrupted write never leaves a truncated profile behind
+    std::filesystem::path pp = profilePath();
+    std::filesystem::path tmpPath = pp;
+    tmpPath += ".tmp";
+
+    {
+      std::ofstream profileFile(tmpPath, std::ofstream::out);
+      profileFile << profile.dump(2) << "\n";
+      if(!profileFile){
+        Logger::error("Failed to write profile ", std::quoted(tmpPath.string()));
+        return;
+      }
+    }
+
+    std::filesystem::rename(tmpPath, pp);
   }
 
 
@@ -336,7 +364,22 @@ namespace Huenicorn::Core
     const std::string& boundBackendIP = m_config.boundBackendIP();
 
     Network::Http::Server::SetupBackend sb(this);
+    {
+      std::lock_guard lock(m_setupBackendMutex);
+      if(!m_runtime.m_keepLooping){
+        return false;
+      }
+
+      m_setupBackend = &sb;
+    }
+
     bool succeeded = sb.execute(port, boundBackendIP);
+
+    {
+      std::lock_guard lock(m_setupBackendMutex);
+      m_setupBackend = nullptr;
+    }
+
     m_runtime.m_openedSetup = true;
 
     if(!succeeded){
@@ -347,6 +390,15 @@ namespace Huenicorn::Core
     Logger::log("Finished setup");
 
     return true;
+  }
+
+
+  void CoreService::abortInitialSetup()
+  {
+    std::lock_guard lock(m_setupBackendMutex);
+    if(m_setupBackend){
+      m_setupBackend->abort();
+    }
   }
 
 
@@ -363,11 +415,15 @@ namespace Huenicorn::Core
   std::optional<Serialization::Json> CoreService::getProfile()
   {
     std::filesystem::path pp = profilePath();
-    Serialization::Json jsonProfile = Serialization::Json::object();
 
     if(!pp.empty() && std::filesystem::exists(pp) && std::filesystem::is_regular_file(pp)){
-      std::ifstream profileFile(pp);
-      return Serialization::Json::parse(profileFile);
+      try{
+        std::ifstream profileFile(pp);
+        return Serialization::Json::parse(profileFile);
+      }
+      catch(const std::exception& e){
+        Logger::error("Ignoring invalid profile ", std::quoted(pp.string()), ": ", e.what());
+      }
     }
 
     return std::nullopt;

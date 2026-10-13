@@ -2,6 +2,11 @@ class WebUI
 {
   constructor()
   {
+    // UV updates waiting to be sent, keyed by channel and corner. Only one request is in flight at a
+    // time so dragging a handle doesn't flood the backend and responses can't arrive out of order.
+    this.pendingUVs = new Map();
+    this.uvRequestInFlight = false;
+
     this.activeChannelsNode = document.getElementById("activeChannelsList");
     this.activeChannelsNode.addEventListener("drop", (event) => {
       this._setChannelActivity(JSON.parse(event.dataTransfer.getData("channelData")).channelId, true);
@@ -74,12 +79,43 @@ class WebUI
 
   notifyUV(uvData)
   {
-    let uvPromise = RequestUtils.put(`/api/setChannelUV/${this.screenWidget.currentChannel.channelId}`, JSON.stringify(uvData));
-    uvPromise.then((checkedUVs) => {
-      this.activeChannels[this.screenWidget.currentChannel.channelId].uvs = checkedUVs;
-      this.screenWidget.uvCallback(checkedUVs);
+    let channelId = this.screenWidget.currentChannel.channelId;
+    this.pendingUVs.set(`${channelId}:${uvData.type}`, {channelId : channelId, uvData : uvData});
+
+    if(!this.uvRequestInFlight){
+      this._sendPendingUV();
+    }
+  }
+
+
+  _sendPendingUV()
+  {
+    let next = this.pendingUVs.entries().next();
+    if(next.done){
+      return;
+    }
+
+    let [key, pending] = next.value;
+    this.pendingUVs.delete(key);
+    this.uvRequestInFlight = true;
+
+    RequestUtils.put(`/api/setChannelUV/${pending.channelId}`, JSON.stringify(pending.uvData))
+    .then((checkedUVs) => {
+      if(this.activeChannels[pending.channelId]){
+        this.activeChannels[pending.channelId].uvs = checkedUVs;
+      }
+
+      // Don't move the handles back while newer positions are still waiting to be sent
+      let isCurrentChannel = this.screenWidget.currentChannel && this.screenWidget.currentChannel.channelId == pending.channelId;
+      if(isCurrentChannel && this.pendingUVs.size == 0){
+        this.screenWidget.uvCallback(checkedUVs);
+      }
+    })
+    .catch((error) => {log(error);})
+    .finally(() => {
+      this.uvRequestInFlight = false;
+      this._sendPendingUV();
     });
-    uvPromise.catch((error) => {log(error);});
   }
 
 

@@ -182,7 +182,16 @@ namespace Huenicorn::Network::Http::Server
       float y = jsonUV.at("y");
       Imaging::UVCorner uvCorner = static_cast<Imaging::UVCorner>(jsonUV.at("type").get<int>());
 
-      const auto& clampedUVs = m_coreService->setChannelUV(channelId, {x, y}, uvCorner);
+      auto optClampedUVs = m_coreService->setChannelUV(channelId, {x, y}, uvCorner);
+
+      if(!optClampedUVs.has_value()){
+        res.status = 404;
+        res.contentType = "application/json";
+        res.body = Json{{"succeeded", false}, {"error", "invalid channel id"}}.dump();
+        return;
+      }
+
+      const auto& clampedUVs = optClampedUVs.value();
 
       // TODO : Serialize from JsonSerializer
       Json jsonResponse = {
@@ -326,7 +335,7 @@ namespace Huenicorn::Network::Http::Server
       m_coreService->saveProfile();
 
       Json jsonResponse = {
-        "succeeded", true
+        {"succeeded", true}
       };
 
       std::string response = jsonResponse.dump();

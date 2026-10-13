@@ -50,7 +50,8 @@ namespace Huenicorn::Platform
     Core::Config* config
   )
   {
-    std::string sessionType = std::getenv("XDG_SESSION_TYPE");
+    const char* sessionTypeEnv = std::getenv("XDG_SESSION_TYPE");
+    std::string sessionType = sessionTypeEnv ? sessionTypeEnv : "";
 #ifdef PIPEWIRE_GRABBER_AVAILABLE
 
     // Gamescope (Steam Deck / Bazzite Game Mode) sets XDG_SESSION_TYPE=x11
