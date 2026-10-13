@@ -2,12 +2,7 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(Huenicorn VERSION 1.2.0)
 
-set(BUILD_DOCUMENTATION FALSE CACHE BOOL "Build documentation")
 set(BUILD_TESTS FALSE CACHE BOOL "Build tests")
-
-option(HUENICORN_FETCH_DEPS "Download dependencies if missing" ON)
-
-include(FetchContent)
 
 
 # Check mandatory libraries
@@ -19,58 +14,10 @@ find_library(MBEDTLS_X509 mbedx509 REQUIRED)
 find_library(MBEDTLS_CRYPTO mbedcrypto REQUIRED)
 
 
-# NLohmann JSON
-find_package(nlohmann_json QUIET)
-if(NOT nlohmann_json_FOUND)
-  if(HUENICORN_FETCH_DEPS)
-    message(STATUS "nlohmann_json is not installed. Now fetching online...")
-    FetchContent_Declare(
-      nlohmann_json
-      URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-    )
-    FetchContent_MakeAvailable(nlohmann_json)
-  else()
-    message(FATAL_ERROR "nlohmann_json is not installed and online fetch is disabled")
-  endif()
-else()
-  message(STATUS "nlohmann_json is installed.")
-endif()
-
-
-# CppHttpLip
-find_package(httplib QUIET)
-if(NOT httplib_FOUND)
-  if(HUENICORN_FETCH_DEPS)
-    message(STATUS "httplib is not installed. Now fetching online...")
-    FetchContent_Declare(
-      cpp_httplib
-      URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.46.0.tar.gz
-    )
-    FetchContent_MakeAvailable(cpp_httplib)
-  else()
-    message(FATAL_ERROR "httplib is not installed and online fetch is disabled")
-  endif()
-else()
-  message(STATUS "httplib is installed.")
-endif()
-
-
-# GLM
-find_package(glm QUIET)
-if(NOT glm_FOUND)
-  if(HUENICORN_FETCH_DEPS)
-    message(STATUS "glm is not installed. Now fetching online...")
-    FetchContent_Declare(
-      glm
-      URL https://github.com/g-truc/glm/archive/refs/tags/1.0.3.tar.gz
-    )
-    FetchContent_MakeAvailable(glm)
-  else()
-    message(FATAL_ERROR "glm is not installed and online fetch is disabled")
-  endif()
-else()
-  message(STATUS "glm is installed")
-endif()
+# Header-only libraries (installed system-wide)
+find_package(nlohmann_json REQUIRED)
+find_package(httplib REQUIRED)
+find_package(glm REQUIRED)
 
 
 # Generate version header
@@ -204,7 +151,33 @@ add_executable(huenicorn
 
 add_dependencies(huenicorn generate_version_header generate_webroot_header)
 
-include(cmake/platforms/GnuLinux.cmake)
+# Adapter
+target_sources(huenicorn PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Adapters/GnuLinux/GnuLinuxAdapter.cpp
+)
+
+# Pipewire grabber (Wayland screencast through the XDG desktop portal)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+find_package(Gio REQUIRED)
+pkg_search_module(LIB_PIPEWIRE REQUIRED libpipewire-0.3)
+pkg_check_modules(LIBGLIB REQUIRED glib-2.0 gio-2.0)
+
+target_sources(huenicorn PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp
+)
+
+target_include_directories(huenicorn PUBLIC
+  ${LIB_PIPEWIRE_INCLUDE_DIRS}
+  ${GIO_INCLUDE_DIRS}
+  ${GLIB_INCLUDE_DIRS}
+)
+
+target_link_libraries(huenicorn PUBLIC
+  GIO::GIO
+  ${LIB_PIPEWIRE_LIBRARIES}
+  ${LIBGLIB_LIBRARIES}
+)
 
 set_target_properties(huenicorn PROPERTIES CXX_STANDARD 20)
 
@@ -240,58 +213,3 @@ target_compile_options(huenicorn PRIVATE
 if(${BUILD_TESTS})
   include(tests/AddTests.cmake)
 endif(${BUILD_TESTS})
-
-
-if(${BUILD_DOCUMENTATION})
-  # Initializing Doxygen
-  find_package(Doxygen REQUIRED dot OPTIONAL_COMPONENTS mscgen dia)
-
-  # Defining Doxyfile path
-  set(doxyfile_in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.doxygen)
-
-  # Setting Doxyfile properties
-  set(DOXYGEN_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc)
-  set(DOXYGEN_EXTRACT_ALL YES)
-  set(DOXYGEN_FULL_PATH_NAMES NO)
-
-  # Generating doxyfile
-  doxygen_add_docs(
-    doxygen
-    ${PROJECT_SOURCE_DIR}
-    COMMENT "Generate man pages"
-  )
-
-  # Building Doxygen documentation
-  add_custom_target(documentationBuild ALL
-    COMMAND ${DOXYGEN_EXECUTABLE} ${doxyfile_in}
-    COMMENT "Generating API documentation with Doxygen"
-    VERBATIM
-  )
-endif(${BUILD_DOCUMENTATION})
-
-
-# Post build commands
-
-# Copy readme to build
-add_custom_command(TARGET huenicorn POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy
-  ${CMAKE_CURRENT_SOURCE_DIR}/README.md $<TARGET_FILE_DIR:huenicorn>/README.md
-)
-
-# Copy screenshots to build
-add_custom_command(TARGET huenicorn POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-  ${CMAKE_CURRENT_SOURCE_DIR}/screenshots $<TARGET_FILE_DIR:huenicorn>/screenshots
-)
-
-# Copy assets to build
-add_custom_command(TARGET huenicorn POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-  ${CMAKE_CURRENT_SOURCE_DIR}/assets $<TARGET_FILE_DIR:huenicorn>/assets
-)
-
-# Copy license to build
-add_custom_command(TARGET huenicorn POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy
-  ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt $<TARGET_FILE_DIR:huenicorn>/LICENSE.txt
-)
