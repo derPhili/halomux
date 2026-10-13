@@ -1,5 +1,7 @@
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
+#include <array>
+#include <cstdlib>
 #include <sstream>
 #include <future>
 #include <fcntl.h>
@@ -24,6 +26,7 @@
 #include <spa/debug/types.h>
 #include <spa/param/video/type-info.h>
 #include <spa/utils/dict.h>
+#include <spa/param/buffers.h>
 
 #if defined(__clang__)
   #pragma clang diagnostic pop
@@ -33,7 +36,37 @@
 
 
 
+#include <drm_fourcc.h>
+
+
 using namespace std::chrono_literals;
+
+
+namespace
+{
+  // Packed 4 bytes per pixel formats handled by both paths, preferred first
+  const std::vector<spa_video_format> SupportedFormats = {
+    SPA_VIDEO_FORMAT_BGRx,
+    SPA_VIDEO_FORMAT_BGRA,
+    SPA_VIDEO_FORMAT_RGBx,
+    SPA_VIDEO_FORMAT_RGBA
+  };
+
+
+  uint32_t toDrmFormat(
+    spa_video_format format
+  )
+  {
+    // SPA names follow the byte order in memory, DRM ones the little-endian word layout
+    switch(format){
+      case SPA_VIDEO_FORMAT_BGRx: return DRM_FORMAT_XRGB8888;
+      case SPA_VIDEO_FORMAT_BGRA: return DRM_FORMAT_ARGB8888;
+      case SPA_VIDEO_FORMAT_RGBx: return DRM_FORMAT_XBGR8888;
+      case SPA_VIDEO_FORMAT_RGBA: return DRM_FORMAT_ABGR8888;
+      default: return DRM_FORMAT_INVALID;
+    }
+  }
+}
 
 
 namespace Huenicorn::Grabber
@@ -154,23 +187,10 @@ namespace Huenicorn::Grabber
       return;
     }
 
-    spa_buffer* spaBuffer = pwBuffer->buffer;
-
-    // Prefer our own read-only mapping of MemFd buffers (see _onStreamAddBuffer)
-    const auto* bufferMapping = static_cast<const BufferMapping*>(pwBuffer->user_data);
-    const uint8_t* readPtr = bufferMapping
-      ? bufferMapping->data
-      : static_cast<const uint8_t*>(spaBuffer->datas[0].data);
-
-    if(readPtr == nullptr){
-      pw_stream_queue_buffer(pw->stream, pwBuffer);
-      return;
-    }
-
     const auto width = static_cast<int>(pw->format.info.raw.size.width);
     const auto height = static_cast<int>(pw->format.info.raw.size.height);
 
-    // Only 4 bytes per pixel formats are negotiated (see _pipewireThread)
+    // Only 4 bytes per pixel formats are negotiated (see SupportedFormats)
     Imaging::PixelFormat pixelFormat;
     switch(pw->format.info.raw.format){
       case SPA_VIDEO_FORMAT_BGRx:
@@ -188,29 +208,113 @@ namespace Huenicorn::Grabber
         return;
     }
 
-    if(width == 0 || height == 0){
+    const spa_data& data = pwBuffer->buffer->datas[0];
+    const bool corrupted = data.chunk != nullptr && (data.chunk->flags & SPA_CHUNK_FLAG_CORRUPTED);
+
+    if(width == 0 || height == 0 || corrupted){
       pw_stream_queue_buffer(pw->stream, pwBuffer);
       return;
     }
 
-    auto* chunk = spaBuffer->datas[0].chunk;
+    Imaging::ImageData capturedFrame;
+    const bool captured = data.type == SPA_DATA_DmaBuf
+      ? _processDmaBuf(pw, pwBuffer, width, height, capturedFrame)
+      : _processSharedMemory(pw, pwBuffer, width, height, pixelFormat, capturedFrame);
 
-    if(chunk == nullptr || chunk->size == 0){
-      pw_stream_queue_buffer(pw->stream, pwBuffer);
-      return;
+    if(captured){
+      auto lock = std::lock_guard(pw->frameDoubleBuffer.mutex);
+      std::swap(pw->frameDoubleBuffer.frame[0], pw->frameDoubleBuffer.frame[1]);
+      pw->frameDoubleBuffer.frame[0] = std::move(capturedFrame);
     }
 
-    const size_t step = chunk->stride > 0
-      ? static_cast<size_t>(chunk->stride)
+    pw_stream_queue_buffer(pw->stream, pwBuffer);
+  }
+
+
+  bool PipewireGrabber::_processDmaBuf(
+    PipewireData* pw,
+    pw_buffer* pwBuffer,
+    int width,
+    int height,
+    Imaging::ImageData& capturedFrame
+  )
+  {
+    if(!pw->gpu || pw->dmaBufFailed){
+      return false;
+    }
+
+    const spa_data& data = pwBuffer->buffer->datas[0];
+    if(data.chunk == nullptr || data.fd < 0){
+      return false;
+    }
+
+    auto* bufferData = static_cast<BufferData*>(pwBuffer->user_data);
+    if(!bufferData){
+      bufferData = new BufferData();
+      pwBuffer->user_data = bufferData;
+    }
+
+    // Imported once per buffer: Pipewire cycles through a fixed set of DMA-BUFs
+    if(!bufferData->gpuImage){
+      bufferData->gpuImage = pw->gpu->importDmaBuf({
+        .fd = static_cast<int>(data.fd),
+        .offset = data.chunk->offset,
+        .stride = static_cast<uint32_t>(data.chunk->stride),
+        .width = width,
+        .height = height,
+        .drmFormat = toDrmFormat(pw->format.info.raw.format),
+        .modifier = pw->format.info.raw.modifier
+      });
+    }
+
+    const int subsampleWidth = std::min(static_cast<int>(pw->config->subsampleWidth()), width);
+    const int subsampleHeight = std::max(1, static_cast<int>(static_cast<int64_t>(height) * subsampleWidth / width));
+
+    cv::Mat rgba;
+    if(!bufferData->gpuImage || !pw->gpu->downscale(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rgba)){
+      // Fall back to shared memory buffers for good
+      Core::Logger::warn("[gpu] GPU downscaling failed, falling back to the CPU path");
+      pw->dmaBufFailed = true;
+      pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+      return false;
+    }
+
+    capturedFrame = {.imageMatrix = rgba, .format = Imaging::PixelFormat::RGBA};
+    return true;
+  }
+
+
+  bool PipewireGrabber::_processSharedMemory(
+    PipewireData* pw,
+    pw_buffer* pwBuffer,
+    int width,
+    int height,
+    Imaging::PixelFormat pixelFormat,
+    Imaging::ImageData& capturedFrame
+  )
+  {
+    const spa_data& data = pwBuffer->buffer->datas[0];
+
+    // Prefer our own read-only mapping of MemFd buffers (see _onStreamAddBuffer)
+    const auto* bufferData = static_cast<const BufferData*>(pwBuffer->user_data);
+    const uint8_t* readPtr = (bufferData && bufferData->data)
+      ? bufferData->data
+      : static_cast<const uint8_t*>(data.data);
+
+    if(readPtr == nullptr || data.chunk == nullptr || data.chunk->size == 0){
+      return false;
+    }
+
+    const size_t step = data.chunk->stride > 0
+      ? static_cast<size_t>(data.chunk->stride)
       : static_cast<size_t>(width) * 4;
 
     // View on the Pipewire memory, which becomes invalid after queue_buffer()
-    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + chunk->offset, step);
+    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + data.chunk->offset, step);
     const Imaging::ImageData frameViewData{.imageMatrix = frameView, .format = pixelFormat};
 
     // Downscale straight from the shared memory instead of copying the full
     // resolution frame first: only the subsample is copied out.
-    Imaging::ImageData capturedFrame;
     const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
 
     if(width > subsampleWidth){
@@ -220,12 +324,7 @@ namespace Huenicorn::Grabber
       capturedFrame = {.imageMatrix = frameView.clone(), .format = pixelFormat};
     }
 
-    {
-      auto lock = std::lock_guard(pw->frameDoubleBuffer.mutex);
-      std::swap(pw->frameDoubleBuffer.frame[0], pw->frameDoubleBuffer.frame[1]);
-      pw->frameDoubleBuffer.frame[0] = std::move(capturedFrame);
-    }
-    pw_stream_queue_buffer(pw->stream, pwBuffer);
+    return true;
   }
 
 
@@ -251,26 +350,34 @@ namespace Huenicorn::Grabber
       return;
     }
 
-    buffer->user_data = new BufferMapping{
-      .map = map,
-      .size = mapSize,
-      .data = static_cast<const uint8_t*>(map) + data.mapoffset
-    };
+    auto* bufferData = new BufferData();
+    bufferData->map = map;
+    bufferData->mapSize = mapSize;
+    bufferData->data = static_cast<const uint8_t*>(map) + data.mapoffset;
+    buffer->user_data = bufferData;
   }
 
 
   void PipewireGrabber::_onStreamRemoveBuffer(
-    void* /*userdata*/,
+    void* userdata,
     pw_buffer* buffer
   )
   {
-    auto* bufferMapping = static_cast<BufferMapping*>(buffer->user_data);
-    if(!bufferMapping){
+    PipewireData* pw = static_cast<PipewireData*>(userdata);
+    auto* bufferData = static_cast<BufferData*>(buffer->user_data);
+    if(!bufferData){
       return;
     }
 
-    munmap(bufferMapping->map, bufferMapping->size);
-    delete bufferMapping;
+    if(bufferData->map){
+      munmap(bufferData->map, bufferData->mapSize);
+    }
+
+    if(bufferData->gpuImage && pw->gpu){
+      pw->gpu->releaseImage(*bufferData->gpuImage);
+    }
+
+    delete bufferData;
     buffer->user_data = nullptr;
   }
 
@@ -330,6 +437,35 @@ namespace Huenicorn::Grabber
     */
 
 
+    // DMA-BUF formats carry a modifier: ask for the matching buffer type
+    const bool dmaBuf = spa_pod_find_prop(param, nullptr, SPA_FORMAT_VIDEO_modifier) != nullptr;
+    const int dataTypes = dmaBuf
+      ? (1 << SPA_DATA_DmaBuf)
+      : ((1 << SPA_DATA_MemFd) | (1 << SPA_DATA_MemPtr));
+
+    std::array<uint8_t, 1024> buffer;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
+    const spa_pod* buffersParam = static_cast<const spa_pod*>(spa_pod_builder_add_object(
+      &b,
+      SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
+      SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(dataTypes)
+    ));
+#pragma GCC diagnostic pop
+    pw_stream_update_params(pw->stream, &buffersParam, 1);
+
+    if(dmaBuf != pw->usingDmaBuf || !pw->promiseSetAlready){
+      pw->usingDmaBuf = dmaBuf;
+      if(dmaBuf){
+        Core::Logger::log("Capture path: GPU (DMA-BUF, modifier 0x", std::hex, pw->format.info.raw.modifier, std::dec, ")");
+      }
+      else{
+        Core::Logger::log("Capture path: CPU (shared memory)");
+      }
+    }
+
     if(!pw->promiseSetAlready){
       pw->screenDataReadyPromise.set_value(true);
       pw->promiseSetAlready = true;
@@ -377,6 +513,27 @@ namespace Huenicorn::Grabber
 
     pw->loop = pw_main_loop_new(NULL);
     pw->context = pw_context_new(pw_main_loop_get_loop(pw->loop), NULL, 0);
+    pw->renegotiateEvent = pw_loop_add_event(pw_main_loop_get_loop(pw->loop), _onRenegotiate, pw);
+
+    // The GL context lives in this thread, like every Pipewire callback using it
+    if(const char* disableGpu = std::getenv("HUENICORN_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
+      Core::Logger::log("[gpu] Disabled by HUENICORN_DISABLE_GPU");
+    }
+    else{
+      pw->gpu = std::make_unique<EglDownscaler>();
+      if(pw->gpu->init()){
+        for(spa_video_format format : SupportedFormats){
+          auto modifiers = pw->gpu->supportedModifiers(toDrmFormat(format));
+          if(!modifiers.empty()){
+            pw->dmaBufFormats.push_back({format, std::move(modifiers)});
+          }
+        }
+      }
+      else{
+        Core::Logger::warn("[gpu] GPU downscaling unavailable, using the CPU path");
+        pw->gpu.reset();
+      }
+    }
 
     auto core = pw_context_connect_fd(pw->context, fcntl(static_cast<int>(capture->pwFd), F_DUPFD_CLOEXEC, 5), NULL, 0);
 
@@ -417,21 +574,25 @@ namespace Huenicorn::Grabber
       pw
     );
 
-    uint8_t buffer[1024];
-    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+    std::array<uint8_t, 8192> buffer;
+    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
 
     // Unconstrained at first, so the display's actual maximal framerate is learnt
     // (see displayRefreshRate()). setFrameRateLimit() renegotiates it afterwards.
-    const spa_pod* params[1] = {_buildFormatParam(&b, 0)};
+    auto params = _buildFormatParams(&b, pw);
 #pragma GCC diagnostic pop
 
-    pw_stream_connect(pw->stream, PW_DIRECTION_INPUT, targetNode, static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS), params, 1);
+    pw_stream_connect(pw->stream, PW_DIRECTION_INPUT, targetNode, static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS), params.data(), static_cast<uint32_t>(params.size()));
 
     pw_main_loop_run(pw->loop);
 
     pw_stream_disconnect(pw->stream);
 
+    // Releases the buffers, and with them the imported DMA-BUFs, while the GL context still exists
     g_clear_pointer(&pw->stream, pw_stream_destroy);
+    pw->gpu.reset();
+    pw_loop_destroy_source(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+    pw->renegotiateEvent = nullptr;
 
     g_clear_pointer(&pw->context, pw_context_destroy);
     g_clear_pointer(&pw->loop, pw_main_loop_destroy);
@@ -442,36 +603,73 @@ namespace Huenicorn::Grabber
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+  std::vector<const spa_pod*> PipewireGrabber::_buildFormatParams(
+    spa_pod_builder* builder,
+    const PipewireData* pw
+  )
+  {
+    std::vector<const spa_pod*> params;
+
+    if(!pw->dmaBufFailed){
+      for(const auto& dmaBufFormat : pw->dmaBufFormats){
+        params.push_back(_buildFormatParam(builder, {dmaBufFormat.format}, dmaBufFormat.modifiers, pw->frameRateLimit));
+      }
+    }
+
+    params.push_back(_buildFormatParam(builder, SupportedFormats, {}, pw->frameRateLimit));
+
+    return params;
+  }
+
+
   const spa_pod* PipewireGrabber::_buildFormatParam(
     spa_pod_builder* builder,
+    const std::vector<spa_video_format>& formats,
+    const std::vector<uint64_t>& modifiers,
     unsigned maxFramerate
   )
   {
     auto r1 = spa_rectangle(320, 240);
     auto r2 = spa_rectangle(1, 1);
-    auto r3 = spa_rectangle(4096, 4096);
+    auto r3 = spa_rectangle(8192, 8192);
 
     auto f1 = spa_fraction(25, 1);
     auto f2 = spa_fraction(0, 1);
     auto f3 = spa_fraction(1000, 1);
 
-    spa_pod_frame frame;
-    spa_pod_builder_push_object(builder, &frame, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
+    spa_pod_frame objectFrame;
+    spa_pod_builder_push_object(builder, &objectFrame, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
 
     spa_pod_builder_add(
       builder,
       SPA_FORMAT_mediaType,       SPA_POD_Id(SPA_MEDIA_TYPE_video),
       SPA_FORMAT_mediaSubtype,    SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
-      // The frame processing only handles packed 4 bytes per pixel formats.
-      // The first value is the preferred (default) one.
-      SPA_FORMAT_VIDEO_format,    SPA_POD_CHOICE_ENUM_Id(
-        5,
-        SPA_VIDEO_FORMAT_BGRx,
-        SPA_VIDEO_FORMAT_BGRx,
-        SPA_VIDEO_FORMAT_BGRA,
-        SPA_VIDEO_FORMAT_RGBx,
-        SPA_VIDEO_FORMAT_RGBA
-      ),
+      0
+    );
+
+    // Choice of formats, the first value being the preferred (default) one
+    spa_pod_frame choiceFrame;
+    spa_pod_builder_prop(builder, SPA_FORMAT_VIDEO_format, 0);
+    spa_pod_builder_push_choice(builder, &choiceFrame, SPA_CHOICE_Enum, 0);
+    spa_pod_builder_id(builder, formats.front());
+    for(spa_video_format format : formats){
+      spa_pod_builder_id(builder, format);
+    }
+    spa_pod_builder_pop(builder, &choiceFrame);
+
+    if(!modifiers.empty()){
+      // The compositor picks the modifier it can allocate
+      spa_pod_builder_prop(builder, SPA_FORMAT_VIDEO_modifier, SPA_POD_PROP_FLAG_MANDATORY | SPA_POD_PROP_FLAG_DONT_FIXATE);
+      spa_pod_builder_push_choice(builder, &choiceFrame, SPA_CHOICE_Enum, 0);
+      spa_pod_builder_long(builder, static_cast<int64_t>(modifiers.front()));
+      for(uint64_t modifier : modifiers){
+        spa_pod_builder_long(builder, static_cast<int64_t>(modifier));
+      }
+      spa_pod_builder_pop(builder, &choiceFrame);
+    }
+
+    spa_pod_builder_add(
+      builder,
       SPA_FORMAT_VIDEO_size,      SPA_POD_CHOICE_RANGE_Rectangle(&r1, &r2, &r3),
       SPA_FORMAT_VIDEO_framerate, SPA_POD_CHOICE_RANGE_Fraction(&f1, &f2, &f3),
       0
@@ -491,7 +689,33 @@ namespace Huenicorn::Grabber
       );
     }
 
-    return static_cast<const spa_pod*>(spa_pod_builder_pop(builder, &frame));
+    return static_cast<const spa_pod*>(spa_pod_builder_pop(builder, &objectFrame));
+  }
+
+
+  int PipewireGrabber::_updateFormatParams(
+    PipewireData* pw
+  )
+  {
+    if(!pw->stream){
+      return 0;
+    }
+
+    std::array<uint8_t, 8192> buffer;
+    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
+    auto params = _buildFormatParams(&b, pw);
+
+    return pw_stream_update_params(pw->stream, params.data(), static_cast<uint32_t>(params.size()));
+  }
+
+
+  void PipewireGrabber::_onRenegotiate(
+    void* userData,
+    uint64_t /*count*/
+  )
+  {
+    // Runs in the Pipewire thread, outside of the process callback
+    _updateFormatParams(static_cast<PipewireData*>(userData));
   }
 
 
@@ -506,17 +730,9 @@ namespace Huenicorn::Grabber
   {
     // Runs in the Pipewire thread
     PipewireData* pw = static_cast<PipewireData*>(userData);
-    if(!pw->stream){
-      return 0;
-    }
+    pw->frameRateLimit = *static_cast<const unsigned*>(data);
 
-    unsigned maxFramerate = *static_cast<const unsigned*>(data);
-
-    uint8_t buffer[1024];
-    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
-    const spa_pod* params[1] = {_buildFormatParam(&b, maxFramerate)};
-
-    return pw_stream_update_params(pw->stream, params, 1);
+    return _updateFormatParams(pw);
   }
 
 

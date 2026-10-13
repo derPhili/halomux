@@ -4,9 +4,11 @@
 
 #include <Huenicorn/Grabber/IGrabber.hpp>
 
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -15,6 +17,7 @@
 #include <spa/param/video/format-utils.h>
 #pragma GCC diagnostic pop
 
+#include <Huenicorn/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
 
 
@@ -37,17 +40,29 @@ namespace Huenicorn::Grabber
 
 
     /**
-     * Pipewire-specific data shared between processes
-    */
-    /**
-     * @brief Read-only mapping of a Pipewire MemFd buffer, attached to the buffer's user_data
+     * @brief Per Pipewire buffer resources, attached to the buffer's user_data
      *
      */
-    struct BufferMapping
+    struct BufferData
     {
-      void* map;
-      size_t size;
-      const uint8_t* data;
+      // Read-only mapping of a MemFd buffer (CPU path)
+      void* map{nullptr};
+      size_t mapSize{0};
+      const uint8_t* data{nullptr};
+
+      // Imported DMA-BUF (GPU path), created on first use
+      std::unique_ptr<EglDownscaler::Image> gpuImage;
+    };
+
+
+    /**
+     * @brief DRM format modifiers the GPU can import for a video format
+     *
+     */
+    struct DmaBufFormat
+    {
+      spa_video_format format;
+      std::vector<uint64_t> modifiers;
     };
 
 
@@ -66,6 +81,15 @@ namespace Huenicorn::Grabber
       // Highest framerate the compositor offered (written by the Pipewire thread)
       std::atomic<unsigned> displayMaxFramerate{0};
 
+      // Current framerate limit, 0 for none (Pipewire thread)
+      unsigned frameRateLimit{0};
+
+      // GPU path (Pipewire thread only)
+      std::unique_ptr<EglDownscaler> gpu;
+      std::vector<DmaBufFormat> dmaBufFormats;
+      bool dmaBufFailed{false};
+      bool usingDmaBuf{false};
+      spa_source* renegotiateEvent{nullptr};
     };
 
 
@@ -127,15 +151,80 @@ namespace Huenicorn::Grabber
   private:
     // Methods
     /**
-     * @brief Builds the EnumFormat parameter of the stream
+     * @brief Builds the EnumFormat parameters of the stream
+     *
+     * DMA-BUF formats come first (preferred), followed by a shared memory fallback.
+     *
+     * @param builder Builder to write the parameters with
+     * @param pw Pipewire data (DMA-BUF capabilities and framerate limit)
+     * @return std::vector<const spa_pod*> Built parameters
+     */
+    static std::vector<const spa_pod*> _buildFormatParams(
+      spa_pod_builder* builder,
+      const PipewireData* pw
+    );
+
+
+    /**
+     * @brief Builds a single EnumFormat parameter
      *
      * @param builder Builder to write the parameter with
+     * @param formats Video formats to offer, the first one being preferred
+     * @param modifiers DRM modifiers to offer (DMA-BUF), empty for shared memory
      * @param maxFramerate Maximal framerate to request, 0 for none
      * @return const spa_pod* Built parameter
      */
     static const spa_pod* _buildFormatParam(
       spa_pod_builder* builder,
+      const std::vector<spa_video_format>& formats,
+      const std::vector<uint64_t>& modifiers,
       unsigned maxFramerate
+    );
+
+
+    /**
+     * @brief Sends the current EnumFormat parameters to the compositor (Pipewire thread)
+     *
+     * @param pw Pipewire data
+     * @return int Pipewire result
+     */
+    static int _updateFormatParams(
+      PipewireData* pw
+    );
+
+
+    static void _onRenegotiate(
+      void* userData,
+      uint64_t count
+    );
+
+
+    /**
+     * @brief Downscales a DMA-BUF frame on the GPU
+     *
+     * @return true A frame was produced
+     */
+    static bool _processDmaBuf(
+      PipewireData* pw,
+      pw_buffer* pwBuffer,
+      int width,
+      int height,
+      Imaging::ImageData& capturedFrame
+    );
+
+
+    /**
+     * @brief Downscales a shared memory frame on the CPU
+     *
+     * @return true A frame was produced
+     */
+    static bool _processSharedMemory(
+      PipewireData* pw,
+      pw_buffer* pwBuffer,
+      int width,
+      int height,
+      Imaging::PixelFormat pixelFormat,
+      Imaging::ImageData& capturedFrame
     );
 
     static int _onUpdateFrameRateLimit(
