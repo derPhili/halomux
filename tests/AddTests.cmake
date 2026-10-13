@@ -55,3 +55,33 @@ if(HUENICORN_COMPILE_DEFINITIONS)
   target_compile_definitions(TestGrabber PUBLIC ${HUENICORN_COMPILE_DEFINITIONS})
 endif()
 target_link_libraries(TestGrabber PUBLIC ${HUENICORN_LINK_LIBRARIES} ${OpenCV_LIBS})
+
+
+# TestGpuDownscale: GPU downscale of a real DMA-BUF against the exact CPU area average
+pkg_check_modules(GBM REQUIRED gbm)
+
+add_executable(TestGpuDownscale
+  #Huenicorn
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGpuDownscale.cpp
+)
+
+set_target_properties(TestGpuDownscale PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestGpuDownscale PUBLIC
+  include
+  ${OpenCV_INCLUDE_DIRS}
+  ${GPU_INCLUDE_DIRS}
+  ${GBM_INCLUDE_DIRS}
+)
+
+target_link_libraries(TestGpuDownscale PUBLIC
+  ${OpenCV_LIBS}
+  ${GPU_LIBRARIES}
+  ${GBM_LIBRARIES}
+)
+
+add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/HuenicornFullWebUI.png)
