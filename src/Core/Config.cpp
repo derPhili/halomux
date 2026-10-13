@@ -197,7 +197,7 @@ namespace Huenicorn::Core
   {
     const Data defaultConfigData = {
       .restServerPort = 8215,
-      .boundBackendIP = "0.0.0.0",
+      .boundBackendIP = "127.0.0.1",
       .bridgeAddress = std::nullopt,
       .credentials = std::nullopt,
       .profileName = std::nullopt,

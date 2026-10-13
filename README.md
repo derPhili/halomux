@@ -225,7 +225,7 @@ The data structure of these files is JSON.
 
   This file contains some parameters that can be manually edited after initial setup.
 
-* **boundBackendIP**:  (String) IP address to bind the service on
+* **boundBackendIP**:  (String) IP address to bind the service on. Defaults to `127.0.0.1` (local access only). Use `0.0.0.0` to reach the web UI from other devices, keeping in mind it has no authentication
 * **bridgeAddress**:  (String) Address of the Philips Hue bridge
 * **credentials**:
   * **clientkey**: (String) 32 hexadecimal characters key provided by initial setup
@@ -244,7 +244,7 @@ Here is an example
 
 ```json
 {
-  "boundBackendIP": "0.0.0.0",
+  "boundBackendIP": "127.0.0.1",
   "bridgeAddress": "192.168.0.10",
   "credentials": {
     "clientkey": "01234567890ABCDEF0123456789ABCDE",
