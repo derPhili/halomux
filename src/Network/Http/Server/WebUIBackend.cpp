@@ -5,6 +5,7 @@
 #include <Huenicorn/Core/CoreService.hpp>
 #include <Huenicorn/Serialization/Json.hpp>
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
+#include <Huenicorn/Stream/Streamer.hpp>
 
 
 namespace Huenicorn::Network::Http::Server
@@ -124,6 +125,8 @@ namespace Huenicorn::Network::Http::Server
         {"subsampleResolutionCandidates", jsonSubsampleCandidates},
         {"selectedRefreshRate", m_coreService->refreshRate()},
         {"maxRefreshRate", m_coreService->maxRefreshRate()},
+        {"displayRefreshRate", m_coreService->displayRefreshRate()},
+        {"bridgeMaxRefreshRate", Stream::MaxStreamingRate},
         {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()}
       };
 

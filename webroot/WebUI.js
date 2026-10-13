@@ -35,6 +35,7 @@ class WebUI
     this.availableInterpolationsNode = document.getElementById("availableInterpolations");
     this.availableInterpolationsNode.addEventListener("change", (event) => {this._setInterpolation(parseInt(event.target.value));});
     this.refreshRateInputNode = document.getElementById("refreshRate");
+    this.refreshRateLimitNode = document.getElementById("refreshRateLimit");
     this.refreshRateInputNode.addEventListener("change", (event) => {this._setRefreshRate(event.target.valueAsNumber);});
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.transitionSmoothingLabelNode = document.getElementById("transitionSmoothingLabel");
@@ -271,6 +272,9 @@ class WebUI
     let subsampleWidth = displayInfo.subsampleWidth;
     this.refreshRateInputNode.value = displayInfo.selectedRefreshRate;
     this.refreshRateInputNode.max = displayInfo.maxRefreshRate;
+
+    let limitedBy = (displayInfo.maxRefreshRate < displayInfo.displayRefreshRate) ? "Hue bridge limit" : "display refresh rate";
+    this.refreshRateLimitNode.textContent = `(max ${displayInfo.maxRefreshRate} Hz: ${limitedBy}. Display: ${displayInfo.displayRefreshRate} Hz, bridge: ${displayInfo.bridgeMaxRefreshRate} Hz)`;
     this.transitionSmoothingInputNode.value = displayInfo.selectedTransitionSmoothing;
     this.transitionSmoothingLabelNode.textContent = Math.round(displayInfo.selectedTransitionSmoothing);
 

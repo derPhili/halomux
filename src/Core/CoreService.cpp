@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -199,6 +200,12 @@ namespace Huenicorn::Core
 
   unsigned CoreService::maxRefreshRate() const
   {
+    return std::min(m_runtime.m_grabber->displayRefreshRate(), Stream::MaxStreamingRate);
+  }
+
+
+  unsigned CoreService::displayRefreshRate() const
+  {
     return m_runtime.m_grabber->displayRefreshRate();
   }
 
@@ -280,7 +287,7 @@ namespace Huenicorn::Core
     unsigned refreshRate
   )
   {
-    refreshRate = std::min(refreshRate, m_runtime.m_grabber->displayRefreshRate());
+    refreshRate = std::min(refreshRate, maxRefreshRate());
 
     m_config.setRefreshRate(refreshRate);
     refreshRate = m_config.refreshRate();
