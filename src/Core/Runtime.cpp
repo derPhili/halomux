@@ -104,6 +104,9 @@ namespace Huenicorn::Core
       m_config.setRefreshRate(std::min(m_grabber->displayRefreshRate(), DefaultMaxRefreshRate));
     }
 
+    // Don't let the compositor produce frames that would never be consumed
+    m_grabber->setFrameRateLimit(m_config.refreshRate());
+
     if(m_config.subsampleWidth() == 0){
       auto displayResolution = m_grabber->displayResolution();
       float percentThreshold = 1.0;

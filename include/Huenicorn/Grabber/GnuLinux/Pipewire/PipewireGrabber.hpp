@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <Huenicorn/Grabber/IGrabber.hpp>
 
 #include <mutex>
@@ -61,6 +63,9 @@ namespace Huenicorn::Grabber
       bool promiseSetAlready{false};
       Core::Config* config;
 
+      // Highest framerate the compositor offered (written by the Pipewire thread)
+      std::atomic<unsigned> displayMaxFramerate{0};
+
       // Gamescope direct-capture support: gamescope exposes its composited
       // output as a plain (non-portal-gated) Pipewire node named "gamescope".
       // xdg-desktop-portal's ScreenCast implementation isn't wired up inside
@@ -118,8 +123,39 @@ namespace Huenicorn::Grabber
     ) override;
 
 
+    /**
+     * @brief Renegotiates the stream so the compositor sends at most frameRate frames per second
+     *
+     * @param frameRate Maximal framerate, 0 to remove the limit
+     */
+    virtual void setFrameRateLimit(
+      RefreshRate frameRate
+    ) override;
+
+
   private:
     // Methods
+    /**
+     * @brief Builds the EnumFormat parameter of the stream
+     *
+     * @param builder Builder to write the parameter with
+     * @param maxFramerate Maximal framerate to request, 0 for none
+     * @return const spa_pod* Built parameter
+     */
+    static const spa_pod* _buildFormatParam(
+      spa_pod_builder* builder,
+      unsigned maxFramerate
+    );
+
+    static int _onUpdateFrameRateLimit(
+      spa_loop* loop,
+      bool async,
+      uint32_t seq,
+      const void* data,
+      size_t size,
+      void* userData
+    );
+
     static void _onCoreInfoCallback(
       void* userData,
       const pw_core_info* info

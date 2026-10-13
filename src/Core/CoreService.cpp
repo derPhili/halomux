@@ -288,6 +288,8 @@ namespace Huenicorn::Core
     if(m_runtime.m_loopRegulator){
       m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
     }
+
+    m_runtime.m_grabber->setFrameRateLimit(refreshRate);
   }
 
 
