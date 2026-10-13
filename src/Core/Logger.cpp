@@ -14,12 +14,14 @@ namespace Huenicorn::Core
     {
       switch(logLevel)
       {
+        // Flushed on every line: stdout is block buffered when not attached to a terminal
+        // (e.g. under systemd), which held messages back from the journal
         case LogLevel::Message:
-          std::cout << message << "\n";
+          std::cout << message << std::endl;
           break;
 
         case LogLevel::Warning:
-          std::cout << "[Warning] : " << message << "\n";
+          std::cout << "[Warning] : " << message << std::endl;
           break;
 
         case LogLevel::Error:
@@ -28,7 +30,7 @@ namespace Huenicorn::Core
 
   #ifndef NDEBUG
         case LogLevel::Debug:
-          std::cout << "[Debug] : " << message << "\n";
+          std::cout << "[Debug] : " << message << std::endl;
           break;
   #endif // NDEBUG
 
