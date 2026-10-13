@@ -1,9 +1,0 @@
-stages:
-  - test
-
-flake-check:
-  stage: test
-  image: "ghcr.io/nixos/nix:2.34.7"
-  script:
-    - nix --extra-experimental-features 'nix-command flakes' flake check
-

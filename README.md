@@ -148,23 +148,23 @@ sudo apt install gcc-12 g++-12
 cmake -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 ..
 ```
 
-Versions of Ubuntu earlier than 24.04 are not officially supported. Please refer to [This post](https://gitlab.com/openjowelsofts/huenicorn/-/issues/5#note_1700387996) if you still want to give it a try.
+Versions of Ubuntu earlier than 24.04 are not officially supported.
 </details>
 
 <details>
 <summary>NixOS</summary>
 
-A Nix Flake is provided with this repository:
+A Nix Flake is provided with this repository. From the root of a checkout:
 
 ```bash
-nix run gitlab:openjowelsofts/huenicorn
+nix run .
 ```
 </details>
 
 ### Building Huenicorn
 
 ```bash
-git clone https://gitlab.com/openjowelsofts/huenicorn.git
+git clone http://192.168.0.250:3000/philip/huenicorn.git
 cd huenicorn
 mkdir build && cd build
 # Use this line for default configuration
@@ -409,7 +409,9 @@ Additionnal information and news can be found on [Huenicorn.org](http://huenicor
 
 ## Authors
 
-OpenJowel
+OpenJowel (original author)
+
+This repository is a private fork of Huenicorn, maintained on a local Forgejo instance.
 
 ## License
 
