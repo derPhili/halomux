@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <optional>
 
 #include <httplib.h>
@@ -92,8 +93,16 @@ namespace Huenicorn::Network::Http::Server
         return false;
       }
 
+      // httplib asserts when stopped again while still shutting down
+      if(m_stopRequested.exchange(true)){
+        return true;
+      }
+
+      // Only signal the server to stop. The httplib::Server instance must outlive
+      // the thread blocked in listen() and the worker currently running a handler
+      // (e.g. /api/finishSetup stops the server from inside its own handler).
+      // It is destroyed along with this Impl.
       m_service->stop();
-      m_service.reset();
 
       return true;
     }
@@ -110,7 +119,7 @@ namespace Huenicorn::Network::Http::Server
 
     bool listen()
     {
-      if(!m_service){
+      if(!m_service || m_stopRequested){
         return false;
       }
 
@@ -118,5 +127,6 @@ namespace Huenicorn::Network::Http::Server
     }
 
     std::optional<httplib::Server> m_service;
+    std::atomic<bool> m_stopRequested{false};
   };
 }
