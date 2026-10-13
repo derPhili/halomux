@@ -255,6 +255,15 @@ namespace Huenicorn::Stream
     {
       int result{0};
       for(unsigned attempt = 0; attempt <  dtlsConfig.handshakeAttempts; attempt++){
+        if(attempt > 0){
+          // A failed handshake leaves the context in an error state
+          int resetResult = mbedtls_ssl_session_reset(ssl.get());
+          if(resetResult != 0){
+            result = resetResult;
+            break;
+          }
+        }
+
         mbedtls_ssl_conf_handshake_timeout(conf.get(), 400, 1000);
         do{
           result = mbedtls_ssl_handshake(ssl.get());

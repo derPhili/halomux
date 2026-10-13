@@ -18,12 +18,7 @@ namespace Huenicorn::Stream
       .hostname = "Hue",
       .handshakeAttempts = 4
     });
-    try{
-      m_dtlsClient->init();
-    }
-    catch(const std::exception& e){
-      Core::Logger::error(e.what());
-    }
+    _ensureConnection();
   }
 
 
@@ -35,10 +30,46 @@ namespace Huenicorn::Stream
   }
 
 
+  bool Streamer::_ensureConnection()
+  {
+    if(m_dtlsClient->isConnected()){
+      return true;
+    }
+
+    // Handshakes block for up to a few seconds: don't retry on every frame
+    static constexpr auto ReconnectionInterval = std::chrono::seconds(5);
+    auto now = std::chrono::steady_clock::now();
+    if(m_lastConnectionAttempt != std::chrono::steady_clock::time_point{} && now - m_lastConnectionAttempt < ReconnectionInterval){
+      return false;
+    }
+
+    m_lastConnectionAttempt = now;
+
+    try{
+      m_dtlsClient->init();
+      m_connectionLossReported = false;
+      return true;
+    }
+    catch(const std::exception& e){
+      if(!m_connectionLossReported){
+        Core::Logger::error(e.what());
+        Core::Logger::warn("Streaming connection to the bridge is unavailable. Retrying every ", ReconnectionInterval.count(), " seconds.");
+        m_connectionLossReported = true;
+      }
+    }
+
+    return false;
+  }
+
+
   void Streamer::streamChannels(
     const Hue::Api::ChannelStreams& channels
   )
   {
+    if(!_ensureConnection()){
+      return;
+    }
+
     std::vector<std::byte> requestBuffer;
     requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&m_header), reinterpret_cast<std::byte*>(&m_header) + sizeof(HuestreamHeader));
 

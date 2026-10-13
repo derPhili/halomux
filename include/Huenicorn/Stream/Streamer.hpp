@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -58,8 +59,20 @@ namespace Huenicorn::Stream
 
 
   private:
+    // Private methods
+    /**
+     * @brief (Re)establishes the DTLS connection, at most once per reconnection interval
+     *
+     * @return true The client is connected
+     * @return false The client is not connected
+     */
+    bool _ensureConnection();
+
+
     // Attributes
     std::unique_ptr<Stream::DtlsClient> m_dtlsClient;
     HuestreamHeader m_header;
+    std::chrono::steady_clock::time_point m_lastConnectionAttempt{};
+    bool m_connectionLossReported{false};
   };
 }
