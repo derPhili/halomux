@@ -224,13 +224,7 @@ namespace Huenicorn::Core
   )
   {
     std::lock_guard lock(m_runtime.m_selectorMutex);
-    if(!m_runtime.m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return false;
-    }
-
-    m_runtime._enableEntertainmentConfiguration(entertainmentConfigurationId);
-
-    return true;
+    return m_runtime._enableEntertainmentConfiguration(entertainmentConfigurationId);
   }
 
 

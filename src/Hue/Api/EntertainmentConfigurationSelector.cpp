@@ -54,20 +54,23 @@ namespace Huenicorn::Hue::Api
       return false;
     }
 
-    disableStreaming();
+    auto selection = m_entertainmentConfigurations.begin();
 
     if(entertainmentConfigurationId.empty()){
-      m_currentEntertainmentConfiguration = m_entertainmentConfigurations.begin();
-      Core::Logger::log("Fallback selection ", m_currentEntertainmentConfiguration->first);
+      Core::Logger::log("Fallback selection ", selection->first);
     }
     else{
-      m_currentEntertainmentConfiguration = m_entertainmentConfigurations.find(entertainmentConfigurationId);
+      selection = m_entertainmentConfigurations.find(entertainmentConfigurationId);
 
-      if(m_currentEntertainmentConfiguration == m_entertainmentConfigurations.end()){
+      if(selection == m_entertainmentConfigurations.end()){
+        // Keep the current selection untouched
         Core::Logger::error("Invalid selection : ", entertainmentConfigurationId);
         return false;
       }
     }
+
+    disableStreaming();
+    m_currentEntertainmentConfiguration = selection;
 
     // Disable previous configuration
     if(ApiTools::streamingActive(*m_currentEntertainmentConfiguration, m_credentials.username(), m_bridgeAddress)){

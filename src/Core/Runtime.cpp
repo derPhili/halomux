@@ -225,12 +225,12 @@ namespace Huenicorn::Core
   }
 
 
-  void Runtime::_enableEntertainmentConfiguration(
+  bool Runtime::_enableEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )
   {
     if(!m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return;
+      return false;
     }
 
     const auto& credentials = m_config.credentials().value();
@@ -252,6 +252,8 @@ namespace Huenicorn::Core
     }
 
     _initChannels(jsonChannels);
+
+    return true;
   }
 
 

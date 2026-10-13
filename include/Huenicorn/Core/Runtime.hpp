@@ -122,8 +122,10 @@ namespace Huenicorn::Core
      * @brief Enables the selected entertainment configuration, recreates streamer  and loads related profile
      * 
      * @param entertainmentConfigurationId ID of the entertainment configuration to enable
+     * @return true The entertainment configuration was enabled
+     * @return false The entertainment configuration could not be selected
      */
-    void _enableEntertainmentConfiguration(
+    bool _enableEntertainmentConfiguration(
       const std::string& entertainmentConfigurationId
     );
 
