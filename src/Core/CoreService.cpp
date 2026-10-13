@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iomanip>
 #include <optional>
 
 #include <Huenicorn/Version.hpp>
@@ -321,9 +322,21 @@ namespace Huenicorn::Core
       m_config.setProfileName("profile");
     }
 
-    std::ofstream profileFile(profilePath(), std::ofstream::out);
-    profileFile << profile.dump(2) << "\n";
-    profileFile.close();
+    // Write then rename, so an interrupted write never leaves a truncated profile behind
+    std::filesystem::path pp = profilePath();
+    std::filesystem::path tmpPath = pp;
+    tmpPath += ".tmp";
+
+    {
+      std::ofstream profileFile(tmpPath, std::ofstream::out);
+      profileFile << profile.dump(2) << "\n";
+      if(!profileFile){
+        Logger::error("Failed to write profile ", std::quoted(tmpPath.string()));
+        return;
+      }
+    }
+
+    std::filesystem::rename(tmpPath, pp);
   }
 
 
@@ -395,11 +408,15 @@ namespace Huenicorn::Core
   std::optional<Serialization::Json> CoreService::getProfile()
   {
     std::filesystem::path pp = profilePath();
-    Serialization::Json jsonProfile = Serialization::Json::object();
 
     if(!pp.empty() && std::filesystem::exists(pp) && std::filesystem::is_regular_file(pp)){
-      std::ifstream profileFile(pp);
-      return Serialization::Json::parse(profileFile);
+      try{
+        std::ifstream profileFile(pp);
+        return Serialization::Json::parse(profileFile);
+      }
+      catch(const std::exception& e){
+        Logger::error("Ignoring invalid profile ", std::quoted(pp.string()), ": ", e.what());
+      }
     }
 
     return std::nullopt;

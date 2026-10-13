@@ -241,14 +241,11 @@ namespace Huenicorn::Core
       m_streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
     }
 
-    auto pp = m_coreService->profilePath();
     Serialization::Json jsonChannels = Serialization::Json::object();
 
-    if(std::filesystem::is_regular_file(pp)){
-      Serialization::Json jsonProfile = Serialization::Json::parse(std::ifstream(pp));
-      if(jsonProfile.contains("channels")){
-        jsonChannels = jsonProfile.at("channels");
-      }
+    auto optJsonProfile = m_coreService->getProfile();
+    if(optJsonProfile.has_value() && optJsonProfile->contains("channels")){
+      jsonChannels = optJsonProfile->at("channels");
     }
 
     _initChannels(jsonChannels);

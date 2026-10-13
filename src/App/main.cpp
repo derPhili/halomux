@@ -20,15 +20,26 @@
 class Application
 {
 public:
-  void start()
+  bool start()
   {
-    {
+    try{
       std::lock_guard lock(m_coreMutex);
       m_core = std::make_unique<Huenicorn::Core::Runtime>(Huenicorn::Version, Huenicorn::Platform::adapter.getConfigFilePath());
     }
+    catch(const std::exception& e){
+      Huenicorn::Core::Logger::error(e.what());
+      return false;
+    }
 
+    bool succeeded = true;
     m_applicationThread.emplace([&](){
-      m_core->start();
+      try{
+        m_core->start();
+      }
+      catch(const std::exception& e){
+        Huenicorn::Core::Logger::error(e.what());
+        succeeded = false;
+      }
     });
 
     m_applicationThread.value().join();
@@ -36,6 +47,8 @@ public:
 
     std::lock_guard lock(m_coreMutex);
     m_core.reset();
+
+    return succeeded;
   }
 
 
@@ -96,10 +109,15 @@ int main(
     }
   });
 
-  app.start();
+  bool succeeded = app.start();
 
   pthread_kill(signalThread.native_handle(), SIGUSR1);
   signalThread.join();
+
+  if(!succeeded){
+    Huenicorn::Core::Logger::error("Huenicorn terminated because of an error");
+    return 1;
+  }
 
   Huenicorn::Core::Logger::log("Huenicorn terminated properly");
 

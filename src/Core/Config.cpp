@@ -215,8 +215,14 @@ namespace Huenicorn::Core
       return false;
     }
 
-    jsonConfig = Json::parse(std::ifstream(m_configFilePath));
-    m_configData = jsonConfig.get<Data>();
+    try{
+      jsonConfig = Json::parse(std::ifstream(m_configFilePath));
+      m_configData = jsonConfig.get<Data>();
+    }
+    catch(const std::exception& e){
+      // Don't overwrite the file with defaults: it holds the bridge credentials
+      throw std::runtime_error("Invalid configuration file " + m_configFilePath.string() + " (" + e.what() + "). Please fix or remove it.");
+    }
 
     bool requireSave = false;
 
@@ -255,7 +261,19 @@ namespace Huenicorn::Core
       std::filesystem::create_directories(m_configFilePath.parent_path());
     }
 
-    std::ofstream configFile(m_configFilePath);
-    configFile << Json(m_configData.value()).dump(2) << "\n";
+    // Write then rename, so an interrupted write never leaves a truncated config behind
+    std::filesystem::path tmpPath = m_configFilePath;
+    tmpPath += ".tmp";
+
+    {
+      std::ofstream configFile(tmpPath);
+      configFile << Json(m_configData.value()).dump(2) << "\n";
+      if(!configFile){
+        Logger::error("Failed to write configuration file ", tmpPath.string());
+        return;
+      }
+    }
+
+    std::filesystem::rename(tmpPath, m_configFilePath);
   }
 }
