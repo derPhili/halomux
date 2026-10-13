@@ -20,159 +20,53 @@ Mit anderen Worten: Huenicorn überträgt die farbige Atmosphäre deines Compute
 
 ## Projektstatus
 
-Huenicorn 1.2.0 ist verfügbar.
+Privater Fork von Huenicorn 1.2.0, zugeschnitten auf genau ein System:
 
-### Neu in dieser Version
+* CachyOS (Arch-basiert)
+* KDE Plasma unter Wayland (KWin, xdg-desktop-portal-kde)
+* Bildschirmaufnahme über Pipewire
+* Philips Hue Bridge mit Entertainment-Bereich
 
-- Neue Funktionen
-  - Unterstützung für Gamescope
-  - Weiche Farbübergänge (einstellbar in den erweiterten Einstellungen der Oberfläche)
-
-- Korrekturen und Verbesserungen
-  - Unterstützung für MbedTLS 4.x
-  - Aktualisierung des restoreToken korrigiert
-  - Serialisierung der Konfiguration korrigiert
-  - Busy-Loop im xdg-portal behoben
+Andere Plattformen, X11, Gamescope und NixOS werden nicht unterstützt.
 
 ## Erste Schritte
 
 Bevor du Huenicorn verwendest, musst du über die offizielle App von Philips einen Entertainment-Bereich auf deiner Hue Bridge anlegen.
 
-### Voraussetzungen
-
-* GNU/Linux-System mit einer grafischen Sitzung unter X11 oder Wayland
-* Philips Hue Bridge mit eingebundenen Lampen
-
 ### Abhängigkeiten
 
-* [X.Org](https://xorg.freedesktop.org) oder [Wayland](https://wayland.freedesktop.org)
-* [OpenCV](https://github.com/opencv/opencv)
-* [Mbed-TLS](https://github.com/Mbed-TLS/mbedtls)
-* [Curl](https://curl.se)
-
-#### Installation der Abhängigkeiten
-
-<details>
-
-<summary>ArchLinux</summary>
-
 ```bash
-# Benötigte Abhängigkeiten
-sudo pacman -S git cmake make gcc curl opencv mbedtls
-
-# Für X11-Unterstützung
-sudo pacman -S xorg-server
-
-# Für Wayland-Unterstützung
-sudo pacman -S wayland glib2 pipewire
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm
 ```
 
-</details>
+Benötigt wird Mbed TLS 4.x.
 
-<details>
-
-<summary>Fedora</summary>
+[cpp-httplib](https://github.com/yhirose/cpp-httplib) (0.46 oder neuer) ist auf diesem System von Hand nach `/usr/local` installiert:
 
 ```bash
-# Benötigte Abhängigkeiten
-sudo dnf install -y git cmake gcc gcc-c++ opencv-devel curl-devel mbedtls-devel
-
-# Für X11-Unterstützung
-sudo dnf install -y libXrandr-devel
-
-# Für Wayland-Unterstützung
-sudo dnf install -y pipewire-devel glib2-devel
+git clone --branch v0.46.0 https://github.com/yhirose/cpp-httplib.git
+cmake -S cpp-httplib -B cpp-httplib/build
+sudo cmake --install cpp-httplib/build
 ```
-
-</details>
-
-<details>
-
-<summary>OpenSUSE Tumbleweed</summary>
-
-Diese Abhängigkeiten mussten unter OpenSUSE Tumbleweed 20231011 installiert werden, um Huenicorn zu bauen und auszuführen:
-
-```bash
-sudo zypper install opencv-devel libopencv408 python311-jsonschema
-
-# Für Wayland-Unterstützung
-sudo zypper install pipewire-devel glib2-devel
-
-```
-
-Zusätzlich musst du Mbed-TLS aus den Quellen bauen (siehe Links oben).
-Folge den Bauanleitungen in den jeweiligen README-Dateien und kopiere die Ergebnisse an die passende Stelle, da das nicht immer automatisch geschieht (üblicherweise /usr/local/lib64/ für Bibliotheken (LD_LIBRARY_PATH prüfen) bzw. /usr/local/include/ für Header).
-
-</details>
-
-<details>
-
-<summary>Ubuntu 26.04 LTS und neuer</summary>
-
-```bash
-# Benötigte Abhängigkeiten
-sudo apt-get install build-essential cmake libopencv-dev libcurl4-openssl-dev libmbedtls-dev
-
-# Für X11-Unterstützung
-sudo apt-get install libx11-dev libxext-dev libxrandr-dev
-
-# Für Wayland-Unterstützung
-sudo apt-get install libglib2.0-dev libpipewire-0.3-dev wayland-utils
-```
-
-</details>
-
-<details>
-<summary>Ubuntu 22.04 – 24.04</summary>
-
-```bash
-# Manche Ubuntu-Installationen benötigen das Universe-Repository
-sudo add-apt-repository universe
-sudo apt-get update
-
-# Benötigte Abhängigkeiten
-sudo apt-get install build-essential cmake libopencv-dev libcurl4-openssl-dev libmbedtls-dev
-
-# Für X11-Unterstützung
-sudo apt-get install libx11-dev libxext-dev libxrandr-dev
-
-# Für Wayland-Unterstützung
-sudo apt-get install libglib2.0-dev libpipewire-0.3-dev wayland-utils
-
-# Huenicorn benötigt GCC/G++ 12 oder neuer.
-# Ubuntu 22.04 liefert standardmäßig GCC 11 aus, installiere daher bei Bedarf GCC 12 oder neuer.
-sudo apt install gcc-12 g++-12
-# Im Kapitel „Huenicorn bauen“ ist dann statt ```cmake ..``` dieser Befehl nötig:
-cmake -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 ..
-```
-
-Ubuntu-Versionen vor 24.04 werden offiziell nicht unterstützt.
-</details>
-
-<details>
-<summary>NixOS</summary>
-
-Das Repository enthält einen Nix Flake. Im Wurzelverzeichnis eines Checkouts:
-
-```bash
-nix run .
-```
-</details>
 
 ### Huenicorn bauen
 
 ```bash
 git clone http://192.168.0.250:3000/philip/huenicorn.git
 cd huenicorn
-mkdir build && cd build
-# Standardkonfiguration
-cmake ..
-# oder: ohne automatisches Nachladen fehlender Abhängigkeiten aus dem Internet (glm, nlohmann_json, httplib)
-cmake -DHUENICORN_FETCH_DEPS=OFF ..
-make
+cmake -S . -B build
+cmake --build build -j
 ```
 
-Das Ergebnis ist eine eigenständige ausführbare Datei namens „huenicorn“.
+Das Ergebnis ist die eigenständige ausführbare Datei `build/huenicorn` (die Weboberfläche ist eingebettet).
+
+Tests (optional):
+
+```bash
+cmake -S . -B build -DBUILD_TESTS=ON
+cmake --build build -j
+ctest --test-dir build
+```
 
 ### Programm ausführen
 
@@ -217,15 +111,7 @@ Lade die Webseite anschließend neu, um zur Oberfläche des Light Managers zu ge
 
 #### Normaler Ablauf
 
-<details>
-  <summary>Zusätzlicher Schritt unter Wayland</summary>
-  <br/>
-
-  Beim Start fordert dich der Grabber über ein Bildschirmfreigabe-Portal auf, eine Quelle auszuwählen. Wähle den gewünschten Bildschirm und bestätige mit „Teilen“ (bzw. „Share“, je nach Sprache des Desktops).
-</details>
-<br/>
-
-Huenicorn wählt automatisch den passenden Screen-Grabber für die grafische Sitzung.
+Beim ersten Start fordert KDE über das Bildschirmfreigabe-Portal auf, eine Quelle auszuwählen. Wähle den gewünschten Bildschirm und bestätige mit „Teilen“. Die Auswahl wird als `restoreToken` gespeichert, spätere Starts kommen ohne Dialog aus.
 
 Beim Start sucht Huenicorn nach einem gespeicherten Profil und beginnt mit dem Streamen der Farben.
 
@@ -323,56 +209,26 @@ Das passiert, wenn die Zugangsdaten aus irgendeinem Grund ungültig geworden sin
 
 Danach sollte Huenicorn die Entertainment-Bereiche wieder anzeigen und Farben streamen.
 
-### Meine Lampen zeigen einen Regenbogen-Verlauf statt der Bildschirmfarben
-
-#### Ursache
-
-Huenicorn konnte keinen Grabber für die Desktop-Sitzung laden. Es lädt dann den „Dummy-Grabber“, damit die Verwaltungsoberfläche trotzdem erreichbar ist und die Kommunikation mit der Bridge funktioniert.
-
-#### Lösung
-
-Prüfe, ob Abhängigkeiten für deinen Sitzungstyp fehlen.
-
-Falls du den aktuellen Sitzungstyp nicht kennst, gib folgenden Befehl ein:
-
-```bash
-echo $XDG_SESSION_TYPE
-```
-
-Sieh dann im Abschnitt zur Installation der Abhängigkeiten für deine Distribution nach.
-
-Die Ausgabe von CMake zeigt, welche Grabber gebaut werden können:
-
-```cmake
-cmake ..
-...
-[cmake] Able to build X11 Grabber !
-[cmake] Able to build Pipewire Grabber !
-...
-```
-
-Wayland benötigt den ```Pipewire```-Grabber.
-
-### Unter Wayland erscheint das Portal zur Bildschirmauswahl nicht mehr, ich möchte die Auswahl aber ändern
+### Das Portal zur Bildschirmauswahl erscheint nicht mehr, ich möchte die Auswahl aber ändern
 
 1. Huenicorn beenden, falls es läuft
 2. Die Datei `~/.config/huenicorn/config.json` öffnen und die Zeile mit `restoreToken` entfernen
 3. Huenicorn starten
 4. Das Portal zur Bildschirmauswahl erscheint wieder
 
-### Absturz nach der Bildschirmauswahl unter Wayland
+### Absturz nach der Bildschirmauswahl
 
 Es gibt einen bekannten Fehler, der je nach Build-Parametern auftritt. Seit 1.0.9 ist er „halb gelöst“, kann unter bestimmten Umständen aber weiterhin auftreten.
 
 Dann kann es helfen, Huenicorn mit anderen Optimierungsoptionen neu zu bauen.
 
-Leere den Inhalt des Verzeichnisses ```build``` (falls vorhanden).
+Lösche dazu das Verzeichnis ```build``` (falls vorhanden).
 
-Konfiguriere das Projekt mit folgender Zeile statt ~~```cmake ..```~~ neu:
+Konfiguriere das Projekt mit einem expliziten Build-Typ neu:
 
 ```bash
-cmake -DCMAKE_BUILD_TYPE=<CMakeBuildType> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ ..
-make
+cmake -S . -B build -DCMAKE_BUILD_TYPE=<CMakeBuildType>
+cmake --build build -j
 ```
 
 ```<CMakeBuildType>``` muss durch einen dieser Werte ersetzt werden:
