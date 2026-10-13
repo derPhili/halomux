@@ -241,10 +241,13 @@ namespace Huenicorn::Core
 
     const auto& credentials = m_config.credentials().value();
 
+    // The DTLS handshake can take seconds: perform it before taking the lock the streaming loop waits on
+    auto streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
+    streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
+
     {
       std::lock_guard lock(m_streamerMutex);
-      m_streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
-      m_streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
+      m_streamer = std::move(streamer);
     }
 
     Serialization::Json jsonChannels = Serialization::Json::object();
