@@ -5,14 +5,21 @@ class RequestUtils
       var xhr = new XMLHttpRequest();
       xhr.open("GET", url, true);
       xhr.onreadystatechange = function(){
-        if(this.readyState === XMLHttpRequest.DONE && this.status === 200){
-          try{
-            let data = JSON.parse(xhr.responseText);
-            resolve(data);
-          }
-          catch(error){
-            reject(error);
-          }
+        if(this.readyState !== XMLHttpRequest.DONE){
+          return;
+        }
+
+        if(this.status !== 200){
+          reject(new Error(`${url} failed with HTTP status ${this.status}`));
+          return;
+        }
+
+        try{
+          let data = JSON.parse(xhr.responseText);
+          resolve(data);
+        }
+        catch(error){
+          reject(error);
         }
       };
 
@@ -31,14 +38,21 @@ class RequestUtils
       xhr.setRequestHeader("Accept", "application/json");
       xhr.setRequestHeader("Content-Type", "application/json");
       xhr.onreadystatechange = function(){
-        if(this.readyState === XMLHttpRequest.DONE && this.status === 200){
-          try{
-            let data = JSON.parse(xhr.responseText);
-            resolve(data);
-          }
-          catch(error){
-            reject(error);
-          }
+        if(this.readyState !== XMLHttpRequest.DONE){
+          return;
+        }
+
+        if(this.status !== 200){
+          reject(new Error(`${url} failed with HTTP status ${this.status}`));
+          return;
+        }
+
+        try{
+          let data = JSON.parse(xhr.responseText);
+          resolve(data);
+        }
+        catch(error){
+          reject(error);
         }
       };
 
@@ -58,14 +72,21 @@ class RequestUtils
       xhr.setRequestHeader("Accept", "application/json");
       xhr.setRequestHeader("Content-Type", "application/json");
       xhr.onreadystatechange = function(){
-        if(this.readyState === XMLHttpRequest.DONE && this.status === 200){
-          try{
-            let data = JSON.parse(xhr.responseText);
-            resolve(data);
-          }
-          catch(error){
-            reject(error);
-          }
+        if(this.readyState !== XMLHttpRequest.DONE){
+          return;
+        }
+
+        if(this.status !== 200){
+          reject(new Error(`${url} failed with HTTP status ${this.status}`));
+          return;
+        }
+
+        try{
+          let data = JSON.parse(xhr.responseText);
+          resolve(data);
+        }
+        catch(error){
+          reject(error);
         }
       };
 
