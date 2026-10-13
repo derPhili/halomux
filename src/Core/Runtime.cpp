@@ -98,7 +98,10 @@ namespace Huenicorn::Core
   bool Runtime::_initSettings()
   {
     if(m_config.refreshRate() == 0){
-      m_config.setRefreshRate(m_grabber->displayRefreshRate());
+      // The bridge forwards colors to the lights at about 25 Hz, Philips recommends streaming
+      // at 50-60 Hz. Following a high refresh rate display would only waste resources.
+      static constexpr unsigned DefaultMaxRefreshRate = 60;
+      m_config.setRefreshRate(std::min(m_grabber->displayRefreshRate(), DefaultMaxRefreshRate));
     }
 
     if(m_config.subsampleWidth() == 0){
