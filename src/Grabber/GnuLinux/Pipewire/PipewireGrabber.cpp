@@ -229,11 +229,13 @@ namespace Huenicorn::Grabber
       && spaBuffer->datas[0].fd >= 0;
 
     if(needRemap){
-      localMapSize = static_cast<size_t>(spaBuffer->datas[0].maxsize) + chunk->offset;
+      // The buffer data starts at mapoffset within the fd
+      const size_t mapOffset = spaBuffer->datas[0].mapoffset;
+      localMapSize = mapOffset + static_cast<size_t>(spaBuffer->datas[0].maxsize);
       localMap = mmap(nullptr, localMapSize, PROT_READ, MAP_SHARED,
                       static_cast<int>(spaBuffer->datas[0].fd), 0);
       if(localMap != MAP_FAILED){
-        readPtr = localMap;
+        readPtr = static_cast<uint8_t*>(localMap) + mapOffset;
       }
     }
 
