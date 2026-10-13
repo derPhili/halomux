@@ -25,6 +25,7 @@ Privater Fork von Huenicorn 1.2.0, zugeschnitten auf genau ein System:
 * CachyOS (Arch-basiert)
 * KDE Plasma unter Wayland (KWin, xdg-desktop-portal-kde)
 * Bildschirmaufnahme über Pipewire
+* NVIDIA GeForce GTX 1080 (proprietärer Treiber), Verkleinern der Bilder auf der GPU
 * Philips Hue Bridge mit Entertainment-Bereich
 
 Andere Plattformen, X11, Gamescope und NixOS werden nicht unterstützt.
@@ -36,8 +37,10 @@ Bevor du Huenicorn verwendest, musst du über die offizielle App von Philips ein
 ### Abhängigkeiten
 
 ```bash
-sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm mesa
 ```
+
+`libglvnd` liefert EGL und GLES (die Implementierung kommt vom NVIDIA-Treiber), `mesa` nur `libgbm` für den GPU-Test.
 
 Benötigt wird Mbed TLS 4.x.
 
@@ -60,7 +63,7 @@ cmake --build build -j
 
 Das Ergebnis ist die eigenständige ausführbare Datei `build/huenicorn` (die Weboberfläche ist eingebettet).
 
-Tests (optional):
+Tests (optional; `TestGpuDownscale` schickt ein bekanntes Bild als DMA-BUF durch die GPU und vergleicht es mit dem exakten CPU-Mittelwert):
 
 ```bash
 cmake -S . -B build -DBUILD_TESTS=ON
@@ -74,6 +77,17 @@ ctest --test-dir build
 * Öffne deinen Browser unter [127.0.0.1:8215](http://127.0.0.1:8215).
   Bei der Ersteinrichtung und solange noch kein Lampenprofil gespeichert ist, öffnet sich der Browser automatisch.
   (Der Port lässt sich in der Konfiguration ändern. Standard ist 8215.)
+
+#### Bildverarbeitung auf der GPU
+
+KWin liefert die Bilder als DMA-BUF direkt im Grafikspeicher. Huenicorn importiert sie ohne Kopie per EGL, mittelt jeden Bildblock exakt in einem GLES-Shader und liest nur das verkleinerte Bild (z. B. 160×90) zurück. Im Log steht der aktive Pfad:
+
+```
+[gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)
+Capture path: GPU (DMA-BUF, modifier 0x0)
+```
+
+Klappt der Import nicht, wechselt Huenicorn automatisch auf Shared Memory und verkleinert auf der CPU (`Capture path: CPU (shared memory)`). Mit `HUENICORN_DISABLE_GPU=1` lässt sich der CPU-Pfad erzwingen, z. B. zum Vergleichen.
 
 #### Als systemd-Dienst
 

@@ -162,21 +162,27 @@ find_package(Gio REQUIRED)
 pkg_search_module(LIB_PIPEWIRE REQUIRED libpipewire-0.3)
 pkg_check_modules(LIBGLIB REQUIRED glib-2.0 gio-2.0)
 
+# GPU downscaling of DMA-BUF frames
+pkg_check_modules(GPU REQUIRED egl glesv2 libdrm)
+
 target_sources(huenicorn PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
 )
 
 target_include_directories(huenicorn PUBLIC
   ${LIB_PIPEWIRE_INCLUDE_DIRS}
   ${GIO_INCLUDE_DIRS}
   ${GLIB_INCLUDE_DIRS}
+  ${GPU_INCLUDE_DIRS}
 )
 
 target_link_libraries(huenicorn PUBLIC
   GIO::GIO
   ${LIB_PIPEWIRE_LIBRARIES}
   ${LIBGLIB_LIBRARIES}
+  ${GPU_LIBRARIES}
 )
 
 set_target_properties(huenicorn PROPERTIES CXX_STANDARD 20)
