@@ -50,12 +50,16 @@ namespace Huenicorn::Core
 
   void Runtime::start()
   {
-    if(!m_coreService->ensureInitialSetup()){
+    if(!m_coreService->ensureInitialSetup() || !m_keepLooping){
       return;
     }
 
     if(!_initGrabber()){
       Logger::error("Could not start any grabber");
+      return;
+    }
+
+    if(!m_keepLooping){
       return;
     }
 
@@ -83,6 +87,7 @@ namespace Huenicorn::Core
   void Runtime::stop()
   {
     m_keepLooping = false;
+    m_coreService->abortInitialSetup();
   }
 
 
@@ -255,7 +260,6 @@ namespace Huenicorn::Core
     m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
     m_loopRegulator->start();
 
-    m_keepLooping = true;
     while(m_keepLooping){
       try{
         _update();

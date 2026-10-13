@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -154,7 +155,7 @@ namespace Huenicorn::Core
     Core::Config m_config;
     std::unique_ptr<CoreService> m_coreService;
 
-    bool m_keepLooping;
+    std::atomic<bool> m_keepLooping{true};
     bool m_openedSetup{false};
     std::unique_ptr<Timing::LoopRegulator> m_loopRegulator;
 

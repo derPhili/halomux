@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include <Huenicorn/Core/Config.hpp>
 
 #include <Huenicorn/Hue/Api/EntertainmentConfiguration.hpp>
@@ -7,6 +9,11 @@
 #include <Huenicorn/Core/Config.hpp>
 #include <Huenicorn/Core/Runtime.hpp>
 
+
+namespace Huenicorn::Network::Http::Server
+{
+  class SetupBackend;
+}
 
 namespace Huenicorn::Core
 {
@@ -278,6 +285,13 @@ namespace Huenicorn::Core
     bool ensureInitialSetup();
 
 
+    /**
+     * @brief Aborts the initial setup if it is currently running
+     *
+     */
+    void abortInitialSetup();
+
+
     // Private getter
     /**
      * @brief Returns the path to the current profile
@@ -297,5 +311,8 @@ namespace Huenicorn::Core
   private:
     Runtime& m_runtime;
     Config& m_config;
+
+    std::mutex m_setupBackendMutex;
+    Network::Http::Server::SetupBackend* m_setupBackend{nullptr};
   };
 }

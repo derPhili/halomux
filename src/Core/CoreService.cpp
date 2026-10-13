@@ -349,7 +349,22 @@ namespace Huenicorn::Core
     const std::string& boundBackendIP = m_config.boundBackendIP();
 
     Network::Http::Server::SetupBackend sb(this);
+    {
+      std::lock_guard lock(m_setupBackendMutex);
+      if(!m_runtime.m_keepLooping){
+        return false;
+      }
+
+      m_setupBackend = &sb;
+    }
+
     bool succeeded = sb.execute(port, boundBackendIP);
+
+    {
+      std::lock_guard lock(m_setupBackendMutex);
+      m_setupBackend = nullptr;
+    }
+
     m_runtime.m_openedSetup = true;
 
     if(!succeeded){
@@ -360,6 +375,15 @@ namespace Huenicorn::Core
     Logger::log("Finished setup");
 
     return true;
+  }
+
+
+  void CoreService::abortInitialSetup()
+  {
+    std::lock_guard lock(m_setupBackendMutex);
+    if(m_setupBackend){
+      m_setupBackend->abort();
+    }
   }
 
 
