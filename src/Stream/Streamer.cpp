@@ -1,5 +1,7 @@
 #include <Huenicorn/Stream/Streamer.hpp>
 
+#include <algorithm>
+
 #include <Huenicorn/Stream/DtlsClient.hpp>
 #include <Huenicorn/Core/Logger.hpp>
 
@@ -27,6 +29,19 @@ namespace Huenicorn::Stream
   )
   {
     m_header.setEntertainmentConfigurationId(entertainmentConfigurationId);
+  }
+
+
+  uint16_t Streamer::_toUint16(
+    float value
+  )
+  {
+    // Converting an out of range (or NaN) float to an integer is undefined behavior
+    if(!(value > 0.f)){
+      return 0;
+    }
+
+    return static_cast<uint16_t>(std::min(value, 1.f) * 0xffff);
   }
 
 
@@ -76,9 +91,9 @@ namespace Huenicorn::Stream
     for(const auto channel : channels){
       HuestreamPayload payload;
       payload.setChannelId(channel.id);
-      payload.setR(static_cast<uint16_t>(0xffff * channel.r));
-      payload.setG(static_cast<uint16_t>(0xffff * channel.g));
-      payload.setB(static_cast<uint16_t>(0xffff * channel.b));
+      payload.setR(_toUint16(channel.r));
+      payload.setG(_toUint16(channel.g));
+      payload.setB(_toUint16(channel.b));
 
       requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&payload), reinterpret_cast<std::byte*>(&payload) + sizeof(HuestreamPayload));
     }

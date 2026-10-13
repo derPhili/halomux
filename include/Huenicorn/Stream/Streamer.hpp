@@ -61,6 +61,17 @@ namespace Huenicorn::Stream
   private:
     // Private methods
     /**
+     * @brief Converts a normalized value to the 16 bits range, clamping it to [0, 1]
+     *
+     * @param value Normalized value
+     * @return uint16_t Value in [0, 0xffff]
+     */
+    static uint16_t _toUint16(
+      float value
+    );
+
+
+    /**
      * @brief (Re)establishes the DTLS connection, at most once per reconnection interval
      *
      * @return true The client is connected

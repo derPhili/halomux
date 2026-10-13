@@ -1,3 +1,4 @@
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <optional>
@@ -251,6 +252,10 @@ namespace Huenicorn::Core
     float gammaExponent
   )
   {
+    if(!std::isfinite(gammaExponent)){
+      return false;
+    }
+
     std::lock_guard lock(m_runtime.m_channelsMutex);
     auto& channels = m_runtime.m_channels;
 
