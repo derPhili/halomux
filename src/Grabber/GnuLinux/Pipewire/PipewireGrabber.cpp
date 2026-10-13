@@ -241,7 +241,7 @@ namespace Huenicorn::Grabber
     const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
 
     if(width > subsampleWidth){
-      Imaging::ImageProcessing::rescale(frameViewData, capturedFrame, subsampleWidth, pw->config->interpolation());
+      Imaging::ImageProcessing::rescaleSampled(frameViewData, capturedFrame, subsampleWidth, pw->config->interpolation());
     }
     else{
       capturedFrame = {.imageMatrix = frameView.clone(), .format = pixelFormat};

@@ -34,6 +34,28 @@ namespace Huenicorn::Imaging
 
 
     /**
+     * @brief Downscales an image like rescale(), reading only a subset of its rows
+     *
+     * Only every n-th row is read so that each output row averages at most
+     * maxSampledRowsPerOutputRow input rows. The result stays close to a full
+     * rescale for the color averages it feeds, at a fraction of the memory reads.
+     *
+     * @param inputImageData Input image
+     * @param outputImageData Output image
+     * @param outputWidth Width of the output image
+     * @param interpolation Subsampling interpolation type
+     * @param maxSampledRowsPerOutputRow Number of input rows averaged into each output row
+     */
+    void rescaleSampled(
+      const ImageData& inputImageData,
+      ImageData& outputImageData,
+      int outputWidth,
+      Interpolation::Type interpolation,
+      int maxSampledRowsPerOutputRow = 4
+    );
+
+
+    /**
      * @brief Converts an image to the BGR layout expected by the color computation
      *
      * @param inputImageData Input image, in any supported pixel format
