@@ -160,17 +160,20 @@ namespace Huenicorn::Grabber
 
     XShmGetImage(m_display.get(), RootWindow(m_display.get(), m_screenId), ximage, selectedMonitor->xPos, selectedMonitor->yPos, AllPlanes);
 
+    // On little-endian hosts with the usual 0xff0000 red mask, pixels are laid out in memory as B, G, R(, X)
+    bool bgrOrder = (ximage->red_mask == 0xff0000);
+
     int cvFormat;
     if(ximage->bits_per_pixel > 24){
       cvFormat = CV_8UC4;
-      m_lastFullScreenFrame.format = Imaging::PixelFormat::RGBA;
+      m_lastFullScreenFrame.format = bgrOrder ? Imaging::PixelFormat::BGRA : Imaging::PixelFormat::RGBA;
     }
     else{
       cvFormat = CV_8UC3;
-      m_lastFullScreenFrame.format = Imaging::PixelFormat::RGB;
+      m_lastFullScreenFrame.format = bgrOrder ? Imaging::PixelFormat::BGR : Imaging::PixelFormat::RGB;
     }
 
-    m_lastFullScreenFrame.imageMatrix = cv::Mat(height, width, cvFormat, ximage->data);
+    m_lastFullScreenFrame.imageMatrix = cv::Mat(height, width, cvFormat, ximage->data, static_cast<size_t>(ximage->bytes_per_line));
 
     imageData = m_lastFullScreenFrame;
   }

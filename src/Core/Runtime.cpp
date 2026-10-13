@@ -300,9 +300,7 @@ namespace Huenicorn::Core
       }
     }
 
-    if(source.format == Imaging::PixelFormat::RGBA){
-      Imaging::ImageProcessing::rgbaToRgb(source, source);
-    }
+    Imaging::ImageProcessing::toBgr(source, source);
 
     std::lock_guard channelsLock(m_channelsMutex);
 

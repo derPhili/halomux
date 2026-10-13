@@ -43,15 +43,34 @@ namespace Huenicorn::Imaging
       }
 
       cv::resize(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, interpolationFlag);
+      outputImageData.format = inputImageData.format;
     }
 
 
-    void rgbaToRgb(
+    void toBgr(
       const ImageData& inputImageData,
       ImageData& outputImageData
     )
     {
-      cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_RGBA2RGB);
+      switch(inputImageData.format){
+        case PixelFormat::RGBA:
+          cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_RGBA2BGR);
+          break;
+
+        case PixelFormat::BGRA:
+          cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_BGRA2BGR);
+          break;
+
+        case PixelFormat::RGB:
+          cv::cvtColor(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::COLOR_RGB2BGR);
+          break;
+
+        case PixelFormat::BGR:
+          outputImageData.imageMatrix = inputImageData.imageMatrix;
+          break;
+      }
+
+      outputImageData.format = PixelFormat::BGR;
     }
 
 
@@ -91,6 +110,7 @@ namespace Huenicorn::Imaging
         const ImageData& imageData
       )
       {
+        // Expects a BGR image (see toBgr)
         auto mean = cv::mean(imageData.imageMatrix);
 
         return Color{

@@ -183,6 +183,24 @@ namespace Huenicorn::Grabber
     const auto width = static_cast<int>(pw->format.info.raw.size.width);
     const auto height = static_cast<int>(pw->format.info.raw.size.height);
 
+    // Only 4 bytes per pixel formats are negotiated (see _pipewireThread)
+    Imaging::PixelFormat pixelFormat;
+    switch(pw->format.info.raw.format){
+      case SPA_VIDEO_FORMAT_BGRx:
+      case SPA_VIDEO_FORMAT_BGRA:
+        pixelFormat = Imaging::PixelFormat::BGRA;
+        break;
+
+      case SPA_VIDEO_FORMAT_RGBx:
+      case SPA_VIDEO_FORMAT_RGBA:
+        pixelFormat = Imaging::PixelFormat::RGBA;
+        break;
+
+      default:
+        pw_stream_queue_buffer(pw->stream, pwBuffer);
+        return;
+    }
+
     if(width == 0 || height == 0){
       pw_stream_queue_buffer(pw->stream, pwBuffer);
       return;
@@ -231,7 +249,7 @@ namespace Huenicorn::Grabber
 
     Imaging::ImageData capturedFrame{
       .imageMatrix = cv::Mat(ownedFrame),
-      .format = Imaging::PixelFormat::RGBA,
+      .format = pixelFormat,
     };
 
     {
@@ -450,15 +468,15 @@ namespace Huenicorn::Grabber
           SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat,
           SPA_FORMAT_mediaType,       SPA_POD_Id(SPA_MEDIA_TYPE_video),
           SPA_FORMAT_mediaSubtype,    SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+          // The frame processing only handles packed 4 bytes per pixel formats.
+          // The first value is the preferred (default) one.
           SPA_FORMAT_VIDEO_format,    SPA_POD_CHOICE_ENUM_Id(
-            7,
-            SPA_VIDEO_FORMAT_RGB,
-            SPA_VIDEO_FORMAT_RGB,
-            SPA_VIDEO_FORMAT_RGBA,
-            SPA_VIDEO_FORMAT_RGBx,
+            5,
             SPA_VIDEO_FORMAT_BGRx,
-            SPA_VIDEO_FORMAT_YUY2,
-            SPA_VIDEO_FORMAT_I420
+            SPA_VIDEO_FORMAT_BGRx,
+            SPA_VIDEO_FORMAT_BGRA,
+            SPA_VIDEO_FORMAT_RGBx,
+            SPA_VIDEO_FORMAT_RGBA
           ),
           SPA_FORMAT_VIDEO_size,
           SPA_POD_CHOICE_RANGE_Rectangle(
