@@ -145,13 +145,6 @@ namespace Huenicorn::Core
     void _shutdown();
 
 
-    /**
-     * @brief Called to match stream m_channelStreams size with m_channels
-     * 
-     */
-    void _updateStreamChannelsSize();
-
-
     // Attributes
     const std::string& m_version;
     std::filesystem::path m_configRoot;

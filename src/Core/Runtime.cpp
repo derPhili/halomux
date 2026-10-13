@@ -1,5 +1,6 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <future>
 
@@ -207,7 +208,7 @@ namespace Huenicorn::Core
 
     std::lock_guard lock(m_channelsMutex);
     m_channels = std::move(channels);
-    _updateStreamChannelsSize();
+    m_channelStreams.clear();
   }
 
 
@@ -302,7 +303,18 @@ namespace Huenicorn::Core
         continue;
       }
 
-      auto& channelStream = m_channelStreams.at(channelId);
+      // Streams are only created once a channel has been active, so channels
+      // that were never enabled are left untouched on the bridge. Shut down
+      // channels keep being streamed as black.
+      auto streamIt = std::find_if(m_channelStreams.begin(), m_channelStreams.end(), [channelId](const auto& stream){
+        return stream.id == channelId;
+      });
+
+      if(streamIt == m_channelStreams.end()){
+        streamIt = m_channelStreams.insert(m_channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
+      }
+
+      auto& channelStream = *streamIt;
 
       if(channel.state == Hue::Api::Channel::State::PendingShutdown){
         channelStream.id = channelId;
@@ -365,9 +377,4 @@ namespace Huenicorn::Core
     m_selector->disableStreaming();
   }
 
-
-  void Runtime::_updateStreamChannelsSize()
-  {
-    m_channelStreams.resize(m_channels.size());
-  }
 }

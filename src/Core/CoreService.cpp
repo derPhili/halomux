@@ -144,8 +144,6 @@ namespace Huenicorn::Core
 
     channels.at(channelId).setActive(active);
 
-    m_runtime._updateStreamChannelsSize();
-
     return true;
   }
 
