@@ -1,4 +1,7 @@
 #pragma once
+
+#include <atomic>
+
 /*
   This code is an adapation from https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c
   It consists on an extraction from OBS Source code achieving the call and management of a xdg-portal capture query
@@ -57,7 +60,7 @@ namespace Huenicorn::Grabber
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
       bool fdReadyResolved{false};
-      bool updateXdgContext{true};
+      std::atomic<bool> updateXdgContext{true};
       Core::Config* config;
     };
 

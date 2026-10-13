@@ -355,8 +355,10 @@ namespace Huenicorn::Grabber
 
     GMainLoop* gmain = g_main_loop_new(NULL, FALSE);
 
+    // Block until an event is dispatched: the portal dialog may stay open for a long time.
+    // _stop() wakes the context up after clearing updateXdgContext.
     while(capture->updateXdgContext){
-      g_main_context_iteration(g_main_loop_get_context(gmain), false);
+      g_main_context_iteration(g_main_loop_get_context(gmain), TRUE);
     }
 
     g_main_loop_unref(gmain);
@@ -548,6 +550,7 @@ namespace Huenicorn::Grabber
     // Stop XdgPortal (not used when capturing gamescope's node directly)
     if(!m_pwData.useGamescope){
       m_capture.updateXdgContext = false; // Making sure
+      g_main_context_wakeup(nullptr);
       XdgDesktopPortal::screencastPortalCaptureDestroy(&m_capture);
       if(m_xdgThread.has_value()){
         m_xdgThread.value().join();
