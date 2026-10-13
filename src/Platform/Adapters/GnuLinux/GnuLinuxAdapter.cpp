@@ -5,12 +5,7 @@
 
 #include <Huenicorn/Core/Logger.hpp>
 
-#ifdef PIPEWIRE_GRABBER_AVAILABLE
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
-#endif
-#ifdef X11_GRABBER_AVAILABLE
-#include <Huenicorn/Grabber/GnuLinux/X11/X11Grabber.hpp>
-#endif
 
 
 namespace Huenicorn::Platform
@@ -52,7 +47,6 @@ namespace Huenicorn::Platform
   {
     const char* sessionTypeEnv = std::getenv("XDG_SESSION_TYPE");
     std::string sessionType = sessionTypeEnv ? sessionTypeEnv : "";
-#ifdef PIPEWIRE_GRABBER_AVAILABLE
 
     // Gamescope (Steam Deck / Bazzite Game Mode) sets XDG_SESSION_TYPE=x11
     // for its children (for legacy X11 game compatibility) and doesn't run
@@ -69,13 +63,6 @@ namespace Huenicorn::Platform
     if(sessionType == "wayland"){
       return std::make_unique<Grabber::PipewireGrabber>(config, false);
     }
-#endif
-
-#ifdef X11_GRABBER_AVAILABLE
-    if(sessionType == "x11"){
-      return std::make_unique<Grabber::X11Grabber>(config);
-    }
-#endif
 
     throw Grabber::GrabberUnavailable(
       "Unsupported session type: " + sessionType

@@ -103,7 +103,6 @@ namespace Huenicorn::Platform
       if(!m_grabber){
         try{
           m_grabber = _createGrabber(config);
-          m_grabber->init();
         }
         catch(const Grabber::GrabberUnavailable& e){
           // Fallback to DummyGrabber

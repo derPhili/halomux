@@ -3,12 +3,10 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
-#include <optional>
 
 #include <glm/vec2.hpp>
 
 #include <Huenicorn/Imaging/ImageData.hpp>
-#include <Huenicorn/Grabber/MonitorData.hpp>
 #include <Huenicorn/Core/Logger.hpp>
 
 
@@ -19,10 +17,6 @@ namespace Huenicorn::Core
 
 namespace Huenicorn::Grabber
 {
-  using UniqueMonitor = std::shared_ptr<MonitorData>;
-  using Monitors = std::vector<UniqueMonitor>;
-
-
   class GrabberUnavailable : public std::runtime_error
   {
     using std::runtime_error::runtime_error;
@@ -42,42 +36,12 @@ namespace Huenicorn::Grabber
    */
   class IGrabber
   {
-  protected:
-    struct MonitorSelectionData
-    {
-      Monitors monitors;
-      std::optional<unsigned> selectedMonitorId;
-
-      MonitorData* selectedMonitor() const
-      {
-        try{
-          return monitors.at(selectedMonitorId.value()).get();
-        }
-        catch(const std::exception& e){
-          Core::Logger::warn("No selected monitor");
-        }
-
-        return nullptr;
-      }
-    };
-
   public:
     // Type definitions
     using Divisors = std::vector<int>;
     using Resolution = glm::ivec2;
     using Resolutions = std::vector<Resolution>;
     using RefreshRate = unsigned;
-
-
-    /**
-     * @brief Structure containing display resolution and refresh rate information
-     * 
-     */
-    struct DisplayInfo
-    {
-      Resolution resolution;
-      RefreshRate refreshRate;
-    };
 
     // Constructor / Destructor
     /**
@@ -99,11 +63,6 @@ namespace Huenicorn::Grabber
     virtual ~IGrabber(){}
 
 
-    void init()
-    {
-      _initMonitorsList();
-    }
-
     // Getters
     /**
      * @brief Returns the identifier of the grabber implementation
@@ -111,12 +70,6 @@ namespace Huenicorn::Grabber
      * @return const std::string& Grabber identifier
      */
     virtual const std::string& name() const = 0;
-
-
-    virtual bool hasCustomScreenManagement() const
-    {
-      return false;
-    }
 
 
     /**
@@ -136,16 +89,6 @@ namespace Huenicorn::Grabber
 
 
     // Methods
-    virtual void selectMonitor(
-      unsigned /*monitorId*/
-    )
-    {
-      if(hasCustomScreenManagement()){
-        throw std::runtime_error("Missing '_initMonitorsList' override for " + name());
-      }
-    }
-
-
     /**
      * @brief Takes a screen capture and returns a subsample of it as bitmap
      * 
@@ -166,11 +109,6 @@ namespace Huenicorn::Grabber
     )
     {}
 
-
-    inline Monitors monitors() const
-    {
-      return m_monitorSelectionData.monitors;
-    }
 
     /**
      * @brief Returns a list of available subsample resolutions
@@ -198,13 +136,6 @@ namespace Huenicorn::Grabber
 
 
   protected:
-    // Protected methods
-    virtual void _initMonitorsList(){
-      if(hasCustomScreenManagement()){
-        throw std::runtime_error("Missing '_initMonitorsList' override for " + name());
-      }
-    };
-
     // Protected static methods
     /**
      * @brief Computes a list of integer divisors for a given number
@@ -252,6 +183,5 @@ namespace Huenicorn::Grabber
 
     //Attributes
     Core::Config* m_config;
-    MonitorSelectionData m_monitorSelectionData;
   };
 }
