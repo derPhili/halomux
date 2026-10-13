@@ -285,7 +285,9 @@ namespace Huenicorn::Core
     m_config.setRefreshRate(refreshRate);
     refreshRate = m_config.refreshRate();
 
-    m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
+    if(m_runtime.m_loopRegulator){
+      m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
+    }
   }
 
 

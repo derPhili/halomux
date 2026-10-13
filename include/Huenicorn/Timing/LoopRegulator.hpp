@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 
 #include <Huenicorn/Timing/Definitions.hpp>
@@ -131,7 +132,7 @@ namespace Huenicorn::Timing
       Duration duration = now - startTime;
       m_tickAverage = _approxRollingAverage<Duration>(m_tickAverage, duration);
 
-      return static_cast<float>(m_tickAverage.count() / m_tickInterval.count());
+      return static_cast<float>(m_tickAverage.count() / m_tickInterval.load().count());
     }
 
 
@@ -158,7 +159,8 @@ namespace Huenicorn::Timing
     }
 
   // Attributes
-    Duration m_tickInterval;
+    // Can be changed from another thread (web UI) while the loop is running
+    std::atomic<Duration> m_tickInterval;
     TimePoint m_nextTickTime;
     Duration m_tickAverage{0};
 

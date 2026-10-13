@@ -100,7 +100,15 @@ namespace Huenicorn::Grabber
 
   IGrabber::RefreshRate PipewireGrabber::displayRefreshRate() const
   {
-    return m_pwData.format.info.raw.max_framerate.num;
+    // Variable framerate streams advertise their bound in max_framerate, fixed ones in framerate
+    for(const auto& fraction : {m_pwData.format.info.raw.max_framerate, m_pwData.format.info.raw.framerate}){
+      if(fraction.num > 0 && fraction.denom > 0){
+        return static_cast<IGrabber::RefreshRate>(fraction.num / fraction.denom);
+      }
+    }
+
+    static constexpr IGrabber::RefreshRate FallbackRefreshRate = 60;
+    return FallbackRefreshRate;
   }
 
 

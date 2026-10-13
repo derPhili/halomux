@@ -74,6 +74,9 @@ namespace Huenicorn::Core
     }
 
     bool spawnBrowser = (!m_coreService->getProfile().has_value() && !m_openedSetup);
+    // Created before the web UI, which can change its interval
+    m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
+
     if(!_initWebUI(spawnBrowser)){
       Logger::error("Could not start the web UI on ", m_config.boundBackendIP(), ":", m_config.restServerPort(), ". Is the port already in use?");
       _shutdown();
@@ -256,7 +259,6 @@ namespace Huenicorn::Core
 
   void Runtime::_startStreamingLoop()
   {
-    m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
     m_loopRegulator->start();
 
     while(m_keepLooping){
