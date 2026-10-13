@@ -70,7 +70,11 @@ namespace Huenicorn::Core
     }
 
     bool spawnBrowser = (!m_coreService->getProfile().has_value() && !m_openedSetup);
-    _initWebUI(spawnBrowser);
+    if(!_initWebUI(spawnBrowser)){
+      Logger::error("Could not start the web UI on ", m_config.boundBackendIP(), ":", m_config.restServerPort(), ". Is the port already in use?");
+      _shutdown();
+      return;
+    }
 
     _startStreamingLoop();
   }
@@ -145,7 +149,7 @@ namespace Huenicorn::Core
   }
 
 
-  void Runtime::_initWebUI(
+  bool Runtime::_initWebUI(
     bool spawnBrowser
   )
   {
@@ -159,7 +163,9 @@ namespace Huenicorn::Core
       server->start(restServerPort, boundBackendIP, std::move(readyWebUIPromise));
     });
 
-    readyWebUIFuture.wait();
+    if(!readyWebUIFuture.get()){
+      return false;
+    }
 
     if(spawnBrowser){
       std::stringstream serviceUrlStream;
@@ -169,6 +175,8 @@ namespace Huenicorn::Core
 
       Platform::adapter.openWebBrowser(serviceURL);
     }
+
+    return true;
   }
 
 

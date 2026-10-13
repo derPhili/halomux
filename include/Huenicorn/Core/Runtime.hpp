@@ -98,8 +98,11 @@ namespace Huenicorn::Core
 
     /**
      * Brief Initializes the web UI
+     *
+     * @return true The web UI is listening
+     * @return false The web UI could not be started
     */
-    void _initWebUI(
+    bool _initWebUI(
       bool spawnBrowser
     );
 
