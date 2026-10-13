@@ -29,23 +29,6 @@ void testGrabber(const std::filesystem::path& frameDirRoot)
 
   Logger::log("Started ", grabber->name());
 
-  {
-    const auto& monitors = grabber->monitors();
-    unsigned primaryId = 0;
-
-    int i = 0;
-    for(const auto& monitor : monitors){
-      Logger::log(monitor->name);
-
-      if(monitor.get()->isPrimary){
-        primaryId = i;
-      }
-
-      i++;
-    }
-    grabber->selectMonitor(primaryId);
-  }
-
   try{
     const auto& displayResolution = grabber->displayResolution();
     Logger::log("Screen res ", displayResolution.x, " ", displayResolution.y);
@@ -67,12 +50,6 @@ void testGrabber(const std::filesystem::path& frameDirRoot)
 
   while(std::chrono::duration_cast<std::chrono::seconds>(now - start).count() < 20){
     Huenicorn::Timing::TimePoint iterationStart = Huenicorn::Timing::ClockType::now();
-    const auto& monitors = grabber->monitors();
-
-    if(monitors.size()){
-      //grabber->selectMonitor(i % monitors.size()); // Let's get mean !
-    }
-
     grabber->grabFrameSubsample(imageData);
 
     if(imageData.hasData()){

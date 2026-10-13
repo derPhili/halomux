@@ -5,13 +5,11 @@
 
 #include <mbedtls/version.h>
 
-#if MBEDTLS_VERSION_MAJOR >= 4
-#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClient4Impl.hpp>
-#elif MBEDTLS_VERSION_MAJOR == 3
-#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClient3Impl.hpp>
-#else
-#error Unsupported Mbed TLS version
+#if MBEDTLS_VERSION_MAJOR < 4
+#error Mbed TLS 4.x or newer is required
 #endif
+
+#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClient4Impl.hpp>
 
 
 #include <Huenicorn/Core/Logger.hpp>
