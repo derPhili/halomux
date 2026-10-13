@@ -181,6 +181,32 @@ Das Ergebnis ist eine eigenständige ausführbare Datei namens „huenicorn“.
   Bei der Ersteinrichtung und solange noch kein Lampenprofil gespeichert ist, öffnet sich der Browser automatisch.
   (Der Port lässt sich in der Konfiguration ändern. Standard ist 8215.)
 
+#### Als systemd-Dienst
+
+Huenicorn kann als systemd-User-Dienst mit der grafischen Sitzung starten. Die Unit liegt unter `dist/systemd/huenicorn.service` und startet `~/.local/bin/huenicorn`. Die Ersteinrichtung und die erste Bildschirmauswahl unter Wayland sollten vorher einmal von Hand erledigt sein.
+
+Installieren und aktivieren:
+
+```bash
+install -Dm755 build/huenicorn ~/.local/bin/huenicorn
+install -Dm644 dist/systemd/huenicorn.service ~/.config/systemd/user/huenicorn.service
+systemctl --user daemon-reload
+systemctl --user enable --now huenicorn.service
+```
+
+Nach einem neuen Build die installierte Datei ersetzen und den Dienst neu starten:
+
+```bash
+install -Dm755 build/huenicorn ~/.local/bin/huenicorn
+systemctl --user restart huenicorn.service
+```
+
+Ausgaben ansehen:
+
+```bash
+journalctl --user -u huenicorn.service -f
+```
+
 #### Ersteinrichtung
 
 Beim ersten Start öffnet Huenicorn die Einrichtungsseite in deinem Browser. Ein Schritt-für-Schritt-Assistent hilft dir, deine Hue Bridge im Netzwerk zu finden und einen Benutzer darauf anzulegen.
