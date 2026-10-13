@@ -1,6 +1,9 @@
 #pragma once
 
+#include <array>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
@@ -97,7 +100,7 @@ namespace Huenicorn::Imaging
       // Apply gamma
       for(int i = 0; i < normalizedRgb.length(); i++){
         auto& channel = normalizedRgb[i];
-        channel = (channel > 0.04045f) ? pow((channel + 0.055f) / (1.0f + 0.055f), 2.4f) : (channel / 12.92f);
+        channel = (channel > 0.04045f) ? std::pow((channel + 0.055f) / (1.0f + 0.055f), 2.4f) : (channel / 12.92f);
       }
 
       // Apply some magic "Wide RGB D65 conversion formula"
