@@ -85,10 +85,12 @@ namespace Huenicorn::Stream
       return;
     }
 
-    std::vector<std::byte> requestBuffer;
+    // Reuse the buffer's capacity across frames
+    auto& requestBuffer = m_requestBuffer;
+    requestBuffer.clear();
     requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&m_header), reinterpret_cast<std::byte*>(&m_header) + sizeof(HuestreamHeader));
 
-    for(const auto channel : channels){
+    for(const auto& channel : channels){
       HuestreamPayload payload;
       payload.setChannelId(channel.id);
       payload.setR(_toUint16(channel.r));

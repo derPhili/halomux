@@ -88,7 +88,9 @@ namespace Huenicorn::Imaging
       cv::Range cols(std::max(0, a.x), std::min(b.x, inputImageData.width()));
       cv::Range rows(std::max(0, a.y), std::min(b.y, inputImageData.height()));
 
-      outputImageData.imageMatrix = inputImageData.imageMatrix(rows, cols).clone();
+      // View on the input data (no copy): the output must not outlive the input's buffer
+      outputImageData.imageMatrix = inputImageData.imageMatrix(rows, cols);
+      outputImageData.format = inputImageData.format;
     }
 
 

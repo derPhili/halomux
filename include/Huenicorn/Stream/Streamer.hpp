@@ -83,6 +83,7 @@ namespace Huenicorn::Stream
     // Attributes
     std::unique_ptr<Stream::DtlsClient> m_dtlsClient;
     HuestreamHeader m_header;
+    std::vector<std::byte> m_requestBuffer;
     std::chrono::steady_clock::time_point m_lastConnectionAttempt{};
     bool m_connectionLossReported{false};
   };
