@@ -56,6 +56,7 @@ namespace Huenicorn::Grabber
       uint32_t pwFd{0};
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
+      bool fdReadyResolved{false};
       bool updateXdgContext{true};
       Core::Config* config;
     };
@@ -82,6 +83,17 @@ namespace Huenicorn::Grabber
       Capture* capture,
       CaptureType captureType,
       bool cursorVisible
+    );
+
+    /**
+     * @brief Fulfills the capture's fd promise once and stops the portal context loop
+     *
+     * @param capture Capture to resolve
+     * @param succeeded Whether a Pipewire fd was obtained
+     */
+    static void resolveCapture(
+      Capture* capture,
+      bool succeeded
     );
 
     static void screencastPortalCaptureDestroy(

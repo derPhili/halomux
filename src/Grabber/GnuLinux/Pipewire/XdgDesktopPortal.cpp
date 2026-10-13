@@ -73,7 +73,25 @@ namespace Huenicorn::Grabber
       capture->captureType = captureType;
       capture->cursorVisible = cursorVisible;
 
-      initScreencastCapture(capture);
+      if(!initScreencastCapture(capture)){
+        Core::Logger::error("Could not reach the XDG desktop portal");
+        resolveCapture(capture, false);
+      }
+    }
+
+
+    void XdgDesktopPortal::resolveCapture(
+      Capture* capture,
+      bool succeeded
+    )
+    {
+      if(capture->fdReadyResolved){
+        return;
+      }
+
+      capture->fdReadyResolved = true;
+      capture->updateXdgContext = false;
+      capture->fdReadyPromise.set_value(succeeded);
     }
 
 
@@ -284,6 +302,7 @@ namespace Huenicorn::Grabber
           Core::Logger::error("[pipewire] error retrieving pipewire fd: ", std::string(error->message));
         }
 
+        resolveCapture(capture, false);
         return;
       }
 
@@ -296,12 +315,12 @@ namespace Huenicorn::Grabber
           Core::Logger::error("[pipewire] error retrieving pipewire fd: ", std::string(error->message));
         }
 
+        resolveCapture(capture, false);
         return;
       }
 
       capture->pwFd = static_cast<uint32_t>(pwFd);
-      capture->updateXdgContext = false;
-      capture->fdReadyPromise.set_value(true);
+      resolveCapture(capture, true);
     }
 
 
@@ -337,7 +356,7 @@ namespace Huenicorn::Grabber
 
       if(response != 0){
         Core::Logger::warn("Failed to start screencast, denied or cancelled by user.");
-        capture->fdReadyPromise.set_value(false);
+        resolveCapture(capture, false);
         return;
       }
 
@@ -382,7 +401,7 @@ namespace Huenicorn::Grabber
       if(error){
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error selecting screencast source: ", std::string(error->message));
-          capture->fdReadyPromise.set_value(false);
+          resolveCapture(capture, false);
         }
         return;
       }
@@ -405,6 +424,7 @@ namespace Huenicorn::Grabber
       }
       catch(const std::exception& e){
         Core::Logger::error(e.what());
+        resolveCapture(capture, false);
       }
     }
 
@@ -430,6 +450,7 @@ namespace Huenicorn::Grabber
 
       if(response != 0){
         Core::Logger::error("failed to select source, denied or cancelled by user");
+        resolveCapture(capture, false);
         return;
       }
 
@@ -443,14 +464,19 @@ namespace Huenicorn::Grabber
       void* userData
     )
     {
-      (void)userData;
-
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;
       if(error){
+        // On cancellation, the call data has already been released by onCancelledCallback
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error selecting screencast source: ", std::string(error->message));
+
+          // No Response signal will follow a failed call
+          DbusCallData* call = static_cast<DbusCallData*>(userData);
+          Capture* capture = call->capture;
+          dbusCallDataFree(call);
+          resolveCapture(capture, false);
         }
 
         return;
@@ -523,6 +549,8 @@ namespace Huenicorn::Grabber
 
       if(response != 0){
         Core::Logger::warn("failed to create session, denied or cancelled by user");
+        resolveCapture(capture, false);
+        return;
       }
 
       g_autoptr(GVariant) sessionHandleVariant = g_variant_lookup_value(result, "session_handle", NULL);
@@ -535,7 +563,7 @@ namespace Huenicorn::Grabber
     void XdgDesktopPortal::onSessionCreatedCallback(
       GObject* source,
       GAsyncResult* res,
-      void* /*userData*/
+      void* userData
     )
     {
       g_autoptr(GError) error = NULL;
@@ -543,8 +571,15 @@ namespace Huenicorn::Grabber
       (void)result;
 
       if(error){
+        // On cancellation, the call data has already been released by onCancelledCallback
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error creating screencast session: ", std::string(error->message));
+
+          // No Response signal will follow a failed call
+          DbusCallData* call = static_cast<DbusCallData*>(userData);
+          Capture* capture = call->capture;
+          dbusCallDataFree(call);
+          resolveCapture(capture, false);
         }
 
         return;
