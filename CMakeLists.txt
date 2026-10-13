@@ -85,8 +85,11 @@ configure_file(
 
 # Generate embedded webroot header
 function(embed_directory TARGET_DIR)
-  file(GLOB_RECURSE WEB_FILES "${TARGET_DIR}/*")
+  file(GLOB_RECURSE WEB_FILES CONFIGURE_DEPENDS "${TARGET_DIR}/*")
   set(CONCAT_CONTENT "")
+
+  # The embedded header is generated at configure time: re-run it whenever an embedded file changes
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${WEB_FILES})
 
   foreach(DATA_FILE ${WEB_FILES})
     get_filename_component(KEY ${DATA_FILE} NAME)
