@@ -46,6 +46,7 @@ namespace Huenicorn::Core
 
   unsigned Config::restServerPort() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().restServerPort.value();
   }
 
@@ -58,24 +59,28 @@ namespace Huenicorn::Core
 
   unsigned Config::refreshRate() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().refreshRate.value();
   }
 
 
   unsigned Config::subsampleWidth() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().subsampleWidth.value();
   }
 
 
   Imaging::Interpolation::Type Config::interpolation() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().interpolation.value();
   }
 
 
   float Config::transitionSmoothing() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().transitionSmoothing.value();
   }
 
@@ -108,6 +113,7 @@ namespace Huenicorn::Core
     const std::string& bridgeAddress
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().bridgeAddress.emplace(bridgeAddress);
     _save();
   }
@@ -117,6 +123,7 @@ namespace Huenicorn::Core
     const Hue::Auth::Credentials& credentials
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().credentials.emplace(credentials);
     _save();
   }
@@ -126,6 +133,7 @@ namespace Huenicorn::Core
     const std::string& profileName
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().profileName.emplace(profileName);
     _save();
   }
@@ -135,6 +143,7 @@ namespace Huenicorn::Core
     unsigned subsampleWidth
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().subsampleWidth = subsampleWidth;
     _save();
   }
@@ -144,6 +153,7 @@ namespace Huenicorn::Core
     unsigned refreshRate
   )
   {
+    std::lock_guard lock(m_mutex);
     if(refreshRate < 1){
       refreshRate = 1;
     }
@@ -157,6 +167,7 @@ namespace Huenicorn::Core
     Imaging::Interpolation::Type interpolation
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().interpolation = interpolation;
     _save();
   }
@@ -166,6 +177,7 @@ namespace Huenicorn::Core
     float transitionSmoothing
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().transitionSmoothing = std::clamp(transitionSmoothing, 0.f, 0.97f);
     _save();
   }
@@ -175,6 +187,7 @@ namespace Huenicorn::Core
     const std::string& restoreToken
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData->restoreToken = restoreToken;
     _save();
   }

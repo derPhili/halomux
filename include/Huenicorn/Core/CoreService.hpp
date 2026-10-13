@@ -163,9 +163,9 @@ namespace Huenicorn::Core
      * @param channelId ID of the channel to affect
      * @param uv UV coordinate to set
      * @param uvCorner Corner to affect
-     * @return const UVs& Clamped UV value
+     * @return std::optional<Imaging::UVs> Clamped UV value, empty if the channel doesn't exist
      */
-    const Imaging::UVs& setChannelUV(
+    std::optional<Imaging::UVs> setChannelUV(
       uint8_t channelId,
       Imaging::UV&& uv,
       Imaging::UVCorner uvCorner
@@ -243,9 +243,9 @@ namespace Huenicorn::Core
     /**
      * @brief Returns the list of the available channels
      * 
-     * @return const Channels&  Channels list
+     * @return Channels Snapshot of the channels list
      */
-    const Hue::Api::Channels& channels() const;
+    Hue::Api::Channels channels() const;
 
 
     /**

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 #include <Huenicorn/Core/CoreService.hpp>
@@ -162,7 +163,12 @@ namespace Huenicorn::Core
     std::unique_ptr<Timing::LoopRegulator> m_loopRegulator;
 
     //  API structure wrapper
+    // Serializes entertainment configuration changes requested by the web UI threads
+    std::mutex m_selectorMutex;
     std::unique_ptr<Hue::Api::EntertainmentConfigurationSelector> m_selector;
+
+    // Guards m_channels and m_channelStreams, shared between the streaming loop and the web UI threads
+    mutable std::mutex m_channelsMutex;
     Hue::Api::Channels m_channels;
     Hue::Api::ChannelStreams m_channelStreams;
 

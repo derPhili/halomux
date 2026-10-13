@@ -205,6 +205,7 @@ namespace Huenicorn::Core
       }
     }
 
+    std::lock_guard lock(m_channelsMutex);
     m_channels = std::move(channels);
     _updateStreamChannelsSize();
   }
@@ -288,6 +289,8 @@ namespace Huenicorn::Core
       Imaging::ImageProcessing::rgbaToRgb(source, source);
     }
 
+    std::lock_guard channelsLock(m_channelsMutex);
+
     for(auto& [channelId, channel] : m_channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
         continue;
@@ -352,6 +355,7 @@ namespace Huenicorn::Core
 
   void Runtime::_shutdown()
   {
+    std::lock_guard lock(m_selectorMutex);
     m_selector->disableStreaming();
   }
 
