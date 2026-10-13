@@ -1,3 +1,4 @@
+#include <cmath>
 #include <filesystem>
 #include <unordered_map>
 
@@ -66,6 +67,47 @@ int testRescaleBounds()
   if(resized.width() != 10 || resized.height() < 1 || resized.format != Imaging::PixelFormat::RGB){
     Core::Logger::error("Unexpected rescale output ", resized.width(), "x", resized.height());
     failures++;
+  }
+
+  return failures;
+}
+
+
+/**
+ * @brief Checks that the row-sampled rescale keeps the full image geometry and averages
+ *
+ * @return int Number of failures
+ */
+int testRescaleSampled()
+{
+  int failures = 0;
+
+  // Vertical gradient: sampling every 4th row must keep the output close to a full rescale
+  cv::Mat gradient(1440, 2560, CV_8UC4);
+  for(int y = 0; y < gradient.rows; y++){
+    gradient.row(y).setTo(cv::Scalar(y % 256, (y / 6) % 256, 255 - y % 256, 255));
+  }
+
+  Imaging::ImageData imageData{.imageMatrix = gradient, .format = Imaging::PixelFormat::BGRA};
+
+  Imaging::ImageData full;
+  Imaging::ImageProcessing::rescale(imageData, full, 160, Imaging::Interpolation::Type::Area);
+
+  Imaging::ImageData sampled;
+  Imaging::ImageProcessing::rescaleSampled(imageData, sampled, 160, Imaging::Interpolation::Type::Area);
+
+  if(sampled.width() != full.width() || sampled.height() != full.height() || sampled.format != full.format){
+    Core::Logger::error("Sampled rescale geometry mismatch: ", sampled.width(), "x", sampled.height(), " instead of ", full.width(), "x", full.height());
+    return 1;
+  }
+
+  cv::Scalar fullMean = cv::mean(full.imageMatrix);
+  cv::Scalar sampledMean = cv::mean(sampled.imageMatrix);
+  for(int c = 0; c < 3; c++){
+    if(std::abs(fullMean[c] - sampledMean[c]) > 2.0){
+      Core::Logger::error("Sampled rescale mean differs on channel ", c, ": ", sampledMean[c], " instead of ", fullMean[c]);
+      failures++;
+    }
   }
 
   return failures;
@@ -165,7 +207,7 @@ void testPerf(const std::filesystem::path& samplesDirPath)
 
 int main(int argc, char* argv[])
 {
-  int failures = testColorOrder() + testRescaleBounds();
+  int failures = testColorOrder() + testRescaleBounds() + testRescaleSampled();
 
   // Optional sample based tests, writing their outputs next to the inputs
   if(argc >= 2){

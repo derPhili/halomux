@@ -233,7 +233,7 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
   * Cubic = 1: Langsam und hart (für Tests beibehalten)
   * Area = 2: (Empfohlen) Weich und gibt den Gesamtinhalt gut wieder
 * **profileName**: (String) Name des aktuellen, benutzerdefinierten Lampenprofils
-* **refreshRate**: (Unsigned) Frequenz von Bildschirmaufnahme und Lampenaktualisierung
+* **refreshRate**: (Unsigned) Frequenz von Bildschirmaufnahme und Lampenaktualisierung. Höchstens 60 Hz: Die Bridge gibt Farben mit etwa 25 Hz an die Lampen weiter, Philips empfiehlt 50–60 Hz Streamingrate. Höhere Werte werden beim Start und in der Weboberfläche auf 60 Hz begrenzt
 * **restoreToken**: (String) Token, um die Einstellungen der letzten Sitzung zu merken (nur Wayland)
 * **restServerPort**: (Unsigned) Port, auf dem die Weboberfläche antwortet
 * **subsampleWidth**: (Unsigned) Breite des verarbeiteten, verkleinerten Bildes
@@ -363,7 +363,7 @@ Starte Huenicorn dann erneut und prüfe, ob es nun über die Bildschirmauswahl h
 Prüfe in der Datei ```~/.config/huenicorn/config.json``` folgende Werte:
 
 * ```subsampleWidth```: Muss größer als 0 und ein Teiler deiner Bildschirmauflösung sein.
-* ```refreshRate```: Muss zwischen 1 und der Bildwiederholrate deines Bildschirms liegen.
+* ```refreshRate```: Muss zwischen 1 und 60 bzw. der Bildwiederholrate deines Bildschirms liegen (der kleinere Wert gilt).
 
 ## Website
 

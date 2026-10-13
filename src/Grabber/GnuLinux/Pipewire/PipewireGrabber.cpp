@@ -100,11 +100,10 @@ namespace Huenicorn::Grabber
 
   IGrabber::RefreshRate PipewireGrabber::displayRefreshRate() const
   {
-    // Variable framerate streams advertise their bound in max_framerate, fixed ones in framerate
-    for(const auto& fraction : {m_pwData.format.info.raw.max_framerate, m_pwData.format.info.raw.framerate}){
-      if(fraction.num > 0 && fraction.denom > 0){
-        return static_cast<IGrabber::RefreshRate>(fraction.num / fraction.denom);
-      }
+    // Highest framerate offered by the compositor, regardless of the limit requested
+    // through setFrameRateLimit()
+    if(unsigned displayMaxFramerate = m_pwData.displayMaxFramerate; displayMaxFramerate > 0){
+      return displayMaxFramerate;
     }
 
     static constexpr IGrabber::RefreshRate FallbackRefreshRate = 60;
@@ -242,7 +241,7 @@ namespace Huenicorn::Grabber
     const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
 
     if(width > subsampleWidth){
-      Imaging::ImageProcessing::rescale(frameViewData, capturedFrame, subsampleWidth, pw->config->interpolation());
+      Imaging::ImageProcessing::rescaleSampled(frameViewData, capturedFrame, subsampleWidth, pw->config->interpolation());
     }
     else{
       capturedFrame = {.imageMatrix = frameView.clone(), .format = pixelFormat};
@@ -326,6 +325,18 @@ namespace Huenicorn::Grabber
 
     if(spa_format_video_raw_parse(param, &pw->format.info.raw) < 0){
       return;
+    }
+
+    // Variable framerate streams advertise their bound in max_framerate, fixed ones in framerate.
+    // Keep the highest value seen: later negotiations are limited by setFrameRateLimit().
+    for(const auto& fraction : {pw->format.info.raw.max_framerate, pw->format.info.raw.framerate}){
+      if(fraction.num > 0 && fraction.denom > 0){
+        unsigned framerate = fraction.num / fraction.denom;
+        if(framerate > pw->displayMaxFramerate){
+          pw->displayMaxFramerate = framerate;
+        }
+        break;
+      }
     }
 
     /*
@@ -499,46 +510,9 @@ namespace Huenicorn::Grabber
     uint8_t buffer[1024];
     spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
 
-    auto r1 = spa_rectangle(320, 240);
-    auto r2 = spa_rectangle(1, 1);
-    auto r3 = spa_rectangle(4096, 4096);
-
-    auto f1 = spa_fraction(25, 1);
-    auto f2 = spa_fraction(0, 1);
-    auto f3 = spa_fraction(1000, 1);
-
-    const spa_pod* params[1] = {
-      static_cast<spa_pod*>(
-        spa_pod_builder_add_object(
-          &b,
-          SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat,
-          SPA_FORMAT_mediaType,       SPA_POD_Id(SPA_MEDIA_TYPE_video),
-          SPA_FORMAT_mediaSubtype,    SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
-          // The frame processing only handles packed 4 bytes per pixel formats.
-          // The first value is the preferred (default) one.
-          SPA_FORMAT_VIDEO_format,    SPA_POD_CHOICE_ENUM_Id(
-            5,
-            SPA_VIDEO_FORMAT_BGRx,
-            SPA_VIDEO_FORMAT_BGRx,
-            SPA_VIDEO_FORMAT_BGRA,
-            SPA_VIDEO_FORMAT_RGBx,
-            SPA_VIDEO_FORMAT_RGBA
-          ),
-          SPA_FORMAT_VIDEO_size,
-          SPA_POD_CHOICE_RANGE_Rectangle(
-            &r1,
-            &r2,
-            &r3
-          ),
-          SPA_FORMAT_VIDEO_framerate,
-          SPA_POD_CHOICE_RANGE_Fraction(
-            &f1,
-            &f2,
-            &f3
-          )
-        )
-      )
-    };
+    // Unconstrained at first, so the display's actual maximal framerate is learnt
+    // (see displayRefreshRate()). setFrameRateLimit() renegotiates it afterwards.
+    const spa_pod* params[1] = {_buildFormatParam(&b, 0)};
 #pragma GCC diagnostic pop
 
     pw_stream_connect(pw->stream, PW_DIRECTION_INPUT, targetNode, static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS), params, 1);
@@ -551,6 +525,104 @@ namespace Huenicorn::Grabber
 
     g_clear_pointer(&pw->context, pw_context_destroy);
     g_clear_pointer(&pw->loop, pw_main_loop_destroy);
+  }
+
+
+// The SPA builder macros rely on C compound literals
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+  const spa_pod* PipewireGrabber::_buildFormatParam(
+    spa_pod_builder* builder,
+    unsigned maxFramerate
+  )
+  {
+    auto r1 = spa_rectangle(320, 240);
+    auto r2 = spa_rectangle(1, 1);
+    auto r3 = spa_rectangle(4096, 4096);
+
+    auto f1 = spa_fraction(25, 1);
+    auto f2 = spa_fraction(0, 1);
+    auto f3 = spa_fraction(1000, 1);
+
+    spa_pod_frame frame;
+    spa_pod_builder_push_object(builder, &frame, SPA_TYPE_OBJECT_Format, SPA_PARAM_EnumFormat);
+
+    spa_pod_builder_add(
+      builder,
+      SPA_FORMAT_mediaType,       SPA_POD_Id(SPA_MEDIA_TYPE_video),
+      SPA_FORMAT_mediaSubtype,    SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw),
+      // The frame processing only handles packed 4 bytes per pixel formats.
+      // The first value is the preferred (default) one.
+      SPA_FORMAT_VIDEO_format,    SPA_POD_CHOICE_ENUM_Id(
+        5,
+        SPA_VIDEO_FORMAT_BGRx,
+        SPA_VIDEO_FORMAT_BGRx,
+        SPA_VIDEO_FORMAT_BGRA,
+        SPA_VIDEO_FORMAT_RGBx,
+        SPA_VIDEO_FORMAT_RGBA
+      ),
+      SPA_FORMAT_VIDEO_size,      SPA_POD_CHOICE_RANGE_Rectangle(&r1, &r2, &r3),
+      SPA_FORMAT_VIDEO_framerate, SPA_POD_CHOICE_RANGE_Fraction(&f1, &f2, &f3),
+      0
+    );
+
+    if(maxFramerate > 0){
+      // Variable framerate streams (KWin) send at most maxFramerate frames per second,
+      // still delivering the latest content once the minimal frame time has elapsed.
+      auto maxDefault = spa_fraction(maxFramerate, 1);
+      auto maxMin = spa_fraction(1, 1);
+      auto maxMax = spa_fraction(maxFramerate, 1);
+
+      spa_pod_builder_add(
+        builder,
+        SPA_FORMAT_VIDEO_maxFramerate, SPA_POD_CHOICE_RANGE_Fraction(&maxDefault, &maxMin, &maxMax),
+        0
+      );
+    }
+
+    return static_cast<const spa_pod*>(spa_pod_builder_pop(builder, &frame));
+  }
+
+
+  int PipewireGrabber::_onUpdateFrameRateLimit(
+    spa_loop* /*loop*/,
+    bool /*async*/,
+    uint32_t /*seq*/,
+    const void* data,
+    size_t /*size*/,
+    void* userData
+  )
+  {
+    // Runs in the Pipewire thread
+    PipewireData* pw = static_cast<PipewireData*>(userData);
+    if(!pw->stream){
+      return 0;
+    }
+
+    unsigned maxFramerate = *static_cast<const unsigned*>(data);
+
+    uint8_t buffer[1024];
+    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+    const spa_pod* params[1] = {_buildFormatParam(&b, maxFramerate)};
+
+    return pw_stream_update_params(pw->stream, params, 1);
+  }
+
+
+#pragma GCC diagnostic pop
+
+
+  void PipewireGrabber::setFrameRateLimit(
+    RefreshRate frameRate
+  )
+  {
+    if(!m_pwData.loop){
+      return;
+    }
+
+    unsigned maxFramerate = frameRate;
+    pw_loop_invoke(pw_main_loop_get_loop(m_pwData.loop), _onUpdateFrameRateLimit, 0, &maxFramerate, sizeof(maxFramerate), false, &m_pwData);
   }
 
 

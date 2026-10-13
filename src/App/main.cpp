@@ -47,6 +47,7 @@ public:
 
     std::lock_guard lock(m_coreMutex);
     m_core.reset();
+    Huenicorn::Platform::adapter.releaseGrabber();
 
     return succeeded;
   }

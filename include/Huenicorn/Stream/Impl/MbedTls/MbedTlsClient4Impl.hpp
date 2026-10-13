@@ -290,6 +290,11 @@ namespace Huenicorn::Stream
      */
     void _deallocate()
     {
+      if(isConnected && ssl){
+        // Tell the bridge the session is over instead of letting it time out
+        mbedtls_ssl_close_notify(ssl.get());
+      }
+
       isConnected = false;
       serverFd.reset();
       cacert.reset();

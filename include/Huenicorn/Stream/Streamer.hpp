@@ -17,6 +17,15 @@ namespace Huenicorn::Stream
    * @brief Wrapper around UDP requests to submit color data to the bridge
    * 
    */
+  /**
+   * @brief Highest useful streaming rate [Hz]
+   *
+   * The bridge forwards colors to the lights at about 25 Hz. Philips recommends
+   * streaming at 50-60 Hz to make up for lost UDP packets: anything above is wasted.
+   */
+  static constexpr unsigned MaxStreamingRate = 60;
+
+
   class Streamer
   {
     static const std::string Port;

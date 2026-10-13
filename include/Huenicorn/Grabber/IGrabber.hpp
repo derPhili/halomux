@@ -156,6 +156,17 @@ namespace Huenicorn::Grabber
     ) = 0;
 
 
+    /**
+     * @brief Hints the grabber that frames aren't needed faster than frameRate
+     *
+     * @param frameRate Frames per second actually consumed
+     */
+    virtual void setFrameRateLimit(
+      RefreshRate /*frameRate*/
+    )
+    {}
+
+
     inline Monitors monitors() const
     {
       return m_monitorSelectionData.monitors;

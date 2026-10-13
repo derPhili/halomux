@@ -7,6 +7,28 @@ namespace Huenicorn::Imaging
 {
   namespace ImageProcessing
   {
+    namespace
+    {
+      cv::InterpolationFlags _toCvInterpolation(
+        Interpolation::Type interpolation
+      )
+      {
+        switch(interpolation){
+          case Interpolation::Type::Nearest:
+            return cv::InterpolationFlags::INTER_NEAREST;
+
+          case Interpolation::Type::Cubic:
+            return cv::InterpolationFlags::INTER_CUBIC;
+
+          case Interpolation::Type::Area:
+            return cv::InterpolationFlags::INTER_AREA;
+        }
+
+        return cv::InterpolationFlags::INTER_AREA;
+      }
+    }
+
+
     void rescale(
       const ImageData& inputImageData,
       ImageData& outputImageData,
@@ -26,23 +48,42 @@ namespace Huenicorn::Imaging
 
       int targetHeight = std::max(1, static_cast<int>(static_cast<float>(sourceHeight) * scaleRatio));
 
-      cv::InterpolationFlags interpolationFlag = cv::InterpolationFlags::INTER_AREA;
+      cv::resize(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, _toCvInterpolation(interpolation));
+      outputImageData.format = inputImageData.format;
+    }
 
-      switch(interpolation){
-        case Interpolation::Type::Nearest:
-          interpolationFlag = cv::InterpolationFlags::INTER_NEAREST;
-          break;
 
-        case Interpolation::Type::Cubic:
-          interpolationFlag = cv::InterpolationFlags::INTER_CUBIC;
-          break;
+    void rescaleSampled(
+      const ImageData& inputImageData,
+      ImageData& outputImageData,
+      int outputWidth,
+      Interpolation::Type interpolation,
+      int maxSampledRowsPerOutputRow
+    )
+    {
+      const int sourceWidth = inputImageData.width();
+      const int sourceHeight = inputImageData.height();
 
-        case Interpolation::Type::Area:
-          interpolationFlag = cv::InterpolationFlags::INTER_AREA;
-          break;
+      if(outputWidth < 1 || sourceWidth <= outputWidth || maxSampledRowsPerOutputRow < 1){
+        rescale(inputImageData, outputImageData, outputWidth, interpolation);
+        return;
       }
 
-      cv::resize(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, interpolationFlag);
+      const int targetHeight = std::max(1, static_cast<int>(static_cast<float>(sourceHeight) * static_cast<float>(outputWidth) / static_cast<float>(sourceWidth)));
+      const int rowsPerOutputRow = sourceHeight / targetHeight;
+      const int rowStride = std::max(1, rowsPerOutputRow / maxSampledRowsPerOutputRow);
+
+      if(rowStride == 1){
+        rescale(inputImageData, outputImageData, outputWidth, interpolation);
+        return;
+      }
+
+      // View on every rowStride-th row of the input (no copy)
+      const cv::Mat& source = inputImageData.imageMatrix;
+      const cv::Mat sampledRows(sourceHeight / rowStride, sourceWidth, source.type(), source.data, source.step[0] * static_cast<size_t>(rowStride));
+
+      // Target size computed from the full image: the sampled view is less tall
+      cv::resize(sampledRows, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, _toCvInterpolation(interpolation));
       outputImageData.format = inputImageData.format;
     }
 

@@ -21,8 +21,6 @@ namespace Huenicorn::Grabber
   GDBusConnection* XdgDesktopPortal::m_connection = nullptr;
   GDBusProxy* XdgDesktopPortal::m_screencastProxy = nullptr;
 
-  const std::string XdgDesktopPortal::ObjectPath = "/org/freedesktop/portal/desktop";
-  const std::string XdgDesktopPortal::BusName = "org.freedesktop.portal.Desktop";
     // Implementations
 
     void XdgDesktopPortal::createSession(
@@ -107,7 +105,7 @@ namespace Huenicorn::Grabber
       std::string methodName = "Close";
 
       if(capture->sessionHandle){
-        g_dbus_connection_call(portalGetDbusConnection(), BusName.c_str(), capture->sessionHandle, interfaceName.c_str(), methodName.c_str(), NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+        g_dbus_connection_call(portalGetDbusConnection(), BusName, capture->sessionHandle, interfaceName.c_str(), methodName.c_str(), NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
         g_clear_pointer(&capture->sessionHandle, g_free);
       }
 
@@ -171,7 +169,7 @@ namespace Huenicorn::Grabber
       oss << "huenicorn";
       oss << ++count[static_cast<int>(createPathTokenType)];
       pathAndToken.second = oss.str();
-      pathAndToken.first = ObjectPath + '/' + type + '/' + getSenderName() + '/' + pathAndToken.second;
+      pathAndToken.first = std::string(ObjectPath) + '/' + type + '/' + getSenderName() + '/' + pathAndToken.second;
 
       return pathAndToken;
     }
@@ -184,7 +182,7 @@ namespace Huenicorn::Grabber
 
         std::string interfaceName = "org.freedesktop.portal.ScreenCast";
 
-        m_screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_NONE, NULL, BusName.c_str(), ObjectPath.c_str(), interfaceName.c_str(), NULL, &error);
+        m_screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_NONE, NULL, BusName, ObjectPath, interfaceName.c_str(), NULL, &error);
 
         if(error){
           Core::Logger::warn("error retrieving D-Bus proxy: ", std::string(error->message));
@@ -243,7 +241,7 @@ namespace Huenicorn::Grabber
 
       std::string interfaceName = "org.freedesktop.portal.Request";
 
-      g_dbus_connection_call(portalGetDbusConnection(), BusName.c_str(), call->requestPath.c_str(), interfaceName.c_str(), "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+      g_dbus_connection_call(portalGetDbusConnection(), BusName, call->requestPath.c_str(), interfaceName.c_str(), "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 
       dbusCallDataFree(call);
     }
@@ -260,7 +258,7 @@ namespace Huenicorn::Grabber
       call->requestPath = std::string(path);
       call->cancelledId = g_signal_connect(capture->cancellable, "cancelled", G_CALLBACK(onCancelledCallback), call);
       std::string interfaceName = "org.freedesktop.portal.Request";
-      call->signalId = g_dbus_connection_signal_subscribe(portalGetDbusConnection(), BusName.c_str(), interfaceName.c_str(), "Response", call->requestPath.c_str(), NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, callback, call, NULL);
+      call->signalId = g_dbus_connection_signal_subscribe(portalGetDbusConnection(), BusName, interfaceName.c_str(), "Response", call->requestPath.c_str(), NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, callback, call, NULL);
 
       return call;
     }

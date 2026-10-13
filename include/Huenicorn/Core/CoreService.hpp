@@ -128,11 +128,19 @@ namespace Huenicorn::Core
 
 
     /**
-     * @brief Returns the maximal refresh rate defined by the display
+     * @brief Returns the maximal usable refresh rate: the lowest of the display's and the bridge's
      * 
      * @return unsigned Maximal refresh rate
      */
     unsigned maxRefreshRate() const;
+
+
+    /**
+     * @brief Returns the refresh rate of the display
+     *
+     * @return unsigned Display refresh rate
+     */
+    unsigned displayRefreshRate() const;
 
 
     /**
