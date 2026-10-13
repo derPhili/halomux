@@ -1,44 +1,107 @@
 #include <filesystem>
-#include <fstream>
 #include <unordered_map>
 
-#include <Huenicorn/ImageProcessing.hpp>
-#include <Huenicorn/ImageData.hpp>
-#include <Huenicorn/Logger.hpp>
-#include <Huenicorn/TimingDefinitions.hpp>
+#include <Huenicorn/Imaging/ImageProcessing.hpp>
+#include <Huenicorn/Imaging/ImageData.hpp>
+#include <Huenicorn/Core/Logger.hpp>
+#include <Huenicorn/Timing/Definitions.hpp>
+
+using namespace Huenicorn;
+
+
+/**
+ * @brief Checks that every supported pixel layout yields the same color once converted to BGR
+ *
+ * @return int Number of failures
+ */
+int testColorOrder()
+{
+  // Pure red, expressed in each layout
+  const std::unordered_map<Imaging::PixelFormat, cv::Mat> inputs = {
+    {Imaging::PixelFormat::RGB, cv::Mat(4, 4, CV_8UC3, cv::Scalar(255, 0, 0))},
+    {Imaging::PixelFormat::BGR, cv::Mat(4, 4, CV_8UC3, cv::Scalar(0, 0, 255))},
+    {Imaging::PixelFormat::RGBA, cv::Mat(4, 4, CV_8UC4, cv::Scalar(255, 0, 0, 255))},
+    {Imaging::PixelFormat::BGRA, cv::Mat(4, 4, CV_8UC4, cv::Scalar(0, 0, 255, 255))}
+  };
+
+  int failures = 0;
+
+  for(const auto& [format, matrix] : inputs){
+    Imaging::ImageData imageData{.imageMatrix = matrix, .format = format};
+    Imaging::ImageProcessing::toBgr(imageData, imageData);
+    Imaging::Color color = Imaging::ImageProcessing::getDominantColor(imageData);
+
+    if(color != Imaging::Color(255, 0, 0)){
+      Core::Logger::error("Wrong color for pixel format ", static_cast<int>(format), ": ", static_cast<int>(color.m_r), " ", static_cast<int>(color.m_g), " ", static_cast<int>(color.m_b));
+      failures++;
+    }
+  }
+
+  return failures;
+}
+
+
+/**
+ * @brief Checks rescaling edge cases
+ *
+ * @return int Number of failures
+ */
+int testRescaleBounds()
+{
+  int failures = 0;
+
+  Imaging::ImageData imageData{.imageMatrix = cv::Mat(10, 1000, CV_8UC3, cv::Scalar(1, 2, 3)), .format = Imaging::PixelFormat::RGB};
+
+  // Invalid width: input is kept as is
+  Imaging::ImageData unchanged;
+  Imaging::ImageProcessing::rescale(imageData, unchanged, 0, Imaging::Interpolation::Type::Area);
+  if(unchanged.width() != imageData.width()){
+    Core::Logger::error("Rescaling to a null width should keep the input");
+    failures++;
+  }
+
+  // Very wide image: height must never be 0, format must be kept
+  Imaging::ImageData resized;
+  Imaging::ImageProcessing::rescale(imageData, resized, 10, Imaging::Interpolation::Type::Area);
+  if(resized.width() != 10 || resized.height() < 1 || resized.format != Imaging::PixelFormat::RGB){
+    Core::Logger::error("Unexpected rescale output ", resized.width(), "x", resized.height());
+    failures++;
+  }
+
+  return failures;
+}
 
 
 void testResize(const std::filesystem::path& samplesDirPath)
 {
-  std::unordered_map<Huenicorn::Interpolation::Type, std::filesystem::path> testOutputs = {
-    {Huenicorn::Interpolation::Type::Nearest, "Nearest"},
-    {Huenicorn::Interpolation::Type::Cubic, "Cubic"},
-    {Huenicorn::Interpolation::Type::Area, "Area"}
+  std::unordered_map<Imaging::Interpolation::Type, std::filesystem::path> testOutputs = {
+    {Imaging::Interpolation::Type::Nearest, "Nearest"},
+    {Imaging::Interpolation::Type::Cubic, "Cubic"},
+    {Imaging::Interpolation::Type::Area, "Area"}
   };
 
   std::filesystem::path samplesInputDirPath = samplesDirPath / "Inputs";
   std::filesystem::path samplesOutputDirPath = samplesDirPath / "Outputs";
 
-  if(!std::filesystem::exists(samplesDirPath) || !std::filesystem::is_directory(samplesDirPath)){
-    Huenicorn::Logger::error("Invalid folder ", samplesInputDirPath);
+  if(!std::filesystem::is_directory(samplesInputDirPath)){
+    Core::Logger::error("Invalid folder ", samplesInputDirPath);
     return;
   }
 
-  for(const auto& entry : std::filesystem::directory_iterator(samplesInputDirPath)){
-    Huenicorn::ImageData imageData;
-    imageData.imageMatrix = cv::imread(entry.path());
+  std::filesystem::create_directory(samplesOutputDirPath);
 
-    std::filesystem::create_directory(samplesOutputDirPath);
+  for(const auto& entry : std::filesystem::directory_iterator(samplesInputDirPath)){
+    Imaging::ImageData imageData{.imageMatrix = cv::imread(entry.path().string()), .format = Imaging::PixelFormat::BGR};
 
     for(const auto& [type, interpolationOutDir] : testOutputs){
       std::filesystem::path fullpath = samplesOutputDirPath / std::filesystem::path(interpolationOutDir.string() + std::string("_") + entry.path().filename().string());
 
-      Huenicorn::ImageData outputImageData;
-      Huenicorn::ImageProcessing::rescale(imageData, outputImageData, imageData.width() / 10, type);
+      Imaging::ImageData outputImageData;
+      Imaging::ImageProcessing::rescale(imageData, outputImageData, imageData.width() / 10, type);
 
-      Huenicorn::Logger::log("Saving ", fullpath);
+      Core::Logger::log("Saving ", fullpath);
 
-      cv::imwrite(fullpath, outputImageData.imageMatrix);
+      cv::imwrite(fullpath.string(), outputImageData.imageMatrix);
     }
   }
 }
@@ -49,78 +112,75 @@ void testCrop(const std::filesystem::path& samplesDirPath)
   std::filesystem::path samplesInputDirPath = samplesDirPath / "Inputs";
   std::filesystem::path samplesOutputDirPath = samplesDirPath / "Outputs";
 
-  if(!std::filesystem::exists(samplesDirPath) || !std::filesystem::is_directory(samplesDirPath)){
-    Huenicorn::Logger::error("Invalid folder ", samplesInputDirPath);
+  if(!std::filesystem::is_directory(samplesInputDirPath)){
+    Core::Logger::error("Invalid folder ", samplesInputDirPath);
     return;
   }
 
   std::filesystem::create_directory(samplesOutputDirPath);
 
   for(const auto& entry : std::filesystem::directory_iterator(samplesInputDirPath)){
-    Huenicorn::ImageData imageData;
-    imageData.imageMatrix = cv::imread(entry.path());
+    Imaging::ImageData imageData{.imageMatrix = cv::imread(entry.path().string()), .format = Imaging::PixelFormat::BGR};
 
-    std::filesystem::path filename = entry.path().filename();
-    Huenicorn::Logger::log(filename);
+    std::filesystem::path fullpath = samplesOutputDirPath / std::filesystem::path("crop_" + entry.path().filename().string());
 
-    std::filesystem::path interpolationOutDir = "crop";
-    std::filesystem::path fullpath = samplesOutputDirPath / std::filesystem::path(interpolationOutDir.string() + std::string("_") + filename.string());
+    Imaging::ImageData outputImageData;
+    Imaging::ImageProcessing::getSubImage(imageData, outputImageData, {{0.f, 0.f}, {0.5f, 0.5f}});
 
-    Huenicorn::ImageData outputImageData;
-    Huenicorn::ImageProcessing::getSubImage(imageData, outputImageData, glm::vec2(0, 0), glm::vec2(imageData.width() / 2, imageData.height() / 2));
+    Core::Logger::log("Saving ", fullpath);
 
-    Huenicorn::Logger::log(fullpath);
-
-    cv::imwrite(fullpath, outputImageData.imageMatrix);
+    cv::imwrite(fullpath.string(), outputImageData.imageMatrix);
   }
 }
 
 
 void testPerf(const std::filesystem::path& samplesDirPath)
 {
-  Huenicorn::ImageData imageData;
-
   std::filesystem::path samplesInputDirPath = samplesDirPath / "Inputs";
 
-  const auto& entry = std::filesystem::directory_iterator(samplesInputDirPath);
+  auto entry = std::filesystem::directory_iterator(samplesInputDirPath);
+  if(entry == std::filesystem::directory_iterator()){
+    return;
+  }
 
-  imageData.imageMatrix = cv::imread(entry->path(), cv::ImreadModes::IMREAD_COLOR_RGB);
+  Imaging::ImageData imageData{.imageMatrix = cv::imread(entry->path().string()), .format = Imaging::PixelFormat::BGR};
 
-  Huenicorn::Timing::TimePoint start = Huenicorn::Timing::ClockType::now();
-  Huenicorn::Timing::TimePoint now = Huenicorn::Timing::ClockType::now();
+  Timing::TimePoint start = Timing::ClockType::now();
+  Timing::TimePoint now = start;
   int i = 0;
   while(std::chrono::duration_cast<std::chrono::seconds>(now - start).count() < 3){
-    Huenicorn::ImageData resampledImage;
-    
-    Huenicorn::ImageProcessing::rescale(imageData, resampledImage, imageData.width() / 10, Huenicorn::Interpolation::Type::Area); // 335 in 3 seconds (much better)
-    //Huenicorn::ImageProcessing::rescale(imageData, resampledImage, imageData.width() / 10, Huenicorn::Interpolation::Type::Nearest); // 7472 in 3 seconds (Hahaha)
-    //Huenicorn::ImageProcessing::rescale(imageData, resampledImage, imageData.width() / 10, Huenicorn::Interpolation::Type::Cubic); // 1490 in 3 seconds
+    Imaging::ImageData resampledImage;
+    Imaging::ImageProcessing::rescale(imageData, resampledImage, imageData.width() / 10, Imaging::Interpolation::Type::Area);
 
+    Imaging::ImageData croppedImage;
+    Imaging::ImageProcessing::getSubImage(resampledImage, croppedImage, {{0.f, 0.f}, {0.05f, 0.05f}});
 
-    Huenicorn::ImageData croppedImage;
-    Huenicorn::ImageProcessing::getSubImage(imageData, croppedImage, glm::vec2(0, 0), glm::vec2(imageData.width() / 20, imageData.height() / 20)); // 14054708 in 3 seconds
-
-    now = Huenicorn::Timing::ClockType::now();
+    now = Timing::ClockType::now();
     i++;
   }
 
-  Huenicorn::Logger::log(i);
+  Core::Logger::log(i, " iterations in 3 seconds");
 }
 
 
 int main(int argc, char* argv[])
 {
-  if(argc < 2){
-    Huenicorn::Logger::error("Please provide path to images");
-    return 0;
+  int failures = testColorOrder() + testRescaleBounds();
+
+  // Optional sample based tests, writing their outputs next to the inputs
+  if(argc >= 2){
+    std::filesystem::path samplesDirPath(argv[1]);
+
+    testResize(samplesDirPath);
+    testCrop(samplesDirPath);
+    testPerf(samplesDirPath);
   }
 
-  std::filesystem::path samplesDirPath(argv[1]);
+  if(failures > 0){
+    Core::Logger::error(failures, " test(s) failed");
+    return 1;
+  }
 
-  testResize(samplesDirPath);
-  testCrop(samplesDirPath);
-
-  testPerf(samplesDirPath);
-
+  Core::Logger::log("All tests passed");
   return 0;
 }

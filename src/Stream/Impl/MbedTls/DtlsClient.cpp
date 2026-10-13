@@ -1,10 +1,18 @@
 #include <Huenicorn/Stream/DtlsClient.hpp>
 
 #include <memory>
-#include <stdexcept>
 
 
-#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClientImpl.hpp>
+#include <mbedtls/version.h>
+
+#if MBEDTLS_VERSION_MAJOR >= 4
+#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClient4Impl.hpp>
+#elif MBEDTLS_VERSION_MAJOR == 3
+#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClient3Impl.hpp>
+#else
+#error Unsupported Mbed TLS version
+#endif
+
 
 #include <Huenicorn/Core/Logger.hpp>
 

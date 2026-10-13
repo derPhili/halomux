@@ -79,8 +79,8 @@ namespace Huenicorn::Grabber
       XShmData(
         Display* display,
         int screenId,
-        int width,
-        int height
+        unsigned width,
+        unsigned height
       );
 
       ~XShmData();

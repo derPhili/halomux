@@ -1,7 +1,10 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <future>
+
+#include <glm/common.hpp>
 
 #include <Huenicorn/Grabber/DummyGrabber.hpp>
 #include <Huenicorn/Network/Http/Client/Client.hpp>
@@ -47,12 +50,16 @@ namespace Huenicorn::Core
 
   void Runtime::start()
   {
-    if(!m_coreService->ensureInitialSetup()){
+    if(!m_coreService->ensureInitialSetup() || !m_keepLooping){
       return;
     }
 
     if(!_initGrabber()){
       Logger::error("Could not start any grabber");
+      return;
+    }
+
+    if(!m_keepLooping){
       return;
     }
 
@@ -67,7 +74,14 @@ namespace Huenicorn::Core
     }
 
     bool spawnBrowser = (!m_coreService->getProfile().has_value() && !m_openedSetup);
-    _initWebUI(spawnBrowser);
+    // Created before the web UI, which can change its interval
+    m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
+
+    if(!_initWebUI(spawnBrowser)){
+      Logger::error("Could not start the web UI on ", m_config.boundBackendIP(), ":", m_config.restServerPort(), ". Is the port already in use?");
+      _shutdown();
+      return;
+    }
 
     _startStreamingLoop();
   }
@@ -76,6 +90,7 @@ namespace Huenicorn::Core
   void Runtime::stop()
   {
     m_keepLooping = false;
+    m_coreService->abortInitialSetup();
   }
 
 
@@ -83,7 +98,10 @@ namespace Huenicorn::Core
   bool Runtime::_initSettings()
   {
     if(m_config.refreshRate() == 0){
-      m_config.setRefreshRate(m_grabber->displayRefreshRate());
+      // The bridge forwards colors to the lights at about 25 Hz, Philips recommends streaming
+      // at 50-60 Hz. Following a high refresh rate display would only waste resources.
+      static constexpr unsigned DefaultMaxRefreshRate = 60;
+      m_config.setRefreshRate(std::min(m_grabber->displayRefreshRate(), DefaultMaxRefreshRate));
     }
 
     if(m_config.subsampleWidth() == 0){
@@ -91,22 +109,22 @@ namespace Huenicorn::Core
       float percentThreshold = 1.0;
       auto subsampleCandidates = m_grabber->subsampleResolutionCandidates();
 
-      unsigned bestSubsampleWidth = subsampleCandidates.back().x;
-      for(int i = subsampleCandidates.size(); i--;){
-        unsigned candidate = subsampleCandidates.at(i).x;
+      auto bestSubsampleWidth = subsampleCandidates.back().x;
+      for(auto i = subsampleCandidates.size(); i--;){
+        auto candidate = subsampleCandidates.at(i).x;
 
-        if((static_cast<float>(candidate) / displayResolution.x) * 100 >= percentThreshold){
+        if((static_cast<float>(candidate) / static_cast<float>(displayResolution.x)) * 100 >= percentThreshold){
           bestSubsampleWidth = candidate;
           break;
         }
       }
 
-      m_config.setSubsampleWidth(bestSubsampleWidth);
+      m_config.setSubsampleWidth(static_cast<unsigned>(bestSubsampleWidth));
     }
 
     const float warningThreshold = 50.0;
 
-    float ratio = static_cast<float>(m_config.subsampleWidth()) / m_grabber->displayResolution().x;
+    float ratio = static_cast<float>(m_config.subsampleWidth()) / static_cast<float>(m_grabber->displayResolution().x);
 
     if(ratio >= warningThreshold / 100){
       Logger::warn("Subsample width is >= ", warningThreshold, "% of the display resolution. Color computation might be intensive.");
@@ -138,25 +156,27 @@ namespace Huenicorn::Core
   bool Runtime::_initGrabber()
   {
     m_grabber = Platform::adapter.getGrabber(&m_config);
-    return true;
+    return m_grabber != nullptr;
   }
 
 
-  void Runtime::_initWebUI(
+  bool Runtime::_initWebUI(
     bool spawnBrowser
   )
   {
     std::promise<bool> readyWebUIPromise;
     auto readyWebUIFuture = readyWebUIPromise.get_future();
 
-    unsigned restServerPort = m_config.restServerPort();
+    auto restServerPort = m_config.restServerPort();
     const std::string& boundBackendIP = m_config.boundBackendIP();
     m_webUIService.thread = std::jthread([&server = m_webUIService.server, restServerPort, boundBackendIP, &readyWebUIPromise, this](){
       server.emplace(m_coreService.get());
       server->start(restServerPort, boundBackendIP, std::move(readyWebUIPromise));
     });
 
-    readyWebUIFuture.wait();
+    if(!readyWebUIFuture.get()){
+      return false;
+    }
 
     if(spawnBrowser){
       std::stringstream serviceUrlStream;
@@ -166,6 +186,8 @@ namespace Huenicorn::Core
 
       Platform::adapter.openWebBrowser(serviceURL);
     }
+
+    return true;
   }
 
 
@@ -203,49 +225,56 @@ namespace Huenicorn::Core
       }
     }
 
+    std::lock_guard lock(m_channelsMutex);
     m_channels = std::move(channels);
-    _updateStreamChannelsSize();
+    m_channelStreams.clear();
   }
 
 
-  void Runtime::_enableEntertainmentConfiguration(
+  bool Runtime::_enableEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )
   {
     if(!m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return;
+      return false;
     }
 
     const auto& credentials = m_config.credentials().value();
 
+    // The DTLS handshake can take seconds: perform it before taking the lock the streaming loop waits on
+    auto streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
+    streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
+
     {
       std::lock_guard lock(m_streamerMutex);
-      m_streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
-      m_streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
+      m_streamer = std::move(streamer);
     }
 
-    auto pp = m_coreService->profilePath();
     Serialization::Json jsonChannels = Serialization::Json::object();
 
-    if(std::filesystem::is_regular_file(pp)){
-      Serialization::Json jsonProfile = Serialization::Json::parse(std::ifstream(pp));
-      if(jsonProfile.contains("channels")){
-        jsonChannels = jsonProfile.at("channels");
-      }
+    auto optJsonProfile = m_coreService->getProfile();
+    if(optJsonProfile.has_value() && optJsonProfile->contains("channels")){
+      jsonChannels = optJsonProfile->at("channels");
     }
 
     _initChannels(jsonChannels);
+
+    return true;
   }
 
 
   void Runtime::_startStreamingLoop()
   {
-    m_loopRegulator = std::make_unique<Timing::LoopRegulator>(Timing::fromHertz(m_config.refreshRate()));
     m_loopRegulator->start();
 
-    m_keepLooping = true;
     while(m_keepLooping){
-      _update();
+      try{
+        _update();
+      }
+      catch(const std::exception& e){
+        // An exception escaping this thread would terminate the whole application
+        Logger::error("Failed to update channels: ", e.what());
+      }
 
       if(!m_loopRegulator->sync()){
         const auto& lastExcess = m_loopRegulator->lastExcess();
@@ -269,39 +298,74 @@ namespace Huenicorn::Core
       return;
     }
 
-    Imaging::ImageData subframeImageData;
+    Imaging::ImageData source = m_frameData;
 
-    const auto subsampleWidth = m_config.subsampleWidth();
+    const auto subsampleWidth = static_cast<int>(m_config.subsampleWidth());
 
-    if(!m_frameData.isSubsampled){
-      Imaging::ImageProcessing::rescale(m_frameData, subframeImageData, subsampleWidth, m_config.interpolation());
+    if(m_frameData.width() > subsampleWidth){
+      Imaging::ImageData resized;
+      Imaging::ImageProcessing::rescale(m_frameData, resized, subsampleWidth, m_config.interpolation());
+
+      if(resized.hasData()){
+        source = std::move(resized);
+      }
     }
 
-    if(m_frameData.format == Imaging::PixelFormat::RGBA){
-      Imaging::ImageProcessing::rgbaToRgb(subframeImageData, subframeImageData);
-    }
+    Imaging::ImageProcessing::toBgr(source, source);
+
+    std::lock_guard channelsLock(m_channelsMutex);
 
     for(auto& [channelId, channel] : m_channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
         continue;
       }
 
-      auto& channelStream = m_channelStreams.at(channelId);
+      // Streams are only created once a channel has been active, so channels
+      // that were never enabled are left untouched on the bridge. Shut down
+      // channels keep being streamed as black.
+      auto streamIt = std::find_if(m_channelStreams.begin(), m_channelStreams.end(), [channelId](const auto& stream){
+        return stream.id == channelId;
+      });
+
+      if(streamIt == m_channelStreams.end()){
+        streamIt = m_channelStreams.insert(m_channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
+      }
+
+      auto& channelStream = *streamIt;
 
       if(channel.state == Hue::Api::Channel::State::PendingShutdown){
         channelStream.id = channelId;
         channelStream.r = 0;
         channelStream.g = 0;
         channelStream.b = 0;
+        channel.hasPreviousXyb = false;
         channel.acknowledgeShutdown();
       }
       else{
         Imaging::ImageData crop;
-        Imaging::ImageProcessing::getSubImage(subframeImageData, crop, channel.uvs);
+        Imaging::ImageProcessing::getSubImage(source, crop, channel.uvs);
         auto color = Imaging::ImageProcessing::getDominantColor(crop);
 
+        glm::vec3 correctedColor;
+        /*/
         glm::vec3 normalized = color.toNormalized();
         glm::vec3 correctedColor = glm::pow(normalized, glm::vec3(channel.gammaExponent()));
+        /*/
+        glm::vec3 xybColor = color.toXYB();
+
+        // Ease toward the newly measured color instead of snapping to it, so
+        // fast-changing content doesn't produce an abrupt strobe-like cut.
+        // transitionSmoothing == 0 reproduces the previous (instant) behavior.
+        float smoothing = m_config.transitionSmoothing();
+        if(channel.hasPreviousXyb && smoothing > 0.f){
+          xybColor = glm::mix(channel.previousXyb, xybColor, 1.f - smoothing);
+        }
+        channel.previousXyb = xybColor;
+        channel.hasPreviousXyb = true;
+
+        xybColor.z = glm::pow(xybColor.z, channel.gammaExponent());
+        correctedColor = xybColor;
+        //*/
 
         channelStream.id = channelId;
         channelStream.r = correctedColor.r;
@@ -316,17 +380,18 @@ namespace Huenicorn::Core
         m_streamer->streamChannels(m_channelStreams);
       }
     }
+
+    {
+      std::lock_guard lock(m_currentColorsMutex);
+      m_currentColorsSnapshot = m_channelStreams;
+    }
   }
 
 
   void Runtime::_shutdown()
   {
+    std::lock_guard lock(m_selectorMutex);
     m_selector->disableStreaming();
   }
 
-
-  void Runtime::_updateStreamChannelsSize()
-  {
-    m_channelStreams.resize(m_channels.size());
-  }
 }

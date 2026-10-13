@@ -74,7 +74,7 @@ namespace Huenicorn::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/channel/:channelId", [this](const Request& req, Response& res){
-      int channelId = std::stoi(req.pathParams.at("channelId"));
+      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
 
       std::string response = Json(m_coreService->channels().at(channelId)).dump();
       res.contentType = "application/json";
@@ -84,6 +84,23 @@ namespace Huenicorn::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/channels", [this](const Request& /*req*/, Response& res){
       std::string response = Json(m_coreService->channels()).dump();
+      res.contentType = "application/json";
+      res.body = response;
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Get, "/api/currentColors", [this](const Request& /*req*/, Response& res){
+      Json jsonResponse = Json::array();
+      for(const auto& channelStream : m_coreService->currentColors()){
+        jsonResponse.push_back({
+          {"channelId", channelStream.id},
+          {"r", channelStream.r},
+          {"g", channelStream.g},
+          {"b", channelStream.b}
+        });
+      }
+
+      std::string response = jsonResponse.dump();
       res.contentType = "application/json";
       res.body = response;
     });
@@ -106,7 +123,8 @@ namespace Huenicorn::Network::Http::Server
         {"subsampleWidth", m_coreService->subsampleWidth()},
         {"subsampleResolutionCandidates", jsonSubsampleCandidates},
         {"selectedRefreshRate", m_coreService->refreshRate()},
-        {"maxRefreshRate", m_coreService->maxRefreshRate()}
+        {"maxRefreshRate", m_coreService->maxRefreshRate()},
+        {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()}
       };
 
       std::string response = jsonDisplayInfo.dump();
@@ -155,7 +173,7 @@ namespace Huenicorn::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelUV/:channelId", [this](const Request& req, Response& res){
-      int channelId = std::stoi(req.pathParams.at("channelId"));
+      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
 
       const std::string& data = req.body;
       Json jsonUV = Json::parse(data);
@@ -164,7 +182,16 @@ namespace Huenicorn::Network::Http::Server
       float y = jsonUV.at("y");
       Imaging::UVCorner uvCorner = static_cast<Imaging::UVCorner>(jsonUV.at("type").get<int>());
 
-      const auto& clampedUVs = m_coreService->setChannelUV(channelId, {x, y}, uvCorner);
+      auto optClampedUVs = m_coreService->setChannelUV(channelId, {x, y}, uvCorner);
+
+      if(!optClampedUVs.has_value()){
+        res.status = 404;
+        res.contentType = "application/json";
+        res.body = Json{{"succeeded", false}, {"error", "invalid channel id"}}.dump();
+        return;
+      }
+
+      const auto& clampedUVs = optClampedUVs.value();
 
       // TODO : Serialize from JsonSerializer
       Json jsonResponse = {
@@ -179,7 +206,7 @@ namespace Huenicorn::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelGammaFactor/:channelId", [this](const Request& req, Response& res){
-      int channelId = std::stoi(req.pathParams.at("channelId"));
+      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
       const std::string& data = req.body;
       Json jsonGammaFactorData = Json::parse(data);
       float gammaFactor = jsonGammaFactorData.at("gammaFactor");
@@ -208,7 +235,7 @@ namespace Huenicorn::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setSubsampleWidth", [this](const Request& req, Response& res){
       const std::string& data = req.body;
-      int subsampleWidth = Json::parse(data).get<int>();
+      unsigned subsampleWidth = Json::parse(data).get<unsigned>();
       m_coreService->setSubsampleWidth(subsampleWidth);
 
       glm::ivec2 displayResolution = m_coreService->displayResolution();
@@ -255,9 +282,24 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setTransitionSmoothing", [this](const Request& req, Response& res){
+      const std::string& data = req.body;
+      float transitionSmoothing = Json::parse(data).get<float>();
+      m_coreService->setTransitionSmoothing(transitionSmoothing);
+
+      Json jsonTransitionSmoothing{
+        {"transitionSmoothing", m_coreService->transitionSmoothing()}
+      };
+
+      std::string response = jsonTransitionSmoothing.dump();
+      res.contentType = "application/json";
+      res.body = response;
+    });
+
+
     // POST METHODS
     m_httpServer.addRoute(HttpMethod::Post, "/api/setChannelActivity/:channelId", [this](const Request& req, Response& res){
-      int channelId = std::stoi(req.pathParams.at("channelId"));
+      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
 
       const std::string& data = req.body;
       Json jsonChannelData = Json::parse(data);
@@ -293,7 +335,7 @@ namespace Huenicorn::Network::Http::Server
       m_coreService->saveProfile();
 
       Json jsonResponse = {
-        "succeeded", true
+        {"succeeded", true}
       };
 
       std::string response = jsonResponse.dump();

@@ -1,75 +1,69 @@
 # Huenicorn
 
-A free Philips Hue™ screen synchronizer for Gnu/Linux
+Ein freier Bildschirm-Synchronisierer für Philips Hue™ unter GNU/Linux
 
 <p align="center">
   <img src="assets/logo.svg" alt="Logo" width="256" height="256">
 </p>
 
-## Description
+## Beschreibung
 
-Huenicorn is a free ambilight driver for Gnu/Linux.
-In other words, Huenicorn allows you to extend the colorful atmosphere of your computer screen to your Hue light bulbs in real-time.
-Huenicorn provides a simple web interface to assign specific portions of screen to the light bulbs you desire and save the settings for further entertainment sessions.
+Huenicorn ist ein freier Ambilight-Treiber für GNU/Linux.
+Mit anderen Worten: Huenicorn überträgt die farbige Atmosphäre deines Computerbildschirms in Echtzeit auf deine Hue-Lampen.
+Über eine einfache Weboberfläche weist du einzelnen Lampen bestimmte Bildschirmbereiche zu und speicherst die Einstellungen für spätere Sitzungen.
 
 ### Screenshot
 
 | ![Screenshot](screenshots/HuenicornFullWebUI.png) |
 |:--:|
-| *Caption: Huenicorn Light Manager user interface* |
+| *Bildunterschrift: Oberfläche des Huenicorn Light Managers* |
 
-## Project status
+## Projektstatus
 
-Huenicorn 1.0.12 is available.
+Huenicorn 1.2.0 ist verfügbar.
 
-### This revision brings
+### Neu in dieser Version
 
-* Global architecture refactor
-  * Better abstractions/responsibilities for clearer workflow
-  * Implementations are now generalized behind PImpl
-* Less build dependencies to ease the build process
-  * Replaced Crow with cpp_httplib
-  * Asio is no longer required
-  * Specific dependencies are now fetched during the build configuration
-* Reworked grabbers
-  * Fixed Hyprland sessions
-  * Fixed errors in Pipewire Grabber (Hopefully solving problem for good)
-  * Added XinitThreads in X11Grabber
-* Better runtime checks
-  * Better checks when registering bridge address
-* Cross-Platform
-  * Build is now possible for MacOS and Windows (No grabber yet)
+- Neue Funktionen
+  - Unterstützung für Gamescope
+  - Weiche Farbübergänge (einstellbar in den erweiterten Einstellungen der Oberfläche)
 
-## Getting Started
+- Korrekturen und Verbesserungen
+  - Unterstützung für MbedTLS 4.x
+  - Aktualisierung des restoreToken korrigiert
+  - Serialisierung der Konfiguration korrigiert
+  - Busy-Loop im xdg-portal behoben
 
-* Before using Huenicorn, you need to define some entertainment area on your Hue bridge through the official application provided by Philips.
+## Erste Schritte
 
-### Requirements
+Bevor du Huenicorn verwendest, musst du über die offizielle App von Philips einen Entertainment-Bereich auf deiner Hue Bridge anlegen.
 
-* Gnu/Linux system running with graphics sessions based on X11 or Wayland
-* Philips Hue bridge with registered lamps
+### Voraussetzungen
 
-### Dependencies
+* GNU/Linux-System mit einer grafischen Sitzung unter X11 oder Wayland
+* Philips Hue Bridge mit eingebundenen Lampen
 
-* [X.Org](https://xorg.freedesktop.org) or [Wayland](https://wayland.freedesktop.org)
+### Abhängigkeiten
+
+* [X.Org](https://xorg.freedesktop.org) oder [Wayland](https://wayland.freedesktop.org)
 * [OpenCV](https://github.com/opencv/opencv)
 * [Mbed-TLS](https://github.com/Mbed-TLS/mbedtls)
 * [Curl](https://curl.se)
 
-#### Dependencies intallation
+#### Installation der Abhängigkeiten
 
 <details>
 
 <summary>ArchLinux</summary>
 
 ```bash
-# Required dependencies
+# Benötigte Abhängigkeiten
 sudo pacman -S git cmake make gcc curl opencv mbedtls
 
-# For X11 support
+# Für X11-Unterstützung
 sudo pacman -S xorg-server
 
-# For Wayland support
+# Für Wayland-Unterstützung
 sudo pacman -S wayland glib2 pipewire
 ```
 
@@ -80,15 +74,14 @@ sudo pacman -S wayland glib2 pipewire
 <summary>Fedora</summary>
 
 ```bash
-# Required dependencies
+# Benötigte Abhängigkeiten
 sudo dnf install -y git cmake gcc gcc-c++ opencv-devel curl-devel mbedtls-devel
 
-# For X11 support
+# Für X11-Unterstützung
 sudo dnf install -y libXrandr-devel
 
-# For Wayland support
+# Für Wayland-Unterstützung
 sudo dnf install -y pipewire-devel glib2-devel
-# Extract the archive and copy its content to the target directories:
 ```
 
 </details>
@@ -97,147 +90,160 @@ sudo dnf install -y pipewire-devel glib2-devel
 
 <summary>OpenSUSE Tumbleweed</summary>
 
-These dependencies needed to be installed on OpenSUSE Tumbleweed 20231011 to build and run Huenicorn:
+Diese Abhängigkeiten mussten unter OpenSUSE Tumbleweed 20231011 installiert werden, um Huenicorn zu bauen und auszuführen:
 
 ```bash
 sudo zypper install opencv-devel libopencv408 python311-jsonschema
 
-# For Wayland support
+# Für Wayland-Unterstützung
 sudo zypper install pipewire-devel glib2-devel
 
 ```
 
-Additionally you have to build Mbed-TLS from source from the links above.
-Follow the build instructions in their respective README files and copy them to the appropriate place, as some of them don't do that automatically (usually /usr/local/lib64/ for libraries (check LD_LIBRARY_PATH) or /usr/local/include/ for includes)
+Zusätzlich musst du Mbed-TLS aus den Quellen bauen (siehe Links oben).
+Folge den Bauanleitungen in den jeweiligen README-Dateien und kopiere die Ergebnisse an die passende Stelle, da das nicht immer automatisch geschieht (üblicherweise /usr/local/lib64/ für Bibliotheken (LD_LIBRARY_PATH prüfen) bzw. /usr/local/include/ für Header).
 
 </details>
 
 <details>
 
-<summary>Ubuntu 26.04 LTS and newer</summary>
+<summary>Ubuntu 26.04 LTS und neuer</summary>
 
 ```bash
-# Required dependencies
+# Benötigte Abhängigkeiten
 sudo apt-get install build-essential cmake libopencv-dev libcurl4-openssl-dev libmbedtls-dev
 
-# For X11 support
+# Für X11-Unterstützung
 sudo apt-get install libx11-dev libxext-dev libxrandr-dev
 
-# For Wayland support
+# Für Wayland-Unterstützung
 sudo apt-get install libglib2.0-dev libpipewire-0.3-dev wayland-utils
 ```
 
 </details>
 
 <details>
-<summary>Ubuntu : 22.04 - 24.04</summary>
+<summary>Ubuntu 22.04 – 24.04</summary>
 
 ```bash
-# Some Ubuntu installations may require the Universe repository
+# Manche Ubuntu-Installationen benötigen das Universe-Repository
 sudo add-apt-repository universe
 sudo apt-get update
 
-# Required dependencies
+# Benötigte Abhängigkeiten
 sudo apt-get install build-essential cmake libopencv-dev libcurl4-openssl-dev libmbedtls-dev
 
-# For X11 support
+# Für X11-Unterstützung
 sudo apt-get install libx11-dev libxext-dev libxrandr-dev
 
-# For Wayland support
+# Für Wayland-Unterstützung
 sudo apt-get install libglib2.0-dev libpipewire-0.3-dev wayland-utils
 
-# Huenicorn requires GCC/G++ 12 or newer.
-# Ubuntu 22.04 ships GCC 11 by default, so install GCC 12 or later if needed.
-# If your current version of GCC/G++ is < 12, you need to install it
+# Huenicorn benötigt GCC/G++ 12 oder neuer.
+# Ubuntu 22.04 liefert standardmäßig GCC 11 aus, installiere daher bei Bedarf GCC 12 oder neuer.
 sudo apt install gcc-12 g++-12
-# And then this command will be required instead of ```cmake ..``` in the "Building Huenicorn" chapter
+# Im Kapitel „Huenicorn bauen“ ist dann statt ```cmake ..``` dieser Befehl nötig:
 cmake -DCMAKE_C_COMPILER=gcc-12 -DCMAKE_CXX_COMPILER=g++-12 ..
 ```
 
-Versions of Ubuntu earlier than 24.04 are not officially supported. Please refer to [This post](https://gitlab.com/openjowelsofts/huenicorn/-/issues/5#note_1700387996) if you still want to give it a try.
+Ubuntu-Versionen vor 24.04 werden offiziell nicht unterstützt.
 </details>
 
-### Building Huenicorn
+<details>
+<summary>NixOS</summary>
+
+Das Repository enthält einen Nix Flake. Im Wurzelverzeichnis eines Checkouts:
 
 ```bash
-git clone https://gitlab.com/openjowelsofts/huenicorn.git
+nix run .
+```
+</details>
+
+### Huenicorn bauen
+
+```bash
+git clone http://192.168.0.250:3000/philip/huenicorn.git
 cd huenicorn
 mkdir build && cd build
+# Standardkonfiguration
 cmake ..
+# oder: ohne automatisches Nachladen fehlender Abhängigkeiten aus dem Internet (glm, nlohmann_json, httplib)
+cmake -DHUENICORN_FETCH_DEPS=OFF ..
 make
 ```
 
-The output is a standalone executable called "huenicorn".
-When running Huenicorn, make sure that the ```webroot``` directory is in the cwd (current working directory).
+Das Ergebnis ist eine eigenständige ausführbare Datei namens „huenicorn“.
 
-### Executing program
+### Programm ausführen
 
-* Run the executable named "huenicorn" in the way you prefer (Terminal if you want some text feedback)
-* Open your favorite web browser at [127.0.0.1:8215](http://127.0.0.1:8215)
-Browser will spawn automatically for the initial setup and as long as no light profile has been saved
-(Service port can be edited in configuration. Default is 8215)
+* Starte die Datei „huenicorn“ auf die Art, die dir am liebsten ist (im Terminal, wenn du Textausgaben sehen möchtest).
+* Öffne deinen Browser unter [127.0.0.1:8215](http://127.0.0.1:8215).
+  Bei der Ersteinrichtung und solange noch kein Lampenprofil gespeichert ist, öffnet sich der Browser automatisch.
+  (Der Port lässt sich in der Konfiguration ändern. Standard ist 8215.)
 
-#### Initial setup
+#### Ersteinrichtung
 
-When executed for the first time, Huenicorn spawns the setup page in your favorite browser. It consists of a step-by-step wizard to locate your Hue bridge on the network and register an user on it.
+Beim ersten Start öffnet Huenicorn die Einrichtungsseite in deinem Browser. Ein Schritt-für-Schritt-Assistent hilft dir, deine Hue Bridge im Netzwerk zu finden und einen Benutzer darauf anzulegen.
 
-Upon setup proper setup termination, Huenicorn will resume in its ordinary execution workflow.
+Nach erfolgreichem Abschluss der Einrichtung setzt Huenicorn seinen normalen Ablauf fort.
 
-The webpage can then be refreshed to reach the Light Manager interface.
+Lade die Webseite anschließend neu, um zur Oberfläche des Light Managers zu gelangen.
 
-#### Ordinary execution worflow
+#### Normaler Ablauf
 
 <details>
-  <summary>Wayland-specific step</summary>
+  <summary>Zusätzlicher Schritt unter Wayland</summary>
   <br/>
 
-  At initialization, the grabber will ask you to select some source through a screen sharing portal. Pick the desired screen and validate by clicking "Share".
+  Beim Start fordert dich der Grabber über ein Bildschirmfreigabe-Portal auf, eine Quelle auszuwählen. Wähle den gewünschten Bildschirm und bestätige mit „Teilen“ (bzw. „Share“, je nach Sprache des Desktops).
 </details>
 <br/>
 
-Huenicorn will automatically select a the suitable screen-grabber for the graphic session.
+Huenicorn wählt automatisch den passenden Screen-Grabber für die grafische Sitzung.
 
-At startup, Huenicorn will look for a saved profile and start its color streaming execution.
+Beim Start sucht Huenicorn nach einem gespeicherten Profil und beginnt mit dem Streamen der Farben.
 
-If you want to assign lights to some portions of your screen, open the web interface and drag'n'drop the available lights from the left list to the right one.
+Um Lampen bestimmten Bildschirmbereichen zuzuweisen, öffne die Weboberfläche und ziehe die verfügbaren Lampen per Drag-and-Drop aus der linken in die rechte Liste.
 
-When a synced light is selected in the list, its portion of allocated screen can be adjusted in the screen partitioning section.
+Ist eine synchronisierte Lampe in der Liste ausgewählt, kannst du ihren Bildschirmbereich im Abschnitt zur Bildschirmaufteilung anpassen.
 
-Once you are satisfied with the layout, you can save it as a profile and it will be automatically reloaded for further executions.
+Bist du mit der Aufteilung zufrieden, speichere sie als Profil. Es wird bei späteren Starts automatisch geladen.
 
-As long as no profile has been saved, light management interface will spawn automatically at startup.
+Solange kein Profil gespeichert ist, öffnet sich die Lampenverwaltung beim Start automatisch.
 
-### Configuration files
+### Konfigurationsdateien
 
-The configuration files can be found in your home directory at ~/.config/huenicorn/
-config.json contains the bridge-related configuration.
-profile.json contains the saved channels geometry for an entertainment configuration.
+Die Konfigurationsdateien liegen in deinem Home-Verzeichnis unter ~/.config/huenicorn/.
+config.json enthält die Konfiguration rund um die Bridge.
+profile.json enthält die gespeicherte Kanalaufteilung für eine Entertainment-Konfiguration.
 
-The data structure of these files is JSON.
+Beide Dateien sind im JSON-Format.
 
 #### config.json
 
-  This file contains some parameters that can be manually edited after initial setup.
+Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert werden können.
 
-* **boundBackendIP**:  (String) IP address to bind the service on
-* **bridgeAddress**:  (String) Address of the Philips Hue bridge
+* **boundBackendIP**: (String) IP-Adresse, an die der Dienst gebunden wird. Standard ist `127.0.0.1` (nur lokaler Zugriff). Mit `0.0.0.0` ist die Weboberfläche auch von anderen Geräten erreichbar – bedenke dabei, dass sie keine Authentifizierung hat
+* **bridgeAddress**: (String) Adresse der Philips Hue Bridge
 * **credentials**:
-  * **clientkey**: (String) 32 hexadecimal characters key provided by initial setup
-  * **username**: (String) Base64 or UUID username provided by initial setup
-* **interpolation**:  (Unsigned) Identifier of the desired subsample interpolation function
-  * Nearest = 0 : Cheapest. Low quality on high detail. Can cause the lights to flash
-  * Cubic = 1 : Slow and harsh (kept for test)
-  * Area = 2 : (Recommended) Smooth and respectful of overall content
-* **profile**:  (String) Name of the current user-defined light profile
-* **refreshRate**:  (Unsigned) Screen capture and light update frequency
-* **restServerPort**:  (Unsigned) Port on which the web UI must respond
-* **subsampleWidth**:  (Unsigned) Width of the treated image subsample
+  * **clientkey**: (String) Schlüssel aus 32 Hexadezimalzeichen, erzeugt bei der Ersteinrichtung
+  * **username**: (String) Benutzername (Base64 oder UUID), erzeugt bei der Ersteinrichtung
+* **interpolation**: (Unsigned) Kennung der gewünschten Interpolationsfunktion für das Subsampling
+  * Nearest = 0: Am günstigsten. Geringe Qualität bei feinen Details. Kann die Lampen flackern lassen
+  * Cubic = 1: Langsam und hart (für Tests beibehalten)
+  * Area = 2: (Empfohlen) Weich und gibt den Gesamtinhalt gut wieder
+* **profileName**: (String) Name des aktuellen, benutzerdefinierten Lampenprofils
+* **refreshRate**: (Unsigned) Frequenz von Bildschirmaufnahme und Lampenaktualisierung
+* **restoreToken**: (String) Token, um die Einstellungen der letzten Sitzung zu merken (nur Wayland)
+* **restServerPort**: (Unsigned) Port, auf dem die Weboberfläche antwortet
+* **subsampleWidth**: (Unsigned) Breite des verarbeiteten, verkleinerten Bildes
+* **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97
 
-Here is an example
+Ein Beispiel:
 
 ```json
 {
-  "boundBackendIP": "0.0.0.0",
+  "boundBackendIP": "127.0.0.1",
   "bridgeAddress": "192.168.0.10",
   "credentials": {
     "clientkey": "01234567890ABCDEF0123456789ABCDE",
@@ -246,69 +252,70 @@ Here is an example
   "interpolation": 2,
   "profileName": "profile",
   "refreshRate": 60,
+  "restoreToken": "aBcDeFgH_iJkLmNoPqRsT1",
   "restServerPort": 8215,
-  "subsampleWidth": 32
+  "subsampleWidth": 32,
+  "transitionSmoothing": 0.0
 }
 ```
 
 #### profile.json
 
-This file contains a list of channels related to an entertainment configuration.
+Diese Datei enthält die Liste der Kanäle einer Entertainment-Konfiguration.
 
-* **Channels**: (Array) List of entertainment configuration channels
-  * **active**: (Boolean) whether the channel is active or not
-  * **channelId**: (Unsigned) Index of the channel in the entertainment configuration
-  * **devices**: (Object) List of devices for the channel
-    * **id**: (String) UUID of the device
-    * **name**: (String) User-defined name of the device
-    * **id**: (String) Manufacturer-defined name of the device
-  * **gammaFactor**: (Float) Light brightness modifier
-  * **uvs**: (Object) Pair of coorinates for sub image treatment
-    * **uvA**: (Object) Top-left corner coordinate
-      * **x**: (Float) x coordinate
-      * **y**: (Float) y coordinate
-    * **uvB**: (Object) Bottom-right corner coordinate
-      * **x**: (Float) x coordinate
-      * **y**: (Float) y coordinate
-* **entertainmentConfigurationId**: (String) UUID of the related entertainment configuration
+* **channels**: (Array) Liste der Kanäle der Entertainment-Konfiguration
+  * **active**: (Boolean) Ob der Kanal aktiv ist
+  * **channelId**: (Unsigned) Index des Kanals in der Entertainment-Konfiguration
+  * **devices**: (Array) Liste der Geräte des Kanals
+    * **id**: (String) UUID des Geräts
+    * **name**: (String) Vom Benutzer vergebener Name des Geräts
+  * **gammaFactor**: (Float) Helligkeitskorrektur der Lampe
+  * **uvs**: (Object) Koordinatenpaar des verarbeiteten Bildausschnitts
+    * **uvA**: (Object) Koordinate der oberen linken Ecke
+      * **x**: (Float) x-Koordinate
+      * **y**: (Float) y-Koordinate
+    * **uvB**: (Object) Koordinate der unteren rechten Ecke
+      * **x**: (Float) x-Koordinate
+      * **y**: (Float) y-Koordinate
+* **entertainmentConfigurationId**: (String) UUID der zugehörigen Entertainment-Konfiguration
 
-#### Shutting down
+#### Beenden
 
-Huenicorn can be shut down through the web interface or by sending a termination signal.
+Huenicorn lässt sich über die Weboberfläche oder durch ein Beenden-Signal (z. B. Strg+C oder SIGTERM) beenden.
 
-## Troubleshooting
+## Fehlerbehebung
 
-### I can't see/select any entertainment area from the web interface
+### In der Weboberfläche sehe ich keine Entertainment-Bereiche bzw. kann keinen auswählen
 
-This can happens if the credentials are invalidated for various reasons and can usually be fixed following these steps:
+Das passiert, wenn die Zugangsdaten aus irgendeinem Grund ungültig geworden sind. Meist hilft Folgendes:
 
-* Shutdown Huenicorn if running
-* Remove (or rename) the ```~/.config/huenicorn/config.json``` file
-* Restart Huenicorn
-* Redo the initial setup and at the credentials step, press the "I don't have credentials yet" button
-* Follow the instructions involving pressing the bridge's physical button and finish the setup
+* Huenicorn beenden, falls es läuft
+* Die Datei ```~/.config/huenicorn/config.json``` löschen (oder umbenennen)
+* Huenicorn neu starten
+* Die Ersteinrichtung erneut durchlaufen und beim Schritt zu den Zugangsdaten auf die Schaltfläche „I don't have credentials yet“ klicken (die Oberfläche ist englisch)
+* Den Anweisungen folgen (dazu gehört das Drücken der Taste auf der Bridge) und die Einrichtung abschließen
 
-Huenicorn should now be able to properly list Entertainment Areas and stream colors
+Danach sollte Huenicorn die Entertainment-Bereiche wieder anzeigen und Farben streamen.
 
-### My lights display raibow shift instead of my screen color
+### Meine Lampen zeigen einen Regenbogen-Verlauf statt der Bildschirmfarben
 
-#### Reason
+#### Ursache
 
-Huenicorn could not load any Grabber for the desktop session. It then loads the "Dummy grabber" to still allow access to the management panel and ensure bridge communication.
+Huenicorn konnte keinen Grabber für die Desktop-Sitzung laden. Es lädt dann den „Dummy-Grabber“, damit die Verwaltungsoberfläche trotzdem erreichbar ist und die Kommunikation mit der Bridge funktioniert.
 
-#### Solution
+#### Lösung
 
-Check missing dependencies for the running session type
+Prüfe, ob Abhängigkeiten für deinen Sitzungstyp fehlen.
 
-If you are unsure of the current session type, enter the following command:
+Falls du den aktuellen Sitzungstyp nicht kennst, gib folgenden Befehl ein:
 
 ```bash
 echo $XDG_SESSION_TYPE
 ```
 
-Then refer to the dependencies installation section for your distro.
+Sieh dann im Abschnitt zur Installation der Abhängigkeiten für deine Distribution nach.
 
-The CMake output tells which Grabber is available for build:
+Die Ausgabe von CMake zeigt, welche Grabber gebaut werden können:
 
 ```cmake
 cmake ..
@@ -318,86 +325,98 @@ cmake ..
 ...
 ```
 
-Wayland requires the ```Pipewire``` Grabber.
+Wayland benötigt den ```Pipewire```-Grabber.
 
-### Crash after screen selection on Wayland session
+### Unter Wayland erscheint das Portal zur Bildschirmauswahl nicht mehr, ich möchte die Auswahl aber ändern
 
-There is a known bug affecting Huenicorn depending on build parameters. This problem was "half-solved" since 1.0.9 but can somehow persist under certain circumstances.
+1. Huenicorn beenden, falls es läuft
+2. Die Datei `~/.config/huenicorn/config.json` öffnen und die Zeile mit `restoreToken` entfernen
+3. Huenicorn starten
+4. Das Portal zur Bildschirmauswahl erscheint wieder
 
-Huenicorn can then be rebuilt with different optimisation flags to hopefully end with a functional result.
+### Absturz nach der Bildschirmauswahl unter Wayland
 
-Clear the content of the ```build``` directory (if it exists).
+Es gibt einen bekannten Fehler, der je nach Build-Parametern auftritt. Seit 1.0.9 ist er „halb gelöst“, kann unter bestimmten Umständen aber weiterhin auftreten.
 
-Reconfigure the project with the following line instead of ~~```cmake ..```~~
+Dann kann es helfen, Huenicorn mit anderen Optimierungsoptionen neu zu bauen.
 
+Leere den Inhalt des Verzeichnisses ```build``` (falls vorhanden).
+
+Konfiguriere das Projekt mit folgender Zeile statt ~~```cmake ..```~~ neu:
 
 ```bash
 cmake -DCMAKE_BUILD_TYPE=<CMakeBuildType> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ ..
 make
 ```
 
-```<CMakeBuildType>``` has to be replaced with one of the values below:
+```<CMakeBuildType>``` muss durch einen dieser Werte ersetzt werden:
 
 * Release
 * MinSizeRel
 * Debug
 * RelWithDebInfo
 
-Then try running Huenicorn again to see if it can now go beyond screen selection.
+Starte Huenicorn dann erneut und prüfe, ob es nun über die Bildschirmauswahl hinauskommt.
 
-### Huenicorn still crashes immediately
+### Huenicorn stürzt weiterhin sofort ab
 
-Check the ```~/.config/huenicorn/config.json``` file and check the following properties:
+Prüfe in der Datei ```~/.config/huenicorn/config.json``` folgende Werte:
 
-```subsampleWidth``` : Must be higher than 0 and a divisor of your screen resolution.
-```refreshRate``` : Must be between 1 and your screen refresh rate
+* ```subsampleWidth```: Muss größer als 0 und ein Teiler deiner Bildschirmauflösung sein.
+* ```refreshRate```: Muss zwischen 1 und der Bildwiederholrate deines Bildschirms liegen.
 
 ## Website
 
-Additionnal information and news can be found on [Huenicorn.org](http://huenicorn.org), the official website of the project.
+Weitere Informationen und Neuigkeiten zum ursprünglichen Projekt gibt es auf [Huenicorn.org](http://huenicorn.org), der offiziellen Website.
 
-## Version history
+## Versionsgeschichte
 
-* 1.0.12 (latest)
-  * Global refactor for less dependencies and clearer workflow
+* 1.2.0 (aktuell)
+  * Unterstützung für Gamescope, weiche Farbübergänge, Unterstützung für MbedTLS 4.0
+* 1.1.0
+  * Bessere Helligkeit/Sättigung der Farben, Unterstützung der Bridge Pro, automatische Bildschirmauswahl unter Wayland
+* 1.0.12
+  * Umfassendes Refactoring für weniger Abhängigkeiten und einen klareren Ablauf
 * 1.0.11
-  * Embed webroot into binary, handle multiple bridges at setup
+  * Webroot in die ausführbare Datei eingebettet, mehrere Bridges bei der Einrichtung
 * 1.0.10
-  * Change default port, fix color computation, fix some minor bugs
+  * Standardport geändert, Farbberechnung korrigiert, kleinere Fehler behoben
 * 1.0.9
-  * Small step forward for fixing wayland crash
+  * Kleiner Schritt zur Behebung des Absturzes unter Wayland
 * 1.0.8
-  * Global code restructuration and logo integration
+  * Umfassende Umstrukturierung des Codes und Einbindung des Logos
 * 1.0.7
-  * Bug fixes for Wayland sessions
+  * Fehlerbehebungen für Wayland-Sitzungen
 * 1.0.6
-  * Library replacements and better compiler support
+  * Bibliotheken ersetzt und bessere Compiler-Unterstützung
 * 1.0.5
-  * Add choice between subsampling interpolations in Web UI's advanced settings
+  * Auswahl der Subsampling-Interpolation in den erweiterten Einstellungen der Weboberfläche
 * 1.0.4
-  * Add support for Wayland graphic sessions
+  * Unterstützung für Wayland-Sitzungen
 * 1.0.3
-  * Move to Mbed-TLS 3.4
+  * Umstieg auf Mbed-TLS 3.4
 * 1.0.2
-  * Performance improvement
+  * Leistungsverbesserung
 * 1.0.1
-  * Better reliability and documentation
+  * Höhere Zuverlässigkeit und bessere Dokumentation
 * 1.0.0
-  * First stable release
+  * Erste stabile Version
 * 0.0.0 (Legacy)
-  * Initial (slow) implementation using Hue HTTP API
+  * Erste (langsame) Implementierung über die HTTP-API von Hue
 
-## Authors
+## Autoren
 
-OpenJowel
+OpenJowel (ursprünglicher Autor)
 
-## License
+Dieses Repository ist ein privater Fork von Huenicorn und wird auf einer lokalen Forgejo-Instanz gepflegt.
 
-Huenicorn is licensed under the GNU GPLv3 License. See the [LICENSE.txt](LICENSE.txt) file for details.
+## Lizenz
 
-## Acknowledgments
+Huenicorn steht unter der GNU GPLv3. Details findest du in der Datei [LICENSE.txt](LICENSE.txt).
+
+## Danksagungen
 
 * [XDG portal screencast](https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c)
-* [Pipewire documentation](https://docs.pipewire.org/page_tutorial5.html)
-* [RGB D65 conversion](https://gist.github.com/popcorn245/30afa0f98eea1c2fd34d)
+* [Pipewire-Dokumentation](https://docs.pipewire.org/page_tutorial5.html)
+* [RGB-D65-Umrechnung](https://gist.github.com/popcorn245/30afa0f98eea1c2fd34d)
 * [Huestacean](https://github.com/BradyBrenot/huestacean)

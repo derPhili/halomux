@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <thread>
 
 #include <Huenicorn/Core/Logger.hpp>
@@ -23,6 +24,17 @@ namespace Huenicorn::Network::Http::Server
     );
 
     ~SetupBackend(){}
+
+
+    /**
+     * @brief Aborts the setup, unblocking execute()
+     *
+     */
+    void abort()
+    {
+      m_setupCompleted = false;
+      m_httpServer.stop();
+    }
 
 
     bool execute(
@@ -52,6 +64,6 @@ namespace Huenicorn::Network::Http::Server
   private:
     Huenicorn::Core::CoreService* m_coreService;
     HttpServer m_httpServer;
-    bool m_setupCompleted{false};
+    std::atomic<bool> m_setupCompleted{false};
   };
 }

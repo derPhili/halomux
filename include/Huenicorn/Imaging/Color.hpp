@@ -18,6 +18,8 @@ namespace Huenicorn::Imaging
     using ChannelDepth = uint8_t;
     static constexpr float Max = static_cast<float>(std::numeric_limits<ChannelDepth>().max());
 
+    inline static constexpr glm::vec3 XYBBlack{0.315f, 0.3312f, 0.f};
+
     using GamutCoordinates = std::array<glm::vec2, 3>;
 
     /**
@@ -85,8 +87,8 @@ namespace Huenicorn::Imaging
      * @param gamutCoordinates Boundaries of the gammut
      * @return glm::vec2 XY color coordinates
      */
-    glm::vec2 toXY(
-      const GamutCoordinates& gamutCoordinates
+    glm::vec3 toXYB(
+      /*const GamutCoordinates& gamutCoordinates*/
     ) const
     {
       // Following https://gist.github.com/popcorn245/30afa0f98eea1c2fd34d
@@ -110,22 +112,23 @@ namespace Huenicorn::Imaging
       float sum = X + Y + Z;
 
       // White coordinates to be neutral in case of black (skip dividing by zero)
-      glm::vec2 xy = glm::vec2(0.315f, 0.3312f);
+      glm::vec3 xyb = XYBBlack;
 
       if(sum != 0.f){
-        xy[0] = X / sum;
-        xy[1] = Y / sum;
+        xyb[0] = X / sum;
+        xyb[1] = Y / sum;
+        xyb[2] = brightness();
       }
 
       // Checking xy boundaries
-      (void)gamutCoordinates;
+      //unsigned (void)gamutCoordinates;
       /*
       if(!_xyInGamut(xy, gamutCoordinates)){
         // ToDo implement at some point
         // This cas has not been observed yet
       }
       */
-      return xy;
+      return xyb;
     }
 
 

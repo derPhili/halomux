@@ -15,8 +15,8 @@ namespace Huenicorn::Hue::Auth
     bytes.resize(hexString.size() / 2);
 
     std::stringstream converter;
-    int byte;
-    for(int i = 0; auto& b : bytes){
+    unsigned byte;
+    for(size_t i = 0; auto& b : bytes){
       converter << std::hex << hexString.substr(i, 2);
       converter >> byte;
       b = byte & 0xFF;
@@ -33,7 +33,7 @@ namespace Huenicorn::Hue::Auth
   )
   {
     std::vector<unsigned char> bytes;
-    for(unsigned char c : string){
+    for(const auto& c : string){
       bytes.push_back(static_cast<unsigned char>(c));
     }
 

@@ -23,6 +23,19 @@ namespace Huenicorn::Grabber
   using Monitors = std::vector<UniqueMonitor>;
 
 
+  class GrabberUnavailable : public std::runtime_error
+  {
+    using std::runtime_error::runtime_error;
+  };
+
+
+  class GrabberCancelled : public std::runtime_error
+  {
+  public:
+    using std::runtime_error::runtime_error;
+  };
+
+
   /**
    * @brief Abstract class to implement for screen capture
    * 

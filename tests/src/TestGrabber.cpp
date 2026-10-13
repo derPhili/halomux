@@ -2,26 +2,36 @@
 #include <thread>
 #include <chrono>
 
-#include <Huenicorn/PlatformSelector.hpp>
-#include <Huenicorn/Config.hpp>
-#include <Huenicorn/ImageData.hpp>
-#include <Huenicorn/Logger.hpp>
-#include <Huenicorn/DummyGrabber.hpp>
+#include <filesystem>
+
+#include <opencv2/imgcodecs.hpp>
+
+#include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Core/Logger.hpp>
+#include <Huenicorn/Imaging/ImageData.hpp>
+#include <Huenicorn/Platform/Selector.hpp>
+#include <Huenicorn/Timing/Definitions.hpp>
 
 using namespace Huenicorn;
+using namespace Huenicorn::Core;
 using namespace std::chrono_literals;
 
 
 void testGrabber(const std::filesystem::path& frameDirRoot)
 {
-  Config config("/tmp");
+  Config config(std::filesystem::temp_directory_path() / "huenicorn-test");
   config.setSubsampleWidth(20);
-  auto grabber = Huenicorn::adapter.getGrabber(&config);
+  auto grabber = Platform::adapter.getGrabber(&config);
+  if(!grabber){
+    Logger::error("Could not start any grabber");
+    return;
+  }
+
   Logger::log("Started ", grabber->name());
 
   {
     const auto& monitors = grabber->monitors();
-    unsigned primaryId;
+    unsigned primaryId = 0;
 
     int i = 0;
     for(const auto& monitor : monitors){
@@ -44,7 +54,7 @@ void testGrabber(const std::filesystem::path& frameDirRoot)
     Logger::error(e.what());
   }
 
-  ImageData imageData;
+  Imaging::ImageData imageData;
 
   std::filesystem::create_directory(frameDirRoot);
 
@@ -70,7 +80,7 @@ void testGrabber(const std::filesystem::path& frameDirRoot)
       std::filesystem::path filePath = frameDirRoot;
       filePath /= ("frame_" + str_i + ".png");
       Logger::log(filePath);
-      cv::imwrite(filePath, imageData.imageMatrix);
+      cv::imwrite(filePath.string(), imageData.imageMatrix);
     }
 
     //Logger::log("Update");
@@ -91,9 +101,14 @@ void testGrabber(const std::filesystem::path& frameDirRoot)
 
 void testMonitorEvents()
 {
-  Config config("/tmp");
+  Config config(std::filesystem::temp_directory_path() / "huenicorn-test");
   config.setSubsampleWidth(20);
-  auto grabber = Huenicorn::adapter.getGrabber(&config);
+  auto grabber = Platform::adapter.getGrabber(&config);
+  if(!grabber){
+    Logger::error("Could not start any grabber");
+    return;
+  }
+
   Logger::log("Started ", grabber->name());
   std::this_thread::sleep_for(20s);
 }
@@ -102,7 +117,7 @@ void testMonitorEvents()
 int main(int argc, char* argv[])
 {
   if(argc < 2){
-    Huenicorn::Logger::error("Please provide path to images");
+    Logger::error("Please provide path to images");
     return 0;
   }
 

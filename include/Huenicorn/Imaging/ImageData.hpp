@@ -15,8 +15,7 @@ namespace Huenicorn::Imaging
   struct ImageData
   {
     cv::Mat imageMatrix;
-    PixelFormat format;
-    bool isSubsampled;
+    PixelFormat format{PixelFormat::BGR};
 
     inline int width() const
     {

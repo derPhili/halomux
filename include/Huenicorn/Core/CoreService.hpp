@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include <Huenicorn/Core/Config.hpp>
 
 #include <Huenicorn/Hue/Api/EntertainmentConfiguration.hpp>
@@ -7,6 +9,11 @@
 #include <Huenicorn/Core/Config.hpp>
 #include <Huenicorn/Core/Runtime.hpp>
 
+
+namespace Huenicorn::Network::Http::Server
+{
+  class SetupBackend;
+}
 
 namespace Huenicorn::Core
 {
@@ -136,6 +143,14 @@ namespace Huenicorn::Core
     Imaging::Interpolation::Type interpolation() const;
 
 
+    /**
+     * @brief Returns the current transition smoothing factor
+     *
+     * @return float Transition smoothing factor
+     */
+    float transitionSmoothing() const;
+
+
     // Setters
     /**
      * @brief Sets the current entertainment configuration
@@ -155,9 +170,9 @@ namespace Huenicorn::Core
      * @param channelId ID of the channel to affect
      * @param uv UV coordinate to set
      * @param uvCorner Corner to affect
-     * @return const UVs& Clamped UV value
+     * @return std::optional<Imaging::UVs> Clamped UV value, empty if the channel doesn't exist
      */
-    const Imaging::UVs& setChannelUV(
+    std::optional<Imaging::UVs> setChannelUV(
       uint8_t channelId,
       Imaging::UV&& uv,
       Imaging::UVCorner uvCorner
@@ -209,6 +224,16 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Set the transition smoothing factor
+     *
+     * @param transitionSmoothing Desired smoothing amount, in [0, 100]
+     */
+    void setTransitionSmoothing(
+      float transitionSmoothing
+    );
+
+
+    /**
      * @brief Set the streaming activity of the channel referenced by ID
      * 
      * @param channelId ID of the channel to affect
@@ -225,9 +250,17 @@ namespace Huenicorn::Core
     /**
      * @brief Returns the list of the available channels
      * 
-     * @return const Channels&  Channels list
+     * @return Channels Snapshot of the channels list
      */
-    const Hue::Api::Channels& channels() const;
+    Hue::Api::Channels channels() const;
+
+
+    /**
+     * @brief Returns a snapshot of the per-channel colors currently being streamed
+     *
+     * @return Hue::Api::ChannelStreams Current channel colors snapshot
+     */
+    Hue::Api::ChannelStreams currentColors() const;
 
 
     /**
@@ -252,6 +285,13 @@ namespace Huenicorn::Core
     bool ensureInitialSetup();
 
 
+    /**
+     * @brief Aborts the initial setup if it is currently running
+     *
+     */
+    void abortInitialSetup();
+
+
     // Private getter
     /**
      * @brief Returns the path to the current profile
@@ -271,5 +311,8 @@ namespace Huenicorn::Core
   private:
     Runtime& m_runtime;
     Config& m_config;
+
+    std::mutex m_setupBackendMutex;
+    Network::Http::Server::SetupBackend* m_setupBackend{nullptr};
   };
 }

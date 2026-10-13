@@ -1,5 +1,7 @@
 #include <Huenicorn/Stream/Streamer.hpp>
 
+#include <algorithm>
+
 #include <Huenicorn/Stream/DtlsClient.hpp>
 #include <Huenicorn/Core/Logger.hpp>
 
@@ -18,12 +20,7 @@ namespace Huenicorn::Stream
       .hostname = "Hue",
       .handshakeAttempts = 4
     });
-    try{
-      m_dtlsClient->init();
-    }
-    catch(const std::exception& e){
-      Core::Logger::error(e.what());
-    }
+    _ensureConnection();
   }
 
 
@@ -35,19 +32,70 @@ namespace Huenicorn::Stream
   }
 
 
+  uint16_t Streamer::_toUint16(
+    float value
+  )
+  {
+    // Converting an out of range (or NaN) float to an integer is undefined behavior
+    if(!(value > 0.f)){
+      return 0;
+    }
+
+    return static_cast<uint16_t>(std::min(value, 1.f) * 0xffff);
+  }
+
+
+  bool Streamer::_ensureConnection()
+  {
+    if(m_dtlsClient->isConnected()){
+      return true;
+    }
+
+    // Handshakes block for up to a few seconds: don't retry on every frame
+    static constexpr auto ReconnectionInterval = std::chrono::seconds(5);
+    auto now = std::chrono::steady_clock::now();
+    if(m_lastConnectionAttempt != std::chrono::steady_clock::time_point{} && now - m_lastConnectionAttempt < ReconnectionInterval){
+      return false;
+    }
+
+    m_lastConnectionAttempt = now;
+
+    try{
+      m_dtlsClient->init();
+      m_connectionLossReported = false;
+      return true;
+    }
+    catch(const std::exception& e){
+      if(!m_connectionLossReported){
+        Core::Logger::error(e.what());
+        Core::Logger::warn("Streaming connection to the bridge is unavailable. Retrying every ", ReconnectionInterval.count(), " seconds.");
+        m_connectionLossReported = true;
+      }
+    }
+
+    return false;
+  }
+
+
   void Streamer::streamChannels(
     const Hue::Api::ChannelStreams& channels
   )
   {
-    std::vector<std::byte> requestBuffer;
+    if(!_ensureConnection()){
+      return;
+    }
+
+    // Reuse the buffer's capacity across frames
+    auto& requestBuffer = m_requestBuffer;
+    requestBuffer.clear();
     requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&m_header), reinterpret_cast<std::byte*>(&m_header) + sizeof(HuestreamHeader));
 
-    for(const auto channel : channels){
+    for(const auto& channel : channels){
       HuestreamPayload payload;
       payload.setChannelId(channel.id);
-      payload.setR(static_cast<uint16_t>(0xffff * channel.r));
-      payload.setG(static_cast<uint16_t>(0xffff * channel.g));
-      payload.setB(static_cast<uint16_t>(0xffff * channel.b));
+      payload.setR(_toUint16(channel.r));
+      payload.setG(_toUint16(channel.g));
+      payload.setB(_toUint16(channel.b));
 
       requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&payload), reinterpret_cast<std::byte*>(&payload) + sizeof(HuestreamPayload));
     }

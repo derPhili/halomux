@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <mutex>
 #include <optional>
 
 #include <Huenicorn/Imaging/Interpolation.hpp>
@@ -28,6 +29,8 @@ namespace Huenicorn::Core
       std::optional<unsigned> refreshRate{0};
       std::optional<unsigned> subsampleWidth{0};
       std::optional<Imaging::Interpolation::Type> interpolation{Imaging::Interpolation::Type::Area};
+      std::optional<float> transitionSmoothing{0.f};
+      std::optional<std::string> restoreToken;
     };
 
 
@@ -65,7 +68,7 @@ namespace Huenicorn::Core
      * 
      * @return int Registered REST port
      */
-    int restServerPort() const;
+    unsigned restServerPort() const;
 
 
     /**
@@ -122,6 +125,22 @@ namespace Huenicorn::Core
      * @return Type of current subsample interpolation
     */
     Imaging::Interpolation::Type interpolation() const;
+
+
+    /**
+     * @brief Returns the registered transition smoothing factor
+     *
+     * @return float Transition smoothing factor, in [0, 1)
+    */
+    float transitionSmoothing() const;
+
+
+    /**
+     * @brief Returns the registered restoration token for screen selection portal
+     * 
+     * @return Optional restore token string
+    */
+    const std::optional<std::string>& restoreToken() const;
 
 
     // Setters
@@ -184,6 +203,27 @@ namespace Huenicorn::Core
       Imaging::Interpolation::Type interpolation
     );
 
+
+    /**
+     * @brief Registers the transition smoothing factor
+     *
+     * @param transitionSmoothing Smoothing factor, clamped to [0, 0.97]
+    */
+    void setTransitionSmoothing(
+      float transitionSmoothing
+    );
+
+
+    /**
+     * @brief Registers the restore token for screen selection
+     * 
+     * @param std::string Token for xdg session restauration
+    */
+    void setRestoreToken(
+      const std::string& restoreToken
+    );
+
+
   private:
     // Private methods
     /**
@@ -205,6 +245,12 @@ namespace Huenicorn::Core
     // Attributes
     std::filesystem::path m_configFilePath;
     std::optional<Data> m_configData;
+
+    // Guards the runtime-tunable values (refresh rate, subsample width,
+    // interpolation, smoothing...) which are written by the web UI threads
+    // while the streaming loop reads them. Values returned by reference are
+    // only written during initial setup, before any concurrent access.
+    mutable std::mutex m_mutex;
 
     template<typename T>
     friend struct Huenicorn::Serialization::JsonSerializer;

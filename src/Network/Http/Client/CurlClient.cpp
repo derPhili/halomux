@@ -67,6 +67,11 @@ namespace Huenicorn::Network::Http::Client
     curl_easy_setopt(handle.get(), CURLOPT_CUSTOMREQUEST, method.c_str());
     curl_easy_setopt(handle.get(), CURLOPT_TIMEOUT, 1);
 
+    {
+      // Requirement for self-signed Hue bridge
+      curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYPEER, false);
+      curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYHOST, false);
+    }
 
     if(body.size() > 0){
       curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDS, body.c_str());
@@ -76,8 +81,6 @@ namespace Huenicorn::Network::Http::Client
     UniqueCurlSlist concatenatedHeaders{nullptr};
     if(!headers.empty()){
       // Disable ssl checks for the sake of getting data without trouble
-      curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYPEER, false);
-      curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYHOST, false);
 
       for(const auto& header : headers){
         std::string concat = header.first + ": " + header.second;

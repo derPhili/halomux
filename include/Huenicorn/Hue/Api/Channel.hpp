@@ -4,9 +4,12 @@
 #include <vector>
 
 #include <glm/exponential.hpp>
+#include <glm/vec3.hpp>
 
 #include <Huenicorn/Hue/Api/Device.hpp>
+#include <Huenicorn/Imaging/Color.hpp>
 #include <Huenicorn/Imaging/UV.hpp>
+
 
 namespace Huenicorn::Hue::Api
 {
@@ -66,7 +69,7 @@ namespace Huenicorn::Hue::Api
     inline float gammaExponent() const
     {
       float factor = 2.f;
-      float exponent = glm::pow(2, -gammaFactor * factor);
+      float exponent = glm::pow(2.f, -gammaFactor * factor);
       return exponent;
     }
 
@@ -103,5 +106,10 @@ namespace Huenicorn::Hue::Api
     Devices devices;
     float gammaFactor{0.0};
     Imaging::UVs uvs{};
+
+    // Transient streaming state (not persisted): last xyBrightness value sent,
+    // used to ease transitions when Config::transitionSmoothing() > 0.
+    glm::vec3 previousXyb{Imaging::Color::XYBBlack};
+    bool hasPreviousXyb{false};
   };
 }

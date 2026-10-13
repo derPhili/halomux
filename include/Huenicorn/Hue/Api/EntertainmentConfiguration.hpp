@@ -8,13 +8,6 @@
 
 namespace Huenicorn::Hue::Api
 {
-  // Type definitions
-  struct EntertainmentConfiguration;
-  using EntertainmentConfigurations = std::unordered_map<std::string, EntertainmentConfiguration>;
-  using EntertainmentConfigurationsIterator = EntertainmentConfigurations::iterator;
-  using EntertainmentConfigurationEntry = std::pair<std::string, EntertainmentConfiguration>;
-
-
   /**
    * @brief Wrapper around Hue Entertainment Configuration
    * 
@@ -25,4 +18,10 @@ namespace Huenicorn::Hue::Api
     Devices devices;
     Channels channels;
   };
+
+
+  // Type definitions
+  using EntertainmentConfigurations = std::unordered_map<std::string, EntertainmentConfiguration>;
+  using EntertainmentConfigurationsIterator = EntertainmentConfigurations::iterator;
+  using EntertainmentConfigurationEntry = std::pair<std::string, EntertainmentConfiguration>;
 }

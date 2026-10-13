@@ -1,7 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <filesystem>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 #include <Huenicorn/Core/CoreService.hpp>
@@ -97,8 +99,11 @@ namespace Huenicorn::Core
 
     /**
      * Brief Initializes the web UI
+     *
+     * @return true The web UI is listening
+     * @return false The web UI could not be started
     */
-    void _initWebUI(
+    bool _initWebUI(
       bool spawnBrowser
     );
 
@@ -117,8 +122,10 @@ namespace Huenicorn::Core
      * @brief Enables the selected entertainment configuration, recreates streamer  and loads related profile
      * 
      * @param entertainmentConfigurationId ID of the entertainment configuration to enable
+     * @return true The entertainment configuration was enabled
+     * @return false The entertainment configuration could not be selected
      */
-    void _enableEntertainmentConfiguration(
+    bool _enableEntertainmentConfiguration(
       const std::string& entertainmentConfigurationId
     );
 
@@ -144,27 +151,29 @@ namespace Huenicorn::Core
     void _shutdown();
 
 
-    /**
-     * @brief Called to match stream m_channelStreams size with m_channels
-     * 
-     */
-    void _updateStreamChannelsSize();
-
-
     // Attributes
     const std::string& m_version;
     std::filesystem::path m_configRoot;
     Core::Config m_config;
     std::unique_ptr<CoreService> m_coreService;
 
-    bool m_keepLooping;
+    std::atomic<bool> m_keepLooping{true};
     bool m_openedSetup{false};
     std::unique_ptr<Timing::LoopRegulator> m_loopRegulator;
 
     //  API structure wrapper
+    // Serializes entertainment configuration changes requested by the web UI threads
+    std::mutex m_selectorMutex;
     std::unique_ptr<Hue::Api::EntertainmentConfigurationSelector> m_selector;
+
+    // Guards m_channels and m_channelStreams, shared between the streaming loop and the web UI threads
+    mutable std::mutex m_channelsMutex;
     Hue::Api::Channels m_channels;
     Hue::Api::ChannelStreams m_channelStreams;
+
+    // Current colors snapshot, for external consumers (e.g. REST API)
+    mutable std::mutex m_currentColorsMutex;
+    Hue::Api::ChannelStreams m_currentColorsSnapshot;
 
     // Streamer
     std::mutex m_streamerMutex;

@@ -1,5 +1,6 @@
 #include <Huenicorn/Core/Config.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -43,8 +44,9 @@ namespace Huenicorn::Core
   }
 
 
-  int Config::restServerPort() const
+  unsigned Config::restServerPort() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().restServerPort.value();
   }
 
@@ -57,19 +59,35 @@ namespace Huenicorn::Core
 
   unsigned Config::refreshRate() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().refreshRate.value();
   }
 
 
   unsigned Config::subsampleWidth() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().subsampleWidth.value();
   }
 
 
   Imaging::Interpolation::Type Config::interpolation() const
   {
+    std::lock_guard lock(m_mutex);
     return m_configData.value().interpolation.value();
+  }
+
+
+  float Config::transitionSmoothing() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().transitionSmoothing.value();
+  }
+
+
+  const std::optional<std::string>& Config::restoreToken() const
+  {
+    return m_configData->restoreToken;
   }
 
 
@@ -95,6 +113,7 @@ namespace Huenicorn::Core
     const std::string& bridgeAddress
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().bridgeAddress.emplace(bridgeAddress);
     _save();
   }
@@ -104,6 +123,7 @@ namespace Huenicorn::Core
     const Hue::Auth::Credentials& credentials
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().credentials.emplace(credentials);
     _save();
   }
@@ -113,6 +133,7 @@ namespace Huenicorn::Core
     const std::string& profileName
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().profileName.emplace(profileName);
     _save();
   }
@@ -122,7 +143,8 @@ namespace Huenicorn::Core
     unsigned subsampleWidth
   )
   {
-    m_configData.value().subsampleWidth = subsampleWidth;
+    std::lock_guard lock(m_mutex);
+    m_configData.value().subsampleWidth = std::max(subsampleWidth, 1u);
     _save();
   }
 
@@ -131,6 +153,7 @@ namespace Huenicorn::Core
     unsigned refreshRate
   )
   {
+    std::lock_guard lock(m_mutex);
     if(refreshRate < 1){
       refreshRate = 1;
     }
@@ -144,7 +167,28 @@ namespace Huenicorn::Core
     Imaging::Interpolation::Type interpolation
   )
   {
+    std::lock_guard lock(m_mutex);
     m_configData.value().interpolation = interpolation;
+    _save();
+  }
+
+
+  void Config::setTransitionSmoothing(
+    float transitionSmoothing
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().transitionSmoothing = std::clamp(transitionSmoothing, 0.f, 0.97f);
+    _save();
+  }
+
+
+  void Config::setRestoreToken(
+    const std::string& restoreToken
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData->restoreToken = restoreToken;
     _save();
   }
 
@@ -153,13 +197,15 @@ namespace Huenicorn::Core
   {
     const Data defaultConfigData = {
       .restServerPort = 8215,
-      .boundBackendIP = "0.0.0.0",
-      .bridgeAddress = {},
-      .credentials = {},
-      .profileName = {},
+      .boundBackendIP = "127.0.0.1",
+      .bridgeAddress = std::nullopt,
+      .credentials = std::nullopt,
+      .profileName = std::nullopt,
       .refreshRate = 0,
       .subsampleWidth = 0,
-      .interpolation = Imaging::Interpolation::Type::Area
+      .interpolation = Imaging::Interpolation::Type::Area,
+      .transitionSmoothing = 0.f,
+      .restoreToken = std::nullopt
     };
 
     Json jsonConfig = Json::object();
@@ -169,8 +215,14 @@ namespace Huenicorn::Core
       return false;
     }
 
-    jsonConfig = Json::parse(std::ifstream(m_configFilePath));
-    m_configData = jsonConfig.get<Data>();
+    try{
+      jsonConfig = Json::parse(std::ifstream(m_configFilePath));
+      m_configData = jsonConfig.get<Data>();
+    }
+    catch(const std::exception& e){
+      // Don't overwrite the file with defaults: it holds the bridge credentials
+      throw std::runtime_error("Invalid configuration file " + m_configFilePath.string() + " (" + e.what() + "). Please fix or remove it.");
+    }
 
     bool requireSave = false;
 
@@ -209,7 +261,19 @@ namespace Huenicorn::Core
       std::filesystem::create_directories(m_configFilePath.parent_path());
     }
 
-    std::ofstream configFile(m_configFilePath);
-    configFile << Json(m_configData.value()).dump(2) << "\n";
+    // Write then rename, so an interrupted write never leaves a truncated config behind
+    std::filesystem::path tmpPath = m_configFilePath;
+    tmpPath += ".tmp";
+
+    {
+      std::ofstream configFile(tmpPath);
+      configFile << Json(m_configData.value()).dump(2) << "\n";
+      if(!configFile){
+        Logger::error("Failed to write configuration file ", tmpPath.string());
+        return;
+      }
+    }
+
+    std::filesystem::rename(tmpPath, m_configFilePath);
   }
 }

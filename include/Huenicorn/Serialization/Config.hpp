@@ -15,24 +15,44 @@ namespace Huenicorn::Serialization
       const Huenicorn::Core::Config::Data& configData
     )
     {
-      jsonConfigData = {
-        {"subsampleWidth", configData.subsampleWidth},
-        {"refreshRate", configData.refreshRate},
-        {"restServerPort", configData.restServerPort},
-        {"interpolation", configData.interpolation},
-        {"boundBackendIP", configData.boundBackendIP}
-      };
+      if(configData.subsampleWidth.has_value()){
+        jsonConfigData["subsampleWidth"] = *configData.subsampleWidth;
+      }
+
+      if(configData.refreshRate.has_value()){
+        jsonConfigData["refreshRate"] = *configData.refreshRate;
+      }
+
+      if(configData.restServerPort.has_value()){
+        jsonConfigData["restServerPort"] = *configData.restServerPort;
+      }
+
+      if(configData.interpolation.has_value()){
+        jsonConfigData["interpolation"] = *configData.interpolation;
+      }
+
+      if(configData.transitionSmoothing.has_value()){
+        jsonConfigData["transitionSmoothing"] = *configData.transitionSmoothing;
+      }
+
+      if(configData.boundBackendIP.has_value()){
+        jsonConfigData["boundBackendIP"] = *configData.boundBackendIP;
+      }
 
       if(configData.bridgeAddress.has_value()){
-        jsonConfigData["bridgeAddress"] = configData.bridgeAddress.value();
+        jsonConfigData["bridgeAddress"] = *configData.bridgeAddress;
       }
 
       if(configData.credentials.has_value()){
-        jsonConfigData["credentials"] = configData.credentials.value();
+        jsonConfigData["credentials"] = *configData.credentials;
       }
 
       if(configData.profileName.has_value()){
-        jsonConfigData["profileName"] = configData.profileName.value();
+        jsonConfigData["profileName"] = *configData.profileName;
+      }
+
+      if(configData.restoreToken.has_value()){
+        jsonConfigData["restoreToken"] = *configData.restoreToken;
       }
     }
 
@@ -72,6 +92,14 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("interpolation")){
         configData.interpolation = jsonConfigData.at("interpolation");
+      }
+
+      if(jsonConfigData.contains("transitionSmoothing")){
+        configData.transitionSmoothing = jsonConfigData.at("transitionSmoothing");
+      }
+
+      if(jsonConfigData.contains("restoreToken")){
+        configData.restoreToken = jsonConfigData.at("restoreToken");
       }
     }
   };

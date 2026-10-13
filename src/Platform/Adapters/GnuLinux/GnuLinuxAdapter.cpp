@@ -50,11 +50,24 @@ namespace Huenicorn::Platform
     Core::Config* config
   )
   {
-    std::string sessionType = std::getenv("XDG_SESSION_TYPE");
-
+    const char* sessionTypeEnv = std::getenv("XDG_SESSION_TYPE");
+    std::string sessionType = sessionTypeEnv ? sessionTypeEnv : "";
 #ifdef PIPEWIRE_GRABBER_AVAILABLE
+
+    // Gamescope (Steam Deck / Bazzite Game Mode) sets XDG_SESSION_TYPE=x11
+    // for its children (for legacy X11 game compatibility) and doesn't run
+    // an xdg-desktop-portal ScreenCast backend, so both the usual X11 grab
+    // (of the nested Xwayland root, which gamescope doesn't render games
+    // into) and the usual portal-based Wayland capture black-screen there.
+    // GAMESCOPE_WAYLAND_DISPLAY is gamescope's own marker for this and takes
+    // priority over XDG_SESSION_TYPE: capture gamescope's Pipewire node
+    // directly instead.
+    if(std::getenv("GAMESCOPE_WAYLAND_DISPLAY") != nullptr){
+      return std::make_unique<Grabber::PipewireGrabber>(config, true);
+    }
+
     if(sessionType == "wayland"){
-      return std::make_unique<Grabber::PipewireGrabber>(config);
+      return std::make_unique<Grabber::PipewireGrabber>(config, false);
     }
 #endif
 
@@ -64,6 +77,8 @@ namespace Huenicorn::Platform
     }
 #endif
 
-    return nullptr;
+    throw Grabber::GrabberUnavailable(
+      "Unsupported session type: " + sessionType
+    );
   }
 }

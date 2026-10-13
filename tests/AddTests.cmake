@@ -1,12 +1,16 @@
 message("Building tests")
 
-find_package(OpenCV REQUIRED COMPONENTS imgproc opencv_highgui)
+find_package(OpenCV REQUIRED COMPONENTS imgproc imgcodecs)
 
+enable_testing()
+
+
+# TestImageProcessing
 add_executable(TestImageProcessing
   #Huenicorn
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Interpolation.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Logger.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/Interpolation.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestImageProcessing.cpp
@@ -16,77 +20,38 @@ set_target_properties(TestImageProcessing PROPERTIES CXX_STANDARD 20)
 
 target_include_directories(TestImageProcessing PUBLIC
   include
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 target_link_libraries(TestImageProcessing PUBLIC
   ${OpenCV_LIBS}
+  glm::glm
 )
 
+# Without arguments, only the self-checking tests run
+add_test(NAME ImageProcessing COMMAND TestImageProcessing)
 
-# TestGrabber
+
+# TestGrabber (manual: needs a graphical session)
+# Reuses every application source but the entry point
+get_target_property(HUENICORN_SOURCES huenicorn SOURCES)
+list(FILTER HUENICORN_SOURCES EXCLUDE REGEX "/src/App/")
+
 add_executable(TestGrabber
-  #Huenicorn
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Config.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Credentials.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/DummyGrabber.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Interpolation.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Logger.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/PlatformSelector.cpp
-
-  # Test
+  ${HUENICORN_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGrabber.cpp
 )
 
-target_sources(TestGrabber PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/Adapters/GnuLinux/GnuLinuxAdapter.cpp
-)
-
-
-if(UNIX AND NOT APPLE) # For Gnu/Linux
-  #include(cmake/platforms/GnuLinux.cmake) # Already included from main CMakeLists.txt
-  if(X11_GRABBER_AVAILABLE)
-    target_compile_definitions(TestGrabber PUBLIC X11_GRABBER_AVAILABLE=1)
-    target_sources(TestGrabber PRIVATE
-      ${X11_GRABBER_SOURCES}
-    )
-
-    target_link_libraries(TestGrabber PUBLIC
-      X11::X11
-      X11::Xext
-      X11::Xrandr
-    )
-  endif(X11_GRABBER_AVAILABLE)
-
-
-  if(PIPEWIRE_GRABBER_AVAILABLE)
-    target_compile_definitions(TestGrabber PUBLIC PIPEWIRE_GRABBER_AVAILABLE=1)
-    target_sources(TestGrabber PRIVATE
-      ${PIPEWIRE_GRABBER_SOURCES}
-    )
-
-    target_include_directories(TestGrabber PUBLIC
-      ${LIB_PIPEWIRE_INCLUDE_DIRS}
-      ${GIO_INCLUDE_DIRS}
-      ${GLIB_INCLUDE_DIRS}
-    )
-
-    target_link_libraries(TestGrabber PUBLIC
-      GIO::GIO
-      ${LIB_PIPEWIRE_LIBRARIES}
-      ${LIBGLIB_LIBRARIES}
-    )
-  endif(PIPEWIRE_GRABBER_AVAILABLE)
-endif()
-
+add_dependencies(TestGrabber generate_version_header generate_webroot_header)
 
 set_target_properties(TestGrabber PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(TestGrabber PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR} # For adapters and grabbers
-  include
-)
+get_target_property(HUENICORN_INCLUDE_DIRECTORIES huenicorn INCLUDE_DIRECTORIES)
+get_target_property(HUENICORN_COMPILE_DEFINITIONS huenicorn COMPILE_DEFINITIONS)
+get_target_property(HUENICORN_LINK_LIBRARIES huenicorn LINK_LIBRARIES)
 
-target_link_libraries(TestGrabber PUBLIC
-  ${OpenCV_LIBS}
-)
+target_include_directories(TestGrabber PUBLIC ${HUENICORN_INCLUDE_DIRECTORIES})
+if(HUENICORN_COMPILE_DEFINITIONS)
+  target_compile_definitions(TestGrabber PUBLIC ${HUENICORN_COMPILE_DEFINITIONS})
+endif()
+target_link_libraries(TestGrabber PUBLIC ${HUENICORN_LINK_LIBRARIES} ${OpenCV_LIBS})

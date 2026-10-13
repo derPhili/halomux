@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(Huenicorn VERSION 1.0.12)
+project(Huenicorn VERSION 1.2.0)
 
 set(BUILD_DOCUMENTATION FALSE CACHE BOOL "Build documentation")
 set(BUILD_TESTS FALSE CACHE BOOL "Build tests")
+
+option(HUENICORN_FETCH_DEPS "Download dependencies if missing" ON)
 
 include(FetchContent)
 
@@ -16,30 +18,59 @@ find_library(MBEDTLS_LIBS mbedtls REQUIRED)
 find_library(MBEDTLS_X509 mbedx509 REQUIRED)
 find_library(MBEDTLS_CRYPTO mbedcrypto REQUIRED)
 
+
 # NLohmann JSON
-FetchContent_Declare(
-  nlohmann_json
-  URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
-)
-FetchContent_MakeAvailable(nlohmann_json)
+find_package(nlohmann_json QUIET)
+if(NOT nlohmann_json_FOUND)
+  if(HUENICORN_FETCH_DEPS)
+    message(STATUS "nlohmann_json is not installed. Now fetching online...")
+    FetchContent_Declare(
+      nlohmann_json
+      URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+  else()
+    message(FATAL_ERROR "nlohmann_json is not installed and online fetch is disabled")
+  endif()
+else()
+  message(STATUS "nlohmann_json is installed.")
+endif()
 
 
 # CppHttpLip
-FetchContent_Declare(
-  cpp_httplib
-  URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.46.0.tar.gz
-)
-FetchContent_MakeAvailable(cpp_httplib)
-
+find_package(httplib QUIET)
+if(NOT httplib_FOUND)
+  if(HUENICORN_FETCH_DEPS)
+    message(STATUS "httplib is not installed. Now fetching online...")
+    FetchContent_Declare(
+      cpp_httplib
+      URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.46.0.tar.gz
+    )
+    FetchContent_MakeAvailable(cpp_httplib)
+  else()
+    message(FATAL_ERROR "httplib is not installed and online fetch is disabled")
+  endif()
+else()
+  message(STATUS "httplib is installed.")
+endif()
 
 
 # GLM
-FetchContent_Declare(
-  glm
-  GIT_REPOSITORY https://github.com/g-truc/glm.git
-  GIT_TAG 1.0.3
-)
-FetchContent_MakeAvailable(glm)
+find_package(glm QUIET)
+if(NOT glm_FOUND)
+  if(HUENICORN_FETCH_DEPS)
+    message(STATUS "glm is not installed. Now fetching online...")
+    FetchContent_Declare(
+      glm
+      URL https://github.com/g-truc/glm/archive/refs/tags/1.0.3.tar.gz
+    )
+    FetchContent_MakeAvailable(glm)
+  else()
+    message(FATAL_ERROR "glm is not installed and online fetch is disabled")
+  endif()
+else()
+  message(STATUS "glm is installed")
+endif()
 
 
 # Generate version header
@@ -54,8 +85,11 @@ configure_file(
 
 # Generate embedded webroot header
 function(embed_directory TARGET_DIR)
-  file(GLOB_RECURSE WEB_FILES "${TARGET_DIR}/*")
+  file(GLOB_RECURSE WEB_FILES CONFIGURE_DEPENDS "${TARGET_DIR}/*")
   set(CONCAT_CONTENT "")
+
+  # The embedded header is generated at configure time: re-run it whenever an embedded file changes
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${WEB_FILES})
 
   foreach(DATA_FILE ${WEB_FILES})
     get_filename_component(KEY ${DATA_FILE} NAME)
@@ -98,6 +132,7 @@ configure_file(
 )
 
 set(APP_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/App/CommandLine.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/App/main.cpp
 )
 
@@ -119,6 +154,7 @@ set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ApiTools.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeAddress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/EntertainmentConfigurationSelector.cpp
 )

@@ -1,11 +1,13 @@
 #include <Huenicorn/Hue/Api/ApiTools.hpp>
 
+#include <Huenicorn/Core/Logger.hpp>
+#include <Huenicorn/Hue/Api/BridgeAddress.hpp>
+#include <Huenicorn/Hue/Auth/Credentials.hpp>
 #include <Huenicorn/Network/Http/Client/Client.hpp>
+#include <Huenicorn/Platform/Selector.hpp>
+#include <Huenicorn/Serialization/Credentials.hpp>
 #include <Huenicorn/Serialization/Device.hpp>
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
-#include <Huenicorn/Platform/Selector.hpp>
-#include <Huenicorn/Hue/Auth/Credentials.hpp>
-#include <Huenicorn/Serialization/Credentials.hpp>
 
 
 namespace Huenicorn::Hue::Api
@@ -23,7 +25,7 @@ namespace Huenicorn::Hue::Api
       EntertainmentConfigurations entConfs;
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string entConfUrl = "https://" + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
+      std::string entConfUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
       auto entConfResponse = Network::Http::Client::sendRequest(entConfUrl, "GET", "", headers);
 
       if(entConfResponse.has_value()){
@@ -35,9 +37,15 @@ namespace Huenicorn::Hue::Api
           EntertainmentConfiguration entConf = jsonEntConf.get<EntertainmentConfiguration>();
 
           for(auto& device : entConf.devices){
-            std::string lightUrl = "https://" + bridgeAddress + "/clip/v2/resource/light/" + device.id;
+            std::string lightUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/light/" + device.id;
 
-            auto jsonLightData = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers).value().asJson();
+            auto lightResponse = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers);
+            if(!lightResponse.has_value()){
+              Core::Logger::warn("Could not load the metadata of light ", device.id);
+              continue;
+            }
+
+            auto jsonLightData = lightResponse.value().asJson();
             auto deviceId = device.id;
             device = jsonLightData.at("data").at(0).at("metadata").get<Device>();
             device.id = deviceId;
@@ -65,7 +73,7 @@ namespace Huenicorn::Hue::Api
       using namespace Network::Http::Client;
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string resourceUrl = "https://" + bridgeAddress + "/clip/v2/resource";
+      std::string resourceUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource";
       auto resourceResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers);
 
       Devices devices;
@@ -99,7 +107,7 @@ namespace Huenicorn::Hue::Api
       using namespace Network::Http::Client;
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string resourceUrl = "https://" + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
+      std::string resourceUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
 
       auto entertainmentConfigurationsResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers);
 
@@ -156,7 +164,7 @@ namespace Huenicorn::Hue::Api
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
 
-      std::string url = "https://" + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
+      std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
 
       Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers);
     }
@@ -173,7 +181,7 @@ namespace Huenicorn::Hue::Api
       std::string status;
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string url = "https://" + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
+      std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
       auto entConfResponse = Network::Http::Client::sendRequest(url, "GET", "", headers);
       if(entConfResponse.has_value()){
         status = entConfResponse.value().asJson().at("data").front().at("status");
@@ -204,6 +212,6 @@ namespace Huenicorn::Hue::Api
     std::string deviceType = "huenicorn#" + sessionUsername;
 
     Serialization::Json request = {{"devicetype", deviceType}, {"generateclientkey", true}};
-    return Network::Http::Client::sendRequest(bridgeAddress + "/api", "POST", request.dump());
+    return Network::Http::Client::sendRequest(HttpProtocol + bridgeAddress + "/api", "POST", request.dump());
   }
 }

@@ -18,22 +18,109 @@
 
 namespace Huenicorn::Grabber
 {
-  namespace XdgDesktopPortal
-  {
-    // Attributes
-    GDBusConnection* connection = NULL;
-    GDBusProxy* screencastProxy = NULL;
+  GDBusConnection* XdgDesktopPortal::m_connection = nullptr;
+  GDBusProxy* XdgDesktopPortal::m_screencastProxy = nullptr;
 
-    const std::string objectPath = "/org/freedesktop/portal/desktop";
-    const std::string busName = "org.freedesktop.portal.Desktop";
-
-
+  const std::string XdgDesktopPortal::ObjectPath = "/org/freedesktop/portal/desktop";
+  const std::string XdgDesktopPortal::BusName = "org.freedesktop.portal.Desktop";
     // Implementations
-    void ensureConnection()
+
+    void XdgDesktopPortal::createSession(
+      Capture* capture
+    )
+    {
+      StringPair requestPathAndToken = portalCreatePath(CreatePathTokenType::Request);
+      StringPair sessionPathAndToken = portalCreatePath(CreatePathTokenType::Session);
+
+      DbusCallData* call = subscribeToSignal(capture, requestPathAndToken.first.c_str(), onCreateSessionResponseReceivedCallback);
+
+      GVariantBuilder builder;
+      g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(requestPathAndToken.second.c_str()));
+      g_variant_builder_add(&builder, "{sv}", "session_handle_token", g_variant_new_string(sessionPathAndToken.second.c_str()));
+
+      g_dbus_proxy_call(getScreencastPortalProxy(), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, call);
+    }
+
+
+    bool XdgDesktopPortal::initScreencastCapture(
+      Capture* capture
+    )
+    {
+      capture->cancellable = g_cancellable_new();
+      GDBusConnection* connection = portalGetDbusConnection();
+      if(!connection){
+        return false;
+      }
+
+      GDBusProxy* proxy = getScreencastPortalProxy();
+      if(!proxy){
+        return false;
+      }
+
+      createSession(capture);
+
+      return true;
+    }
+
+
+    void XdgDesktopPortal::screencastPortalDesktopCaptureCreate(
+      Capture* capture,
+      CaptureType captureType,
+      bool cursorVisible
+    )
+    {
+      capture->captureType = captureType;
+      capture->cursorVisible = cursorVisible;
+
+      if(!initScreencastCapture(capture)){
+        Core::Logger::error("Could not reach the XDG desktop portal");
+        resolveCapture(capture, false);
+      }
+    }
+
+
+    void XdgDesktopPortal::resolveCapture(
+      Capture* capture,
+      bool succeeded
+    )
+    {
+      if(capture->fdReadyResolved){
+        return;
+      }
+
+      capture->fdReadyResolved = true;
+      capture->updateXdgContext = false;
+      capture->fdReadyPromise.set_value(succeeded);
+    }
+
+
+    void XdgDesktopPortal::screencastPortalCaptureDestroy(
+      Capture* capture
+    )
+    {
+      if(!capture){
+        return;
+      }
+
+      std::string interfaceName = "org.freedesktop.portal.Session";
+      std::string methodName = "Close";
+
+      if(capture->sessionHandle){
+        g_dbus_connection_call(portalGetDbusConnection(), BusName.c_str(), capture->sessionHandle, interfaceName.c_str(), methodName.c_str(), NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+        g_clear_pointer(&capture->sessionHandle, g_free);
+      }
+
+      g_cancellable_cancel(capture->cancellable);
+      g_clear_object(&capture->cancellable);
+    }
+
+
+    void XdgDesktopPortal::ensureConnection()
     {
       g_autoptr(GError) error = NULL;
-      if(!connection){
-        connection = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+      if(!m_connection){
+        m_connection = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
 
         if(error){
          Core::Logger::warn("error retrieving D-Bus connection: ", std::string(error->message));
@@ -43,25 +130,25 @@ namespace Huenicorn::Grabber
     }
 
 
-    std::string getSenderName()
+    std::string XdgDesktopPortal::getSenderName()
     {
       ensureConnection();
 
-      std::string senderName(strdup(g_dbus_connection_get_unique_name(connection) + 1));
+      std::string senderName(strdup(g_dbus_connection_get_unique_name(m_connection) + 1));
       std::replace_if(senderName.begin(), senderName.end(), [](char c) { return c == '.'; }, '_');
 
       return senderName;
     }
 
 
-    GDBusConnection* portalGetDbusConnection()
+    GDBusConnection* XdgDesktopPortal::portalGetDbusConnection()
     {
       ensureConnection();
-      return connection;
+      return m_connection;
     }
 
 
-    StringPair portalCreatePath(
+    XdgDesktopPortal::StringPair XdgDesktopPortal::portalCreatePath(
       CreatePathTokenType createPathTokenType
     )
     {
@@ -84,20 +171,20 @@ namespace Huenicorn::Grabber
       oss << "huenicorn";
       oss << ++count[static_cast<int>(createPathTokenType)];
       pathAndToken.second = oss.str();
-      pathAndToken.first = objectPath + '/' + type + '/' + getSenderName() + '/' + pathAndToken.second;
+      pathAndToken.first = ObjectPath + '/' + type + '/' + getSenderName() + '/' + pathAndToken.second;
 
       return pathAndToken;
     }
 
 
-    void ensureScreencastPortalProxy()
+    void XdgDesktopPortal::ensureScreencastPortalProxy()
     {
       g_autoptr(GError) error = NULL;
-      if(!screencastProxy){
+      if(!m_screencastProxy){
 
         std::string interfaceName = "org.freedesktop.portal.ScreenCast";
 
-        screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_NONE, NULL, busName.c_str(), objectPath.c_str(), interfaceName.c_str(), NULL, &error);
+        m_screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_NONE, NULL, BusName.c_str(), ObjectPath.c_str(), interfaceName.c_str(), NULL, &error);
 
         if(error){
           Core::Logger::warn("error retrieving D-Bus proxy: ", std::string(error->message));
@@ -107,64 +194,62 @@ namespace Huenicorn::Grabber
     }
 
 
-    GDBusProxy* getScreencastPortalProxy()
+    GDBusProxy* XdgDesktopPortal::getScreencastPortalProxy()
     {
       ensureScreencastPortalProxy();
-      return screencastProxy;
+      return m_screencastProxy;
     }
 
 
-    uint32_t getAvailableCursorModes()
+    uint32_t XdgDesktopPortal::getAvailableCursorModes()
     {
       ensureScreencastPortalProxy();
 
-      if(!screencastProxy){
+      if(!m_screencastProxy){
         return 0;
       }
 
-      g_autoptr(GVariant) cachedCursorModes = g_dbus_proxy_get_cached_property(screencastProxy, "AvailableCursorModes");
+      g_autoptr(GVariant) cachedCursorModes = g_dbus_proxy_get_cached_property(m_screencastProxy, "AvailableCursorModes");
       return cachedCursorModes ? g_variant_get_uint32(cachedCursorModes) : 0;
     }
 
 
-    uint32_t getScreencastVersion()
+    uint32_t XdgDesktopPortal::getScreencastVersion()
     {
       g_autoptr(GVariant) cached_version = NULL;
       uint32_t version;
 
       ensureScreencastPortalProxy();
 
-      if(!screencastProxy){
+      if(!m_screencastProxy){
         return 0;
       }
 
-      cached_version = g_dbus_proxy_get_cached_property(screencastProxy, "version");
+      cached_version = g_dbus_proxy_get_cached_property(m_screencastProxy, "version");
       version = cached_version ? g_variant_get_uint32(cached_version) : 0;
 
       return version;
     }
 
 
-    void onCancelledCallback(
-      GCancellable* cancellable,
+    void XdgDesktopPortal::onCancelledCallback(
+      GCancellable* /*cancellable*/,
       void* data
     )
     {
-      (void)cancellable;
-
       DbusCallData* call = static_cast<DbusCallData*>(data);
 
       Core::Logger::log("Request cancelled");
 
       std::string interfaceName = "org.freedesktop.portal.Request";
 
-      g_dbus_connection_call(portalGetDbusConnection(), busName.c_str(), call->requestPath.c_str(), interfaceName.c_str(), "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+      g_dbus_connection_call(portalGetDbusConnection(), BusName.c_str(), call->requestPath.c_str(), interfaceName.c_str(), "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
 
       dbusCallDataFree(call);
     }
 
 
-    DbusCallData* subscribeToSignal(
+    XdgDesktopPortal::DbusCallData* XdgDesktopPortal::subscribeToSignal(
       Capture* capture,
       const char* path,
       GDBusSignalCallback callback
@@ -175,13 +260,13 @@ namespace Huenicorn::Grabber
       call->requestPath = std::string(path);
       call->cancelledId = g_signal_connect(capture->cancellable, "cancelled", G_CALLBACK(onCancelledCallback), call);
       std::string interfaceName = "org.freedesktop.portal.Request";
-      call->signalId = g_dbus_connection_signal_subscribe(portalGetDbusConnection(), busName.c_str(), interfaceName.c_str(), "Response", call->requestPath.c_str(), NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, callback, call, NULL);
+      call->signalId = g_dbus_connection_signal_subscribe(portalGetDbusConnection(), BusName.c_str(), interfaceName.c_str(), "Response", call->requestPath.c_str(), NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, callback, call, NULL);
 
       return call;
     }
 
 
-    void dbusCallDataFree(
+    void XdgDesktopPortal::dbusCallDataFree(
       DbusCallData* call
     )
     {
@@ -201,7 +286,7 @@ namespace Huenicorn::Grabber
     }
 
 
-    void onPipewireRemoteOpenedCallback(
+    void XdgDesktopPortal::onPipewireRemoteOpenedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
@@ -217,6 +302,7 @@ namespace Huenicorn::Grabber
           Core::Logger::error("[pipewire] error retrieving pipewire fd: ", std::string(error->message));
         }
 
+        resolveCapture(capture, false);
         return;
       }
 
@@ -229,15 +315,16 @@ namespace Huenicorn::Grabber
           Core::Logger::error("[pipewire] error retrieving pipewire fd: ", std::string(error->message));
         }
 
+        resolveCapture(capture, false);
         return;
       }
 
-      capture->pwFd = pwFd;
-      capture->fdReadyPromise.set_value(true);
+      capture->pwFd = static_cast<uint32_t>(pwFd);
+      resolveCapture(capture, true);
     }
 
 
-    void openPipewireRemote(
+    void XdgDesktopPortal::openPipewireRemote(
       Capture* capture
     )
     {
@@ -248,24 +335,19 @@ namespace Huenicorn::Grabber
     }
 
 
-    void onStartResponseReceivedCallback(
-      GDBusConnection* connection,
-      const char* senderName,
-      const char* objectPath,
-      const char* interfaceName,
-      const char* signalName,
+    void XdgDesktopPortal::onStartResponseReceivedCallback(
+      GDBusConnection* /*connection*/,
+      const char* /*senderName*/,
+      const char* /*objectPath*/,
+      const char* /*interfaceName*/,
+      const char* /*signalName*/,
       GVariant* parameters,
       void* userData
     )
     {
-      (void)connection;
-      (void)senderName;
-      (void)objectPath;
-      (void)interfaceName;
-      (void)signalName;
-
       DbusCallData* call = static_cast<DbusCallData*>(userData);
       Capture* capture = call->capture;
+
       g_clear_pointer(&call, dbusCallDataFree);
 
       uint32_t response;
@@ -274,7 +356,7 @@ namespace Huenicorn::Grabber
 
       if(response != 0){
         Core::Logger::warn("Failed to start screencast, denied or cancelled by user.");
-        capture->fdReadyPromise.set_value(false);
+        resolveCapture(capture, false);
         return;
       }
 
@@ -288,13 +370,23 @@ namespace Huenicorn::Grabber
         Core::Logger::error("received more than one stream when only one was expected. this is probably a bug in the desktop portal implementation you are using.");
       }
 
+      const char* token = nullptr;
+      if(g_variant_lookup(result, "restore_token", "&s", &token)){
+        Core::Config* config = capture->config;
+
+        if(!config->restoreToken().has_value() || *config->restoreToken() != token){
+          config->setRestoreToken(token);
+          Core::Logger::log("Registered restore token: '", token, "' into config");
+        }
+      }
+
       g_autoptr(GVariant) streamProperties = NULL;
       g_variant_iter_loop(&iter, "(u@a{sv})", &capture->pwNode, &streamProperties);
       openPipewireRemote(capture);
     }
 
 
-    void onStartedCallback(
+    void XdgDesktopPortal::onStartedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
@@ -309,14 +401,14 @@ namespace Huenicorn::Grabber
       if(error){
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error selecting screencast source: ", std::string(error->message));
-          capture->fdReadyPromise.set_value(false);
+          resolveCapture(capture, false);
         }
         return;
       }
     }
 
 
-    void start(
+    void XdgDesktopPortal::start(
       Capture* capture
     )
     {
@@ -332,26 +424,21 @@ namespace Huenicorn::Grabber
       }
       catch(const std::exception& e){
         Core::Logger::error(e.what());
+        resolveCapture(capture, false);
       }
     }
 
 
-    void onSelectSourceResponseReceivedCallback(
-      GDBusConnection* connection,
-      const char* senderName,
-      const char* objectPath,
-      const char* interfaceName,
-      const char* signalName,
+    void XdgDesktopPortal::onSelectSourceResponseReceivedCallback(
+      GDBusConnection* /*connection*/,
+      const char* /*senderName*/,
+      const char* /*objectPath*/,
+      const char* /*interfaceName*/,
+      const char* /*signalName*/,
       GVariant* parameters,
       void* userData
     )
     {
-      (void)connection;
-      (void)senderName;
-      (void)objectPath;
-      (void)interfaceName;
-      (void)signalName;
-
       DbusCallData* call = static_cast<DbusCallData*>(userData);
 
       Capture* capture = call->capture;
@@ -363,6 +450,7 @@ namespace Huenicorn::Grabber
 
       if(response != 0){
         Core::Logger::error("failed to select source, denied or cancelled by user");
+        resolveCapture(capture, false);
         return;
       }
 
@@ -370,20 +458,25 @@ namespace Huenicorn::Grabber
     }
 
 
-    void onSourceSelectedCallback(
+    void XdgDesktopPortal::onSourceSelectedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
     )
     {
-      (void)userData;
-
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;
       if(error){
+        // On cancellation, the call data has already been released by onCancelledCallback
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error selecting screencast source: ", std::string(error->message));
+
+          // No Response signal will follow a failed call
+          DbusCallData* call = static_cast<DbusCallData*>(userData);
+          Capture* capture = call->capture;
+          dbusCallDataFree(call);
+          resolveCapture(capture, false);
         }
 
         return;
@@ -391,7 +484,7 @@ namespace Huenicorn::Grabber
     }
 
 
-    void selectSource(
+    void XdgDesktopPortal::selectSource(
       Capture* capture
     )
     {
@@ -403,6 +496,19 @@ namespace Huenicorn::Grabber
       g_variant_builder_add(&builder, "{sv}", "types", g_variant_new_uint32(capture->captureType));
       g_variant_builder_add(&builder, "{sv}", "multiple", g_variant_new_boolean(FALSE));
       g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(pathAndToken.second.c_str()));
+
+      if(capture->config->restoreToken().has_value()){
+        Core::Logger::log("Using saved restore token for screen capture session");
+        g_variant_builder_add(
+          &builder,
+          "{sv}",
+          "restore_token",
+          g_variant_new_string(capture->config->restoreToken()->c_str())
+        );
+      }
+      else{
+        Core::Logger::log("No restore token available, user will be prompted for screen selection");
+      }
 
       uint32_t available_cursor_modes = getAvailableCursorModes();
       if(available_cursor_modes & CursorMode::Metadata){
@@ -423,22 +529,16 @@ namespace Huenicorn::Grabber
     }
 
 
-    void onCreateSessionResponseReceivedCallback(
-      GDBusConnection* connection,
-      const char* senderName,
-      const char* objectPath,
-      const char* interfaceName,
-      const char* signalName,
+    void XdgDesktopPortal::onCreateSessionResponseReceivedCallback(
+      GDBusConnection* /*connection*/,
+      const char* /*senderName*/,
+      const char* /*objectPath*/,
+      const char* /*interfaceName*/,
+      const char* /*signalName*/,
       GVariant* parameters,
       void* userData
     )
     {
-      (void)connection;
-      (void)senderName;
-      (void)objectPath;
-      (void)interfaceName;
-      (void)signalName;
-
       DbusCallData* call = static_cast<DbusCallData*>(userData);
       Capture* capture = call->capture;
       g_clear_pointer(&call, dbusCallDataFree);
@@ -449,6 +549,8 @@ namespace Huenicorn::Grabber
 
       if(response != 0){
         Core::Logger::warn("failed to create session, denied or cancelled by user");
+        resolveCapture(capture, false);
+        return;
       }
 
       g_autoptr(GVariant) sessionHandleVariant = g_variant_lookup_value(result, "session_handle", NULL);
@@ -458,21 +560,26 @@ namespace Huenicorn::Grabber
     }
 
 
-    void onSessionCreatedCallback(
+    void XdgDesktopPortal::onSessionCreatedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
     )
     {
-      (void)userData;
-
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;
 
       if(error){
+        // On cancellation, the call data has already been released by onCancelledCallback
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error creating screencast session: ", std::string(error->message));
+
+          // No Response signal will follow a failed call
+          DbusCallData* call = static_cast<DbusCallData*>(userData);
+          Capture* capture = call->capture;
+          dbusCallDataFree(call);
+          resolveCapture(capture, false);
         }
 
         return;
@@ -480,76 +587,4 @@ namespace Huenicorn::Grabber
     }
 
 
-    void createSession(
-      Capture* capture
-    )
-    {
-      StringPair requestPathAndToken = portalCreatePath(CreatePathTokenType::Request);
-      StringPair sessionPathAndToken = portalCreatePath(CreatePathTokenType::Session);
-
-      DbusCallData* call = subscribeToSignal(capture, requestPathAndToken.first.c_str(), onCreateSessionResponseReceivedCallback);
-
-      GVariantBuilder builder;
-      g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
-      g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(requestPathAndToken.second.c_str()));
-      g_variant_builder_add(&builder, "{sv}", "session_handle_token", g_variant_new_string(sessionPathAndToken.second.c_str()));
-
-      g_dbus_proxy_call(getScreencastPortalProxy(), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, call);
-    }
-
-
-    bool initScreencastCapture(
-      Capture* capture
-    )
-    {
-      capture->cancellable = g_cancellable_new();
-      GDBusConnection* connection = portalGetDbusConnection();
-      if(!connection){
-        return false;
-      }
-
-      GDBusProxy* proxy = getScreencastPortalProxy();
-      if(!proxy){
-        return false;
-      }
-
-      createSession(capture);
-
-      return true;
-    }
-
-
-    void screencastPortalDesktopCaptureCreate(
-      Capture* capture,
-      CaptureType captureType,
-      bool cursorVisible
-    )
-    {
-      capture->captureType = captureType;
-      capture->cursorVisible = cursorVisible;
-
-      initScreencastCapture(capture);
-    }
-
-
-    void screencastPortalCaptureDestroy(
-      Capture* capture
-    )
-    {
-      if(!capture){
-        return;
-      }
-
-      std::string interfaceName = "org.freedesktop.portal.Session";
-      std::string methodName = "Close";
-
-      if(capture->sessionHandle){
-        g_dbus_connection_call(portalGetDbusConnection(), busName.c_str(), capture->sessionHandle, interfaceName.c_str(), methodName.c_str(), NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
-        g_clear_pointer(&capture->sessionHandle, g_free);
-      }
-
-      g_cancellable_cancel(capture->cancellable);
-      g_clear_object(&capture->cancellable);
-    }
-  }
 }

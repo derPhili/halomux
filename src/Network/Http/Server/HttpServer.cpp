@@ -28,12 +28,20 @@ namespace Huenicorn::Network::Http::Server
 
   bool HttpServer::listen()
   {
+    if(!m_httpServerImpl){
+      return false;
+    }
+
     return m_httpServerImpl->listen();
   }
 
 
   bool HttpServer::stop()
   {
+    if(!m_httpServerImpl){
+      return false;
+    }
+
     return m_httpServerImpl->stop();
   }
 

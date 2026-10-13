@@ -4,8 +4,9 @@
 #include <string>
 #include <vector>
 
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/entropy.h>
+
+#include <psa/crypto.h>
+
 #include <mbedtls/net_sockets.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/timing.h>
@@ -59,12 +60,8 @@ namespace Huenicorn::Stream
     using UniqueCert = MbedTlsUniquePtr<mbedtls_x509_crt, mbedtls_x509_crt_free>;
     using UniqueSsl = MbedTlsUniquePtr<mbedtls_ssl_context, mbedtls_ssl_free>;
     using UniqueSslConfig = MbedTlsUniquePtr<mbedtls_ssl_config, mbedtls_ssl_config_free>;
-    using UniqueEntropy = MbedTlsUniquePtr<mbedtls_entropy_context, mbedtls_entropy_free>;
-    using UniqueCtrDrbg = MbedTlsUniquePtr<mbedtls_ctr_drbg_context, mbedtls_ctr_drbg_free>;
 
     UniqueNetContext serverFd;
-    UniqueEntropy entropy;
-    UniqueCtrDrbg ctrDrbg;
     UniqueSsl ssl;
     UniqueSslConfig conf;
     UniqueCert cacert;
@@ -93,14 +90,23 @@ namespace Huenicorn::Stream
     }
 
 
-
-    void _init(const DtlsConfig& dtlsConfig)
+    void _ensurePsaInit()
     {
-      mbedtls_debug_set_threshold(4);
+      static const psa_status_t status = psa_crypto_init();
+
+      if(status != PSA_SUCCESS){
+        throw std::runtime_error("psa_crypto_init failed with code: " + std::to_string(static_cast<int>(status)));
+      }
+    }
+
+
+    void _init(
+      const DtlsConfig& dtlsConfig
+    )
+    {
+      _ensurePsaInit();
 
       _initMembers();
-      //_initDebug();
-      _initRNG();
       _initConnection(dtlsConfig);
       _initSSL(dtlsConfig);
       _handshake(dtlsConfig);
@@ -123,48 +129,16 @@ namespace Huenicorn::Stream
 
       cacert.reset(new mbedtls_x509_crt{});
       mbedtls_x509_crt_init(cacert.get());
-
-      ctrDrbg.reset(new mbedtls_ctr_drbg_context{});
-      mbedtls_ctr_drbg_init(ctrDrbg.get());
     }
 
-
-    /**
-     * @brief Initializes debug messages for Mbed-TLS
-     * 
-     */
-    void _initDebug()
-    {
-      mbedtls_ssl_conf_dbg(conf.get(), debugCallback, NULL);
-    }
-
-    /**
-     * @brief Initializes the random number generator
-     * 
-     */
-    void _initRNG()
-    {
-      std::string pers = "dtls_client";
-      entropy.reset(new mbedtls_entropy_context{});
-      mbedtls_entropy_init(entropy.get());
-      int result = mbedtls_ctr_drbg_seed(
-        ctrDrbg.get(),
-        mbedtls_entropy_func,
-        entropy.get(),
-        reinterpret_cast<const unsigned char*>(pers.data()),
-        pers.length()
-      );
-
-      if(result != 0){
-        throw std::runtime_error("mbedtls_ctr_drbg_seed returned: " + std::to_string(result));
-      }
-    }
 
     /**
      * @brief Initializes the connection
      * 
      */
-    void _initConnection(const DtlsConfig& dtlsConfig)
+    void _initConnection(
+      const DtlsConfig& dtlsConfig
+    )
     {
       int result = mbedtls_net_connect(
         serverFd.get(),
@@ -183,51 +157,62 @@ namespace Huenicorn::Stream
      * @brief Initializes the SSL layer with PSK
      * 
      */
-    void _initSSL(const DtlsConfig& dtlsConfig)
+    void _initSSL(
+      const DtlsConfig& dtlsConfig
+    )
     {
       auto pskRawArray = dtlsConfig.credentials.clientkeyBytes();
       auto pskIdRawArray = dtlsConfig.credentials.usernameBytes();
 
-      int result = mbedtls_ssl_config_defaults(
-        conf.get(),
-        MBEDTLS_SSL_IS_CLIENT,
-        MBEDTLS_SSL_TRANSPORT_DATAGRAM,
-        MBEDTLS_SSL_PRESET_DEFAULT
-      );
+      {
+        int result = mbedtls_ssl_config_defaults(
+          conf.get(),
+          MBEDTLS_SSL_IS_CLIENT,
+          MBEDTLS_SSL_TRANSPORT_DATAGRAM,
+          MBEDTLS_SSL_PRESET_DEFAULT
+        );
 
-      if(result != 0){
-        throw std::runtime_error("mbedtls_ssl_config_defaults failed with code: " + std::to_string(result));
+        if(result != 0){
+          throw std::runtime_error("mbedtls_ssl_config_defaults failed with code: " + std::to_string(result));
+        }
       }
 
       mbedtls_ssl_conf_authmode(conf.get(), MBEDTLS_SSL_VERIFY_OPTIONAL);
       mbedtls_ssl_conf_ca_chain(conf.get(), cacert.get(), NULL);
-      mbedtls_ssl_conf_rng(conf.get(), mbedtls_ctr_drbg_random, ctrDrbg.get());
 
-      result = mbedtls_ssl_setup(ssl.get(), conf.get());
+      {
+        int result = mbedtls_ssl_conf_psk(
+          conf.get(),
+          reinterpret_cast<const unsigned char*>(pskRawArray.data()),
+          pskRawArray.size() * sizeof(unsigned char),
+          reinterpret_cast<const unsigned char*>(pskIdRawArray.data()),
+          pskIdRawArray.size() * sizeof(unsigned char)
+        );
 
-      if(result != 0){
-        throw std::runtime_error("mbedtls_ssl_setup failed with code: " + std::to_string(result));
-      }
-
-      result = mbedtls_ssl_conf_psk(
-        conf.get(),
-        reinterpret_cast<const unsigned char*>(pskRawArray.data()),
-        pskRawArray.size() * sizeof(unsigned char),
-        reinterpret_cast<const unsigned char*>(pskIdRawArray.data()),
-        pskIdRawArray.size() * sizeof(unsigned char)
-      );
-
-      if(result != 0){
-        throw std::runtime_error("mbedtls_ssl_conf_psk failed with code: " + std::to_string(result));
+        if(result != 0){
+          throw std::runtime_error("mbedtls_ssl_conf_psk failed with code: " + std::to_string(result));
+        }
       }
 
       ciphers.push_back(MBEDTLS_TLS_PSK_WITH_AES_128_GCM_SHA256);
       ciphers.push_back(0);
-      mbedtls_ssl_conf_ciphersuites(conf.get(), ciphers.data());
-      result = mbedtls_ssl_set_hostname(ssl.get(), dtlsConfig.hostname.c_str());
 
-      if(result != 0){
-        throw std::runtime_error("mbedtls_ssl_set_hostname failed with code: " + std::to_string(result));
+      mbedtls_ssl_conf_ciphersuites(conf.get(), ciphers.data());
+
+      {
+        int result = mbedtls_ssl_setup(ssl.get(), conf.get());
+
+        if(result != 0){
+          throw std::runtime_error("mbedtls_ssl_setup failed with code: " + std::to_string(result));
+        }
+      }
+
+      {
+        int result = mbedtls_ssl_set_hostname(ssl.get(), dtlsConfig.hostname.c_str());
+
+        if(result != 0){
+          throw std::runtime_error("mbedtls_ssl_set_hostname failed with code: " + std::to_string(result));
+        }
       }
 
       mbedtls_ssl_set_bio(
@@ -251,10 +236,21 @@ namespace Huenicorn::Stream
      * @brief Execute handshake
      * 
      */
-    void _handshake(const DtlsConfig& dtlsConfig)
+    void _handshake(
+      const DtlsConfig& dtlsConfig
+    )
     {
-      int result = -1;
+      int result{0};
       for(unsigned attempt = 0; attempt <  dtlsConfig.handshakeAttempts; attempt++){
+        if(attempt > 0){
+          // A failed handshake leaves the context in an error state
+          int resetResult = mbedtls_ssl_session_reset(ssl.get());
+          if(resetResult != 0){
+            result = resetResult;
+            break;
+          }
+        }
+
         mbedtls_ssl_conf_handshake_timeout(conf.get(), 400, 1000);
         do{
           result = mbedtls_ssl_handshake(ssl.get());
@@ -299,8 +295,6 @@ namespace Huenicorn::Stream
       cacert.reset();
       ssl.reset();
       conf.reset();
-      ctrDrbg.reset();
-      entropy.reset();
     }
   };
 }

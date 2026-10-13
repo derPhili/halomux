@@ -46,7 +46,20 @@ namespace Huenicorn::Grabber
     int gCoeff = static_cast<int>(((glm::sin(seconds / 3.0) + 1.0) / 2.0) * max);
     int bCoeff = static_cast<int>(((glm::sin(seconds / 5.0) + 1.0) / 2.0) * max);
 
-    imageData.imageMatrix = cv::Mat(m_resolution.x, m_resolution.y, CV_8UC3, cv::Scalar(bCoeff, gCoeff, rCoeff));
+
+    if(m_imageData.imageMatrix.empty()){
+      m_imageData.imageMatrix.create(
+        m_resolution.y,
+        m_resolution.x,
+        CV_8UC3
+      );
+    }
+
+    m_imageData.imageMatrix.setTo(cv::Scalar(bCoeff, gCoeff, rCoeff));
+
+    m_imageData.format = Imaging::PixelFormat::BGR;
+
+    imageData = m_imageData;
   }
 
 

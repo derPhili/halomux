@@ -37,6 +37,18 @@ namespace Huenicorn::Grabber
     /**
      * Pipewire-specific data shared between processes
     */
+    /**
+     * @brief Read-only mapping of a Pipewire MemFd buffer, attached to the buffer's user_data
+     *
+     */
+    struct BufferMapping
+    {
+      void* map;
+      size_t size;
+      const uint8_t* data;
+    };
+
+
     struct PipewireData
     {
       spa_hook coreListener;
@@ -48,6 +60,15 @@ namespace Huenicorn::Grabber
       std::promise<bool> screenDataReadyPromise;
       bool promiseSetAlready{false};
       Core::Config* config;
+
+      // Gamescope direct-capture support: gamescope exposes its composited
+      // output as a plain (non-portal-gated) Pipewire node named "gamescope".
+      // xdg-desktop-portal's ScreenCast implementation isn't wired up inside
+      // a gamescope session, which is why the portal path black-screens there.
+      bool useGamescope{false};
+      bool discoveryMode{false};
+      int discoverySyncSeq{0};
+      uint32_t gamescopeNodeId{0};
     };
 
 
@@ -57,7 +78,8 @@ namespace Huenicorn::Grabber
      * PipewireGrabber constructor
     */
     PipewireGrabber(
-      Core::Config* config
+      Core::Config* config,
+      bool useGamescope = false
     );
 
 
@@ -121,10 +143,32 @@ namespace Huenicorn::Grabber
       void* userdata
     );
 
+    static void _onStreamAddBuffer(
+      void* userdata,
+      pw_buffer* buffer
+    );
+
+    static void _onStreamRemoveBuffer(
+      void* userdata,
+      pw_buffer* buffer
+    );
+
     static void _onStreamParamChanged(
       void* userdata,
       uint32_t id,
-      const struct spa_pod* param
+      const spa_pod* param
+    );
+
+    /**
+     * Registry listener used to find gamescope's "gamescope" Pipewire node
+    */
+    static void _onRegistryGlobal(
+      void* userdata,
+      uint32_t id,
+      uint32_t permissions,
+      const char* type,
+      uint32_t version,
+      const spa_dict* props
     );
 
     /**

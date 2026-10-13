@@ -10,6 +10,9 @@
 /**
  * @brief Provides an abstraction around HTTP requests and returns JSON data structs
  * 
+ * Beware : For a compatible workflow with Hue Bridge,
+ *          The related implementations must disable SLL verification for both peer and host
+ *          In consequence, this HTTP client should not be trusted for any other use
  */
 namespace Huenicorn::Network::Http::Client
 {

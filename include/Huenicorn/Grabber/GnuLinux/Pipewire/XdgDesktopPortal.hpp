@@ -1,4 +1,7 @@
 #pragma once
+
+#include <atomic>
+
 /*
   This code is an adapation from https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c
   It consists on an extraction from OBS Source code achieving the call and management of a xdg-portal capture query
@@ -11,11 +14,14 @@
 
 #include <gio/gunixfdlist.h>
 
+#include <Huenicorn/Core/Config.hpp>
+
 
 namespace Huenicorn::Grabber
 {
-  namespace XdgDesktopPortal
+  class XdgDesktopPortal
   {
+  public:
     // Type definitions
     using StringPair = std::pair<std::string, std::string>;
 
@@ -47,13 +53,15 @@ namespace Huenicorn::Grabber
     struct Capture
     {
       CaptureType captureType;
-      GCancellable* cancellable;
-      char* sessionHandle;
-      uint32_t pwNode;
-      uint32_t pwFd;
+      GCancellable* cancellable{nullptr};
+      char* sessionHandle{nullptr};
+      uint32_t pwNode{0};
+      uint32_t pwFd{0};
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
-      bool updateXdgContext{true};
+      bool fdReadyResolved{false};
+      std::atomic<bool> updateXdgContext{true};
+      Core::Config* config;
     };
 
 
@@ -65,52 +73,83 @@ namespace Huenicorn::Grabber
       gulong cancelledId;
     };
 
+    // Public methods
+    static void createSession(
+      Capture* capture
+    );
 
-    // Functions
-    void ensureConnection();
+    static bool initScreencastCapture(
+      Capture* capture
+    );
 
-    std::string getSenderName();
+    static void screencastPortalDesktopCaptureCreate(
+      Capture* capture,
+      CaptureType captureType,
+      bool cursorVisible
+    );
 
-    GDBusConnection* portalGetDbusConnection();
+    /**
+     * @brief Fulfills the capture's fd promise once and stops the portal context loop
+     *
+     * @param capture Capture to resolve
+     * @param succeeded Whether a Pipewire fd was obtained
+     */
+    static void resolveCapture(
+      Capture* capture,
+      bool succeeded
+    );
 
-    StringPair portalCreatePath(
+    static void screencastPortalCaptureDestroy(
+      Capture* capture
+    );
+
+
+    // private methods
+  private:
+    static void ensureConnection();
+
+    static std::string getSenderName();
+
+    static GDBusConnection* portalGetDbusConnection();
+
+    static StringPair portalCreatePath(
       CreatePathTokenType createPathTokenType
     );
 
-    void ensureScreencastPortalProxy();
+    static void ensureScreencastPortalProxy();
 
-    GDBusProxy* getScreencastPortalProxy();
+    static GDBusProxy* getScreencastPortalProxy();
 
-    uint32_t getAvailableCursorModes();
+    static uint32_t getAvailableCursorModes();
 
-    uint32_t getScreencastVersion();
+    static uint32_t getScreencastVersion();
 
-    void onCancelledCallback(
+    static void onCancelledCallback(
       GCancellable* cancellable,
       void* data
     );
 
-    DbusCallData* subscribeToSignal(
+    static DbusCallData* subscribeToSignal(
       Capture* capture,
       const char* path,
       GDBusSignalCallback callback
     );
 
-    void dbusCallDataFree(
+    static void dbusCallDataFree(
       DbusCallData* call
     );
 
-    void onPipewireRemoteOpenedCallback(
+    static void onPipewireRemoteOpenedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
     );
 
-    void openPipewireRemote(
+    static void openPipewireRemote(
       Capture* capture
     );
 
-    void onStartResponseReceivedCallback(
+    static void onStartResponseReceivedCallback(
       GDBusConnection* connection,
       const char* sender_name,
       const char* object_path,
@@ -120,17 +159,17 @@ namespace Huenicorn::Grabber
       void* userData
     );
 
-    void onStartedCallback(
+    static void onStartedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
     );
 
-    void start(
+    static void start(
       Capture* capture
     );
 
-    void onSelectSourceResponseReceivedCallback(
+    static void onSelectSourceResponseReceivedCallback(
       GDBusConnection* connection,
       const char* senderName,
       const char* objectPath,
@@ -140,17 +179,17 @@ namespace Huenicorn::Grabber
       void* userData
     );
 
-    void onSourceSelectedCallback(
+    static void onSourceSelectedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
     );
 
-    void selectSource(
+    static void selectSource(
       Capture* capture
     );
 
-    void onCreateSessionResponseReceivedCallback(
+    static void onCreateSessionResponseReceivedCallback(
       GDBusConnection* connection,
       const char* senderName,
       const char* objectPath,
@@ -160,28 +199,18 @@ namespace Huenicorn::Grabber
       void* userData
     );
 
-    void onSessionCreatedCallback(
+    static void onSessionCreatedCallback(
       GObject* source,
       GAsyncResult* res,
       void* userData
     );
 
-    void createSession(
-      Capture* capture
-    );
+  private:
+    // Attributes
+    static GDBusConnection* m_connection;
+    static GDBusProxy* m_screencastProxy;
 
-    bool initScreencastCapture(
-      Capture* capture
-    );
-
-    void screencastPortalDesktopCaptureCreate(
-      Capture* capture,
-      CaptureType captureType,
-      bool cursorVisible
-    );
-
-    void screencastPortalCaptureDestroy(
-      Capture* capture
-    );
-  }
+    static const std::string ObjectPath;
+    static const std::string BusName;
+  };
 }

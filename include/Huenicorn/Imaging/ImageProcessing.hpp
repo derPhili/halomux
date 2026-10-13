@@ -33,7 +33,13 @@ namespace Huenicorn::Imaging
     );
 
 
-    void rgbaToRgb(
+    /**
+     * @brief Converts an image to the BGR layout expected by the color computation
+     *
+     * @param inputImageData Input image, in any supported pixel format
+     * @param outputImageData Output BGR image (may be the input itself)
+     */
+    void toBgr(
       const ImageData& inputImageData,
       ImageData& outputImageData
     );
