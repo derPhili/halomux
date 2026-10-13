@@ -134,12 +134,22 @@ namespace Huenicorn::Grabber
   }
 
 
-  void PipewireGrabber::grabFrameSubsample(
-    Imaging::ImageData& imageData
+  void PipewireGrabber::setChannelRegions(
+    const ChannelRegions& regions
   )
   {
-    auto lock = std::lock_guard(m_pwData.frameDoubleBuffer.mutex);
-    imageData = m_pwData.frameDoubleBuffer.frame.at(0);
+    auto lock = std::lock_guard(m_pwData.channels.mutex);
+    m_pwData.channels.regions = regions;
+  }
+
+
+  bool PipewireGrabber::grabChannelColors(
+    ChannelColors& colors
+  )
+  {
+    auto lock = std::lock_guard(m_pwData.channels.mutex);
+    colors = m_pwData.channels.colors;
+    return m_pwData.channels.hasColors;
   }
 
 
@@ -216,15 +226,21 @@ namespace Huenicorn::Grabber
       return;
     }
 
-    Imaging::ImageData capturedFrame;
-    const bool captured = data.type == SPA_DATA_DmaBuf
-      ? _processDmaBuf(pw, pwBuffer, width, height, capturedFrame)
-      : _processSharedMemory(pw, pwBuffer, width, height, pixelFormat, capturedFrame);
+    ChannelRegions regions;
+    {
+      auto lock = std::lock_guard(pw->channels.mutex);
+      regions = pw->channels.regions;
+    }
 
-    if(captured){
-      auto lock = std::lock_guard(pw->frameDoubleBuffer.mutex);
-      std::swap(pw->frameDoubleBuffer.frame[0], pw->frameDoubleBuffer.frame[1]);
-      pw->frameDoubleBuffer.frame[0] = std::move(capturedFrame);
+    ChannelColors colors;
+    const bool computed = data.type == SPA_DATA_DmaBuf
+      ? _processDmaBuf(pw, pwBuffer, width, height, regions, colors)
+      : _processSharedMemory(pw, pwBuffer, width, height, pixelFormat, regions, colors);
+
+    if(computed){
+      auto lock = std::lock_guard(pw->channels.mutex);
+      pw->channels.colors = std::move(colors);
+      pw->channels.hasColors = true;
     }
 
     pw_stream_queue_buffer(pw->stream, pwBuffer);
@@ -236,7 +252,8 @@ namespace Huenicorn::Grabber
     pw_buffer* pwBuffer,
     int width,
     int height,
-    Imaging::ImageData& capturedFrame
+    const ChannelRegions& regions,
+    ChannelColors& colors
   )
   {
     if(!pw->gpu || pw->dmaBufFailed){
@@ -270,8 +287,15 @@ namespace Huenicorn::Grabber
     const int subsampleWidth = std::min(static_cast<int>(pw->config->subsampleWidth()), width);
     const int subsampleHeight = std::max(1, static_cast<int>(static_cast<int64_t>(height) * subsampleWidth / width));
 
-    cv::Mat rgba;
-    if(!bufferData->gpuImage || !pw->gpu->downscale(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rgba)){
+    // Regions are taken from the subsample, exactly like on the CPU path
+    std::vector<cv::Rect> rects;
+    rects.reserve(regions.size());
+    for(const auto& [channelId, uvs] : regions){
+      rects.push_back(Imaging::ImageProcessing::subImageRect(subsampleWidth, subsampleHeight, uvs));
+    }
+
+    std::vector<cv::Vec4b> rgbaColors;
+    if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors)){
       // Fall back to shared memory buffers for good
       Core::Logger::warn("[gpu] GPU downscaling failed, falling back to the CPU path");
       pw->dmaBufFailed = true;
@@ -279,7 +303,13 @@ namespace Huenicorn::Grabber
       return false;
     }
 
-    capturedFrame = {.imageMatrix = rgba, .format = Imaging::PixelFormat::RGBA};
+    colors.clear();
+    colors.reserve(regions.size());
+    for(size_t i = 0; i < regions.size(); i++){
+      const cv::Vec4b& rgba = rgbaColors[i];
+      colors.emplace_back(regions[i].first, Imaging::Color(rgba[0], rgba[1], rgba[2]));
+    }
+
     return true;
   }
 
@@ -290,7 +320,8 @@ namespace Huenicorn::Grabber
     int width,
     int height,
     Imaging::PixelFormat pixelFormat,
-    Imaging::ImageData& capturedFrame
+    const ChannelRegions& regions,
+    ChannelColors& colors
   )
   {
     const spa_data& data = pwBuffer->buffer->datas[0];
@@ -315,13 +346,30 @@ namespace Huenicorn::Grabber
 
     // Downscale straight from the shared memory instead of copying the full
     // resolution frame first: only the subsample is copied out.
+    Imaging::ImageData subsample;
     const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
 
     if(width > subsampleWidth){
-      Imaging::ImageProcessing::rescaleSampled(frameViewData, capturedFrame, subsampleWidth, pw->config->interpolation());
+      Imaging::ImageProcessing::rescaleSampled(frameViewData, subsample, subsampleWidth, pw->config->interpolation());
     }
     else{
-      capturedFrame = {.imageMatrix = frameView.clone(), .format = pixelFormat};
+      subsample = {.imageMatrix = frameView.clone(), .format = pixelFormat};
+    }
+
+    Imaging::ImageProcessing::toBgr(subsample, subsample);
+
+    std::vector<Imaging::UVs> uvs;
+    uvs.reserve(regions.size());
+    for(const auto& region : regions){
+      uvs.push_back(region.second);
+    }
+
+    const auto regionColors = Imaging::ImageProcessing::averageRegions(subsample, uvs);
+
+    colors.clear();
+    colors.reserve(regions.size());
+    for(size_t i = 0; i < regions.size(); i++){
+      colors.emplace_back(regions[i].first, regionColors[i]);
     }
 
     return true;

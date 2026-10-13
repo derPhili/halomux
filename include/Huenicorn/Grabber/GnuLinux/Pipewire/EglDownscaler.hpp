@@ -10,6 +10,7 @@
 #include <GLES2/gl2ext.h>
 
 #include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 
 
 namespace Huenicorn::Grabber
@@ -119,11 +120,45 @@ namespace Huenicorn::Grabber
     );
 
 
+    /**
+     * @brief Maximal number of regions averaged at once (an entertainment area has up to 20 channels)
+     *
+     */
+    static constexpr int MaxRegions = 32;
+
+
+    /**
+     * @brief Averages regions of the image, entirely on the GPU
+     *
+     * The image is first averaged down to subsampleWidth x subsampleHeight like downscale(),
+     * then each region of that subsample is averaged into a single pixel. Only one pixel per
+     * region is read back.
+     *
+     * @param image Imported source image
+     * @param subsampleWidth Subsample width
+     * @param subsampleHeight Subsample height
+     * @param regions Regions in subsample pixels (see ImageProcessing::subImageRect), at most MaxRegions
+     * @param colors RGBA average per region, transparent black for empty regions
+     * @return true Averages computed
+     * @return false A GL error occurred
+     */
+    bool averageRegions(
+      const Image& image,
+      int subsampleWidth,
+      int subsampleHeight,
+      const std::vector<cv::Rect>& regions,
+      std::vector<cv::Vec4b>& colors
+    );
+
+
   private:
     bool _initDisplay();
     bool _initContext();
     bool _initProgram();
+    bool _initRegionsProgram();
     bool _ensureTarget(int width, int height);
+    bool _ensureRegionsTarget(int regionCount, int rowCount);
+    bool _renderSubsample(const Image& image, int outputWidth, int outputHeight);
     void _shutdown();
 
 
@@ -144,5 +179,18 @@ namespace Huenicorn::Grabber
     GLuint m_framebuffer{0};
     int m_targetWidth{0};
     int m_targetHeight{0};
+
+    // Region averaging: row means (one per region and subsample row), then one pixel per region
+    GLuint m_rowMeansProgram{0};
+    GLint m_rowMeansRegionsLocation{-1};
+    GLuint m_rowMeansTexture{0};
+    GLuint m_rowMeansFramebuffer{0};
+    int m_rowMeansRowCount{0};
+
+    GLuint m_regionMeansProgram{0};
+    GLint m_regionMeansRegionsLocation{-1};
+    GLuint m_regionsTexture{0};
+    GLuint m_regionsFramebuffer{0};
+    int m_regionsTargetCount{0};
   };
 }

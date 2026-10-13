@@ -1,107 +1,61 @@
-#include <string>
-#include <thread>
 #include <chrono>
-
 #include <filesystem>
-
-#include <opencv2/imgcodecs.hpp>
+#include <thread>
 
 #include <Huenicorn/Core/Config.hpp>
 #include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Imaging/ImageData.hpp>
 #include <Huenicorn/Platform/Selector.hpp>
-#include <Huenicorn/Timing/Definitions.hpp>
 
 using namespace Huenicorn;
 using namespace Huenicorn::Core;
 using namespace std::chrono_literals;
 
 
-void testGrabber(const std::filesystem::path& frameDirRoot)
-{
-  Config config(std::filesystem::temp_directory_path() / "huenicorn-test");
-  config.setSubsampleWidth(20);
-  auto grabber = Platform::adapter.getGrabber(&config);
-  if(!grabber){
-    Logger::error("Could not start any grabber");
-    return;
-  }
-
-  Logger::log("Started ", grabber->name());
-
-  try{
-    const auto& displayResolution = grabber->displayResolution();
-    Logger::log("Screen res ", displayResolution.x, " ", displayResolution.y);
-  }
-  catch(const std::exception& e){
-    Logger::error(e.what());
-  }
-
-  Imaging::ImageData imageData;
-
-  std::filesystem::create_directory(frameDirRoot);
-
-  int i = 0;
-  Huenicorn::Timing::TimePoint start = Huenicorn::Timing::ClockType::now();
-  Huenicorn::Timing::TimePoint now = Huenicorn::Timing::ClockType::now();
-
-  int frameDurations = 0;
-  int count = 0;
-
-  while(std::chrono::duration_cast<std::chrono::seconds>(now - start).count() < 20){
-    Huenicorn::Timing::TimePoint iterationStart = Huenicorn::Timing::ClockType::now();
-    grabber->grabFrameSubsample(imageData);
-
-    if(imageData.hasData()){
-      std::string str_i = std::to_string(i++);
-      std::filesystem::path filePath = frameDirRoot;
-      filePath /= ("frame_" + str_i + ".png");
-      Logger::log(filePath);
-      cv::imwrite(filePath.string(), imageData.imageMatrix);
-    }
-
-    //Logger::log("Update");
-    std::this_thread::sleep_for(0.1s);
-    now = Huenicorn::Timing::ClockType::now();
-    frameDurations += std::chrono::duration_cast<std::chrono::milliseconds>(now - iterationStart).count();
-    count++;
-  
-    // 150.708 FPS with new way of checking
-    // 130.447 FPS without monitor safety
-    // 65.9715 with safety...
-  }
-
-  Logger::log("Average FPS : ", (1.0f / (static_cast<float>(frameDurations) / count)) * 1000);
-
-}
-
-
-void testMonitorEvents()
-{
-  Config config(std::filesystem::temp_directory_path() / "huenicorn-test");
-  config.setSubsampleWidth(20);
-  auto grabber = Platform::adapter.getGrabber(&config);
-  if(!grabber){
-    Logger::error("Could not start any grabber");
-    return;
-  }
-
-  Logger::log("Started ", grabber->name());
-  std::this_thread::sleep_for(20s);
-}
-
-
+/**
+ * @brief Captures the screen for a few seconds and prints the average colors of a few regions
+ *
+ * Usage: TestGrabber [seconds]
+ */
 int main(int argc, char* argv[])
 {
-  if(argc < 2){
-    Logger::error("Please provide path to images");
-    return 0;
+  const int seconds = argc >= 2 ? std::atoi(argv[1]) : 10;
+
+  Config config(std::filesystem::temp_directory_path() / "huenicorn-test");
+  config.setSubsampleWidth(160);
+
+  auto grabber = Platform::adapter.getGrabber(&config);
+  if(!grabber){
+    Logger::error("Could not start any grabber");
+    return 1;
   }
 
-  std::filesystem::path frameDirRoot(argv[1]);
+  const auto resolution = grabber->displayResolution();
+  Logger::log("Started ", grabber->name(), " on a ", resolution.x, "x", resolution.y, " display at ", grabber->displayRefreshRate(), " Hz");
 
-  testGrabber(frameDirRoot);
-  //testMonitorEvents();
+  grabber->setChannelRegions({
+    {0, {{0.f, 0.f}, {1.f, 1.f}}},   // Whole screen
+    {1, {{0.f, 0.f}, {0.5f, 1.f}}},  // Left half
+    {2, {{0.5f, 0.f}, {1.f, 1.f}}}   // Right half
+  });
+
+  const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
+  while(std::chrono::steady_clock::now() < end){
+    std::this_thread::sleep_for(500ms);
+
+    Grabber::IGrabber::ChannelColors colors;
+    if(!grabber->grabChannelColors(colors)){
+      Logger::log("No frame yet");
+      continue;
+    }
+
+    std::ostringstream line;
+    for(const auto& [channelId, color] : colors){
+      line << "[" << static_cast<int>(channelId) << "] " << static_cast<int>(color.m_r) << " " << static_cast<int>(color.m_g) << " " << static_cast<int>(color.m_b) << "   ";
+    }
+    Logger::log(line.str());
+  }
+
+  Platform::adapter.releaseGrabber();
   Logger::log("Done");
 
   return 0;

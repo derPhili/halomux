@@ -115,23 +115,51 @@ namespace Huenicorn::Imaging
     }
 
 
+    cv::Rect subImageRect(
+      int width,
+      int height,
+      const UVs& uvs
+    )
+    {
+      glm::ivec2 a{uvs.min.x * static_cast<float>(width), uvs.min.y * static_cast<float>(height)};
+      glm::ivec2 b{uvs.max.x * static_cast<float>(width), uvs.max.y * static_cast<float>(height)};
+
+      const int x0 = std::clamp(a.x, 0, width);
+      const int y0 = std::clamp(a.y, 0, height);
+      const int x1 = std::clamp(b.x, x0, width);
+      const int y1 = std::clamp(b.y, y0, height);
+
+      return {x0, y0, x1 - x0, y1 - y0};
+    }
+
+
     void getSubImage(
       const ImageData& inputImageData,
       ImageData& outputImageData,
       const UVs& uvs
     )
     {
-      float width = static_cast<float>(inputImageData.width());
-      float height = static_cast<float>(inputImageData.height());
-      glm::ivec2 a{uvs.min.x * width, uvs.min.y * height};
-      glm::ivec2 b{uvs.max.x * width, uvs.max.y * height};
-      
-      cv::Range cols(std::max(0, a.x), std::min(b.x, inputImageData.width()));
-      cv::Range rows(std::max(0, a.y), std::min(b.y, inputImageData.height()));
-
       // View on the input data (no copy): the output must not outlive the input's buffer
-      outputImageData.imageMatrix = inputImageData.imageMatrix(rows, cols);
+      outputImageData.imageMatrix = inputImageData.imageMatrix(subImageRect(inputImageData.width(), inputImageData.height(), uvs));
       outputImageData.format = inputImageData.format;
+    }
+
+
+    std::vector<Color> averageRegions(
+      const ImageData& bgrImageData,
+      const std::vector<UVs>& regions
+    )
+    {
+      std::vector<Color> colors;
+      colors.reserve(regions.size());
+
+      for(const auto& uvs : regions){
+        ImageData crop;
+        getSubImage(bgrImageData, crop, uvs);
+        colors.push_back(getDominantColor(crop));
+      }
+
+      return colors;
     }
 
 

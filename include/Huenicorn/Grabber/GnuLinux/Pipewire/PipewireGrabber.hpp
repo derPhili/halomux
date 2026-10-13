@@ -30,12 +30,14 @@ namespace Huenicorn::Grabber
   {
   private:
     /**
-     * Thread-safe double buffer for grabbed frames
+     * Channel regions and their colors, shared between the Pipewire thread and the streaming loop
     */
-    struct SafeDoubleBuffer
+    struct SharedChannels
     {
-      std::array<Imaging::ImageData, 2> frame;
       std::mutex mutex;
+      ChannelRegions regions;
+      ChannelColors colors;
+      bool hasColors{false};
     };
 
 
@@ -73,7 +75,7 @@ namespace Huenicorn::Grabber
       pw_context* context{nullptr};
       pw_stream* stream{nullptr};
       spa_video_info format;
-      SafeDoubleBuffer frameDoubleBuffer;
+      SharedChannels channels;
       std::promise<bool> screenDataReadyPromise;
       bool promiseSetAlready{false};
       Core::Config* config;
@@ -128,13 +130,13 @@ namespace Huenicorn::Grabber
 
 
     // Methods
-    /**
-     * @brief Returns a subsample of the last captured frame
-     * 
-     * @param imageData Subsample of the last captured frame
-     */
-    virtual void grabFrameSubsample(
-      Imaging::ImageData& imageData
+    virtual void setChannelRegions(
+      const ChannelRegions& regions
+    ) override;
+
+
+    virtual bool grabChannelColors(
+      ChannelColors& colors
     ) override;
 
 
@@ -200,23 +202,24 @@ namespace Huenicorn::Grabber
 
 
     /**
-     * @brief Downscales a DMA-BUF frame on the GPU
+     * @brief Averages the channel regions of a DMA-BUF frame on the GPU
      *
-     * @return true A frame was produced
+     * @return true Colors were computed
      */
     static bool _processDmaBuf(
       PipewireData* pw,
       pw_buffer* pwBuffer,
       int width,
       int height,
-      Imaging::ImageData& capturedFrame
+      const ChannelRegions& regions,
+      ChannelColors& colors
     );
 
 
     /**
-     * @brief Downscales a shared memory frame on the CPU
+     * @brief Averages the channel regions of a shared memory frame on the CPU
      *
-     * @return true A frame was produced
+     * @return true Colors were computed
      */
     static bool _processSharedMemory(
       PipewireData* pw,
@@ -224,7 +227,8 @@ namespace Huenicorn::Grabber
       int width,
       int height,
       Imaging::PixelFormat pixelFormat,
-      Imaging::ImageData& capturedFrame
+      const ChannelRegions& regions,
+      ChannelColors& colors
     );
 
     static int _onUpdateFrameRateLimit(

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 
@@ -12,6 +13,7 @@
 
 #include <Huenicorn/Core/Logger.hpp>
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
+#include <Huenicorn/Imaging/ImageProcessing.hpp>
 
 using namespace Huenicorn;
 
@@ -122,6 +124,50 @@ int main(int argc, char* argv[])
     if(maxDifference > 2){
       Core::Logger::error("GPU result differs from the CPU area average");
       failures++;
+    }
+  }
+
+  // Region averages: GPU (subsample + regions stages) against the CPU path on an exact subsample
+  {
+    const int subsampleWidth = 160;
+    const int subsampleHeight = frame.rows * subsampleWidth / frame.cols;
+
+    const std::vector<Imaging::UVs> regions = {
+      {{0.f, 0.f}, {1.f, 1.f}},       // Whole screen
+      {{0.f, 0.f}, {0.5f, 1.f}},      // Left half
+      {{0.5f, 0.f}, {1.f, 1.f}},      // Right half
+      {{0.1f, 0.2f}, {0.13f, 0.27f}}, // Small region
+      {{0.4f, 0.4f}, {0.4f, 0.6f}}    // Empty region
+    };
+
+    std::vector<cv::Rect> rects;
+    for(const auto& uvs : regions){
+      rects.push_back(Imaging::ImageProcessing::subImageRect(subsampleWidth, subsampleHeight, uvs));
+    }
+
+    std::vector<cv::Vec4b> gpuColors;
+    if(!downscaler.averageRegions(*gpuImage, subsampleWidth, subsampleHeight, rects, gpuColors)){
+      return 1;
+    }
+
+    cv::Mat reference;
+    cv::resize(frame, reference, cv::Size(subsampleWidth, subsampleHeight), 0, 0, cv::INTER_AREA);
+    Imaging::ImageData referenceData{.imageMatrix = reference, .format = Imaging::PixelFormat::BGRA};
+    Imaging::ImageProcessing::toBgr(referenceData, referenceData);
+    auto cpuColors = Imaging::ImageProcessing::averageRegions(referenceData, regions);
+
+    for(size_t i = 0; i < regions.size(); i++){
+      const cv::Vec4b& gpu = gpuColors[i];
+      const Imaging::Color& cpu = cpuColors[i];
+      const int difference = std::max({std::abs(gpu[0] - cpu.m_r), std::abs(gpu[1] - cpu.m_g), std::abs(gpu[2] - cpu.m_b)});
+
+      Core::Logger::log("Region ", i, ": GPU ", int(gpu[0]), " ", int(gpu[1]), " ", int(gpu[2]), ", CPU ", int(cpu.m_r), " ", int(cpu.m_g), " ", int(cpu.m_b));
+
+      // The GPU subsample may differ from the exact one by one step per pixel
+      if(difference > 1){
+        Core::Logger::error("GPU region average differs from the CPU one");
+        failures++;
+      }
     }
   }
 

@@ -63,6 +63,8 @@ pkg_check_modules(GBM REQUIRED gbm)
 add_executable(TestGpuDownscale
   #Huenicorn
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/Interpolation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test
@@ -79,6 +81,7 @@ target_include_directories(TestGpuDownscale PUBLIC
 )
 
 target_link_libraries(TestGpuDownscale PUBLIC
+  glm::glm
   ${OpenCV_LIBS}
   ${GPU_LIBRARIES}
   ${GBM_LIBRARIES}
