@@ -37,6 +37,18 @@ namespace Huenicorn::Grabber
     /**
      * Pipewire-specific data shared between processes
     */
+    /**
+     * @brief Read-only mapping of a Pipewire MemFd buffer, attached to the buffer's user_data
+     *
+     */
+    struct BufferMapping
+    {
+      void* map;
+      size_t size;
+      const uint8_t* data;
+    };
+
+
     struct PipewireData
     {
       spa_hook coreListener;
@@ -129,6 +141,16 @@ namespace Huenicorn::Grabber
 
     static void _onStreamProcess(
       void* userdata
+    );
+
+    static void _onStreamAddBuffer(
+      void* userdata,
+      pw_buffer* buffer
+    );
+
+    static void _onStreamRemoveBuffer(
+      void* userdata,
+      pw_buffer* buffer
     );
 
     static void _onStreamParamChanged(
