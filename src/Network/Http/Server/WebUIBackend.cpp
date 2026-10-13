@@ -335,7 +335,7 @@ namespace Huenicorn::Network::Http::Server
       m_coreService->saveProfile();
 
       Json jsonResponse = {
-        "succeeded", true
+        {"succeeded", true}
       };
 
       std::string response = jsonResponse.dump();
