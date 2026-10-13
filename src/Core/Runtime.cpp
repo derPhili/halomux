@@ -393,6 +393,12 @@ namespace Huenicorn::Core
 
   void Runtime::_shutdown()
   {
+    {
+      // Close the DTLS session before asking the bridge to stop streaming
+      std::lock_guard lock(m_streamerMutex);
+      m_streamer.reset();
+    }
+
     std::lock_guard lock(m_selectorMutex);
     m_selector->disableStreaming();
   }
