@@ -208,17 +208,7 @@ add_executable(huenicorn
 
 add_dependencies(huenicorn generate_version_header generate_webroot_header)
 
-if(UNIX AND NOT APPLE) # For Gnu/Linux
-  include(cmake/platforms/GnuLinux.cmake)
-endif()
-
-if(APPLE) # For MacOS
-  include(cmake/platforms/MacOS.cmake)
-endif()
-
-if(WIN32) #For Windows
-  include(cmake/platforms/Windows.cmake)
-endif()
+include(cmake/platforms/GnuLinux.cmake)
 
 set_target_properties(huenicorn PROPERTIES CXX_STANDARD 20)
 
