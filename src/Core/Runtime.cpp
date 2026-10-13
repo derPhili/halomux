@@ -248,7 +248,13 @@ namespace Huenicorn::Core
 
     m_keepLooping = true;
     while(m_keepLooping){
-      _update();
+      try{
+        _update();
+      }
+      catch(const std::exception& e){
+        // An exception escaping this thread would terminate the whole application
+        Logger::error("Failed to update channels: ", e.what());
+      }
 
       if(!m_loopRegulator->sync()){
         const auto& lastExcess = m_loopRegulator->lastExcess();

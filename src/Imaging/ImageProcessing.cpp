@@ -1,5 +1,7 @@
 #include <Huenicorn/Imaging/ImageProcessing.hpp>
 
+#include <algorithm>
+
 
 namespace Huenicorn::Imaging
 {
@@ -15,14 +17,14 @@ namespace Huenicorn::Imaging
       int sourceHeight = inputImageData.height();
       int sourceWidth = inputImageData.width();
 
-      if(sourceWidth < outputWidth){
+      if(outputWidth < 1 || sourceWidth < outputWidth){
         outputImageData = inputImageData;
         return;
       }
 
       float scaleRatio = static_cast<float>(outputWidth) / static_cast<float>(sourceWidth);
 
-      int targetHeight = static_cast<int>(static_cast<float>(sourceHeight) * scaleRatio);
+      int targetHeight = std::max(1, static_cast<int>(static_cast<float>(sourceHeight) * scaleRatio));
 
       cv::InterpolationFlags interpolationFlag = cv::InterpolationFlags::INTER_AREA;
 

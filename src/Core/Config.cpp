@@ -144,7 +144,7 @@ namespace Huenicorn::Core
   )
   {
     std::lock_guard lock(m_mutex);
-    m_configData.value().subsampleWidth = subsampleWidth;
+    m_configData.value().subsampleWidth = std::max(subsampleWidth, 1u);
     _save();
   }
 
