@@ -153,6 +153,18 @@ namespace Huenicorn::Grabber
   }
 
 
+  IGrabber::ProcessingInfo PipewireGrabber::processingInfo() const
+  {
+    auto lock = std::lock_guard(m_pwData.processingInfoMutex);
+
+    if(m_pwData.lastFrameOnGpu){
+      return {.gpu = true, .details = m_pwData.gpuName + ", DMA-BUF"};
+    }
+
+    return {.gpu = false, .details = m_pwData.cpuReason};
+  }
+
+
   void PipewireGrabber::_onCoreInfoCallback(
     void* userData,
     const pw_core_info* info
@@ -238,6 +250,8 @@ namespace Huenicorn::Grabber
       : _processSharedMemory(pw, pwBuffer, width, height, pixelFormat, regions, colors);
 
     if(computed){
+      pw->lastFrameOnGpu = data.type == SPA_DATA_DmaBuf;
+
       auto lock = std::lock_guard(pw->channels.mutex);
       pw->channels.colors = std::move(colors);
       pw->channels.hasColors = true;
@@ -299,6 +313,10 @@ namespace Huenicorn::Grabber
       // Fall back to shared memory buffers for good
       Core::Logger::warn("[gpu] GPU downscaling failed, falling back to the CPU path");
       pw->dmaBufFailed = true;
+      {
+        auto lock = std::lock_guard(pw->processingInfoMutex);
+        pw->cpuReason = "GPU downscaling failed, shared memory";
+      }
       pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
       return false;
     }
@@ -350,7 +368,7 @@ namespace Huenicorn::Grabber
     const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
 
     if(width > subsampleWidth){
-      Imaging::ImageProcessing::rescaleSampled(frameViewData, subsample, subsampleWidth, pw->config->interpolation());
+      Imaging::ImageProcessing::rescaleSampled(frameViewData, subsample, subsampleWidth);
     }
     else{
       subsample = {.imageMatrix = frameView.clone(), .format = pixelFormat};
@@ -566,10 +584,17 @@ namespace Huenicorn::Grabber
     // The GL context lives in this thread, like every Pipewire callback using it
     if(const char* disableGpu = std::getenv("HUENICORN_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
       Core::Logger::log("[gpu] Disabled by HUENICORN_DISABLE_GPU");
+      auto lock = std::lock_guard(pw->processingInfoMutex);
+      pw->cpuReason = "GPU disabled by HUENICORN_DISABLE_GPU, shared memory";
     }
     else{
       pw->gpu = std::make_unique<EglDownscaler>();
       if(pw->gpu->init()){
+        {
+          auto lock = std::lock_guard(pw->processingInfoMutex);
+          pw->gpuName = pw->gpu->renderer();
+        }
+
         for(spa_video_format format : SupportedFormats){
           auto modifiers = pw->gpu->supportedModifiers(toDrmFormat(format));
           if(!modifiers.empty()){
@@ -580,6 +605,8 @@ namespace Huenicorn::Grabber
       else{
         Core::Logger::warn("[gpu] GPU downscaling unavailable, using the CPU path");
         pw->gpu.reset();
+        auto lock = std::lock_guard(pw->processingInfoMutex);
+        pw->cpuReason = "GPU unavailable, shared memory";
       }
     }
 

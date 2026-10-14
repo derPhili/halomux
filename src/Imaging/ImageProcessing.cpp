@@ -7,33 +7,10 @@ namespace Huenicorn::Imaging
 {
   namespace ImageProcessing
   {
-    namespace
-    {
-      cv::InterpolationFlags _toCvInterpolation(
-        Interpolation::Type interpolation
-      )
-      {
-        switch(interpolation){
-          case Interpolation::Type::Nearest:
-            return cv::InterpolationFlags::INTER_NEAREST;
-
-          case Interpolation::Type::Cubic:
-            return cv::InterpolationFlags::INTER_CUBIC;
-
-          case Interpolation::Type::Area:
-            return cv::InterpolationFlags::INTER_AREA;
-        }
-
-        return cv::InterpolationFlags::INTER_AREA;
-      }
-    }
-
-
     void rescale(
       const ImageData& inputImageData,
       ImageData& outputImageData,
-      int outputWidth,
-      Interpolation::Type interpolation
+      int outputWidth
     )
     {
       int sourceHeight = inputImageData.height();
@@ -48,7 +25,7 @@ namespace Huenicorn::Imaging
 
       int targetHeight = std::max(1, static_cast<int>(static_cast<float>(sourceHeight) * scaleRatio));
 
-      cv::resize(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, _toCvInterpolation(interpolation));
+      cv::resize(inputImageData.imageMatrix, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, cv::INTER_AREA);
       outputImageData.format = inputImageData.format;
     }
 
@@ -57,7 +34,6 @@ namespace Huenicorn::Imaging
       const ImageData& inputImageData,
       ImageData& outputImageData,
       int outputWidth,
-      Interpolation::Type interpolation,
       int maxSampledRowsPerOutputRow
     )
     {
@@ -65,7 +41,7 @@ namespace Huenicorn::Imaging
       const int sourceHeight = inputImageData.height();
 
       if(outputWidth < 1 || sourceWidth <= outputWidth || maxSampledRowsPerOutputRow < 1){
-        rescale(inputImageData, outputImageData, outputWidth, interpolation);
+        rescale(inputImageData, outputImageData, outputWidth);
         return;
       }
 
@@ -74,7 +50,7 @@ namespace Huenicorn::Imaging
       const int rowStride = std::max(1, rowsPerOutputRow / maxSampledRowsPerOutputRow);
 
       if(rowStride == 1){
-        rescale(inputImageData, outputImageData, outputWidth, interpolation);
+        rescale(inputImageData, outputImageData, outputWidth);
         return;
       }
 
@@ -83,7 +59,7 @@ namespace Huenicorn::Imaging
       const cv::Mat sampledRows(sourceHeight / rowStride, sourceWidth, source.type(), source.data, source.step[0] * static_cast<size_t>(rowStride));
 
       // Target size computed from the full image: the sampled view is less tall
-      cv::resize(sampledRows, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, _toCvInterpolation(interpolation));
+      cv::resize(sampledRows, outputImageData.imageMatrix, cv::Size(outputWidth, targetHeight), 0, 0, cv::INTER_AREA);
       outputImageData.format = inputImageData.format;
     }
 

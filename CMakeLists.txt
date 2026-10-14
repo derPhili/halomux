@@ -105,7 +105,6 @@ set(HUE_SOURCE
 
 set(IMAGING_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/Interpolation.cpp
 )
 
 set(NETWORK_SOURCE

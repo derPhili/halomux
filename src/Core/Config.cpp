@@ -71,13 +71,6 @@ namespace Huenicorn::Core
   }
 
 
-  Imaging::Interpolation::Type Config::interpolation() const
-  {
-    std::lock_guard lock(m_mutex);
-    return m_configData.value().interpolation.value();
-  }
-
-
   float Config::transitionSmoothing() const
   {
     std::lock_guard lock(m_mutex);
@@ -163,16 +156,6 @@ namespace Huenicorn::Core
   }
 
 
-  void Config::setInterpolation(
-    Imaging::Interpolation::Type interpolation
-  )
-  {
-    std::lock_guard lock(m_mutex);
-    m_configData.value().interpolation = interpolation;
-    _save();
-  }
-
-
   void Config::setTransitionSmoothing(
     float transitionSmoothing
   )
@@ -203,7 +186,6 @@ namespace Huenicorn::Core
       .profileName = std::nullopt,
       .refreshRate = 0,
       .subsampleWidth = 0,
-      .interpolation = Imaging::Interpolation::Type::Area,
       .transitionSmoothing = 0.f,
       .restoreToken = std::nullopt
     };

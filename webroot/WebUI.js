@@ -32,12 +32,11 @@ class WebUI
     this.advancedSettingsNode = document.getElementById("advancedSettings");
     this.availableSubsamplesNode = document.getElementById("availableSubsampleWidths");
     this.availableSubsamplesNode.addEventListener("change", (event) => {this._setSubsampleWidth(parseInt(event.target.value));});
-    this.availableInterpolationsNode = document.getElementById("availableInterpolations");
-    this.availableInterpolationsNode.addEventListener("change", (event) => {this._setInterpolation(parseInt(event.target.value));});
     this.refreshRateInputNode = document.getElementById("refreshRate");
     this.refreshRateLimitNode = document.getElementById("refreshRateLimit");
     this.refreshRateInputNode.addEventListener("change", (event) => {this._setRefreshRate(event.target.valueAsNumber);});
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
+    this.processingInfoNode = document.getElementById("processingInfo");
     this.transitionSmoothingLabelNode = document.getElementById("transitionSmoothingLabel");
     this.transitionSmoothingInputNode.addEventListener("input", (event) => {this.transitionSmoothingLabelNode.textContent = event.target.value;});
     this.transitionSmoothingInputNode.addEventListener("change", (event) => {this._setTransitionSmoothing(event.target.valueAsNumber);});
@@ -68,9 +67,10 @@ class WebUI
     displayInfoPromise.then((data) => {this._displayInfoCallback(data);});
     displayInfoPromise.catch((error) => {log(error);});
 
-    let interpolationInfoPromise = RequestUtils.get("/api/interpolationInfo");
-    interpolationInfoPromise.then((data) => {this._interpolationInfoCallback(data);});
-    interpolationInfoPromise.catch((error) => {log(error);});
+    // Refreshed periodically: the grabber falls back to the CPU at runtime if the GPU path fails
+    this._refreshProcessingInfo();
+    setInterval(() => {this._refreshProcessingInfo();}, 5000);
+
 
     let entertainmentConfigurationsPromise = RequestUtils.get("/api/entertainmentConfigurations");
     entertainmentConfigurationsPromise.then((data) => {this._entertainmentConfigurationsCallback(data);});
@@ -303,26 +303,15 @@ class WebUI
   }
 
 
-  _interpolationInfoCallback(interpolationInfo)
+  _refreshProcessingInfo()
   {
-    let availableInterpolations = interpolationInfo.available;
-
-    this.availableInterpolationsNode.innerHTML = "";
-
-    for(let availableInterpolation of availableInterpolations){
-      let newOption = document.createElement("option");
-
-      let key = Object.keys(availableInterpolation)[0];
-      let value = Object.values(availableInterpolation)[0];
-
-      newOption.innerHTML = key;
-      newOption.value = value;
-
-      this.availableInterpolationsNode.appendChild(newOption);
-    }
-
-    this.availableInterpolationsNode.value = interpolationInfo.current;
+    RequestUtils.get("/api/processingInfo")
+    .then((processingInfo) => {
+      this.processingInfoNode.textContent = `${processingInfo.backend} (${processingInfo.details})`;
+    })
+    .catch((error) => {log(error);});
   }
+
 
   _entertainmentConfigurationsCallback(entertainmentConfigurationsData)
   {
@@ -408,13 +397,6 @@ class WebUI
       let gradientColor = StyleUtils.greenRedGradient(proportion);
       this.availableSubsamplesNode.style.color = gradientColor;
     });
-    promise.catch((error) => {log(error);});
-  }
-
-
-  _setInterpolation(interpolation)
-  {
-    let promise = RequestUtils.put("/api/setInterpolation", JSON.stringify(interpolation));
     promise.catch((error) => {log(error);});
   }
 

@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Grabber/IGrabber.hpp>
 
 #include <Huenicorn/Hue/Api/EntertainmentConfiguration.hpp>
 
@@ -96,14 +97,6 @@ namespace Huenicorn::Core
 
 
     /**
-     * @brief Returns a map of available subsample interpolations
-     * 
-     * @return const Interpolation::Interpolations& available interpolations
-     */
-    const Imaging::Interpolation::Interpolations& availableInterpolations() const;
-
-
-    /**
      * @brief Returns a list of subsample resolutions
      * 
      * @return std::vector<glm::ivec2> Subsample resolutions
@@ -144,11 +137,11 @@ namespace Huenicorn::Core
 
 
     /**
-     * @brief Returns the current subsample interpolation type
-     * 
-     * @return Interpolation::Type Subsample interpolation type
+     * @brief Returns where captured frames are processed (GPU or CPU)
+     *
+     * @return Grabber::IGrabber::ProcessingInfo Processing path and details
      */
-    Imaging::Interpolation::Type interpolation() const;
+    Grabber::IGrabber::ProcessingInfo processingInfo() const;
 
 
     /**
@@ -218,16 +211,6 @@ namespace Huenicorn::Core
      */
     void setRefreshRate(
       unsigned refreshRate
-    );
-
-
-    /**
-     * @brief Set the subsample interpolation 
-     * 
-     * @param interpolation Desired interpolation type
-     */
-    void setInterpolation(
-      unsigned interpolation
     );
 
 

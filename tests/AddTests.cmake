@@ -9,7 +9,6 @@ enable_testing()
 add_executable(TestImageProcessing
   #Huenicorn
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/Interpolation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test
@@ -64,7 +63,6 @@ add_executable(TestGpuDownscale
   #Huenicorn
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/Interpolation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test

@@ -4,7 +4,6 @@
 #include <mutex>
 #include <optional>
 
-#include <Huenicorn/Imaging/Interpolation.hpp>
 #include <Huenicorn/Hue/Auth/Credentials.hpp>
 
 
@@ -28,7 +27,6 @@ namespace Huenicorn::Core
 
       std::optional<unsigned> refreshRate{0};
       std::optional<unsigned> subsampleWidth{0};
-      std::optional<Imaging::Interpolation::Type> interpolation{Imaging::Interpolation::Type::Area};
       std::optional<float> transitionSmoothing{0.f};
       std::optional<std::string> restoreToken;
     };
@@ -120,14 +118,6 @@ namespace Huenicorn::Core
 
 
     /**
-     * @brief Returns the registered subsample interpolation type
-     * 
-     * @return Type of current subsample interpolation
-    */
-    Imaging::Interpolation::Type interpolation() const;
-
-
-    /**
      * @brief Returns the registered transition smoothing factor
      *
      * @return float Transition smoothing factor, in [0, 1)
@@ -195,16 +185,6 @@ namespace Huenicorn::Core
 
 
     /**
-     * @brief Registers the interpolation type for subsample
-     * 
-     * @param interpolation Type of interpolation
-    */
-    void setInterpolation(
-      Imaging::Interpolation::Type interpolation
-    );
-
-
-    /**
      * @brief Registers the transition smoothing factor
      *
      * @param transitionSmoothing Smoothing factor, clamped to [0, 0.97]
@@ -247,7 +227,7 @@ namespace Huenicorn::Core
     std::optional<Data> m_configData;
 
     // Guards the runtime-tunable values (refresh rate, subsample width,
-    // interpolation, smoothing...) which are written by the web UI threads
+    // smoothing...) which are written by the web UI threads
     // while the streaming loop reads them. Values returned by reference are
     // only written during initial setup, before any concurrent access.
     mutable std::mutex m_mutex;

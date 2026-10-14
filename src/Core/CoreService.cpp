@@ -204,21 +204,15 @@ namespace Huenicorn::Core
   }
 
 
+  Grabber::IGrabber::ProcessingInfo CoreService::processingInfo() const
+  {
+    return m_runtime.m_grabber->processingInfo();
+  }
+
+
   unsigned CoreService::displayRefreshRate() const
   {
     return m_runtime.m_grabber->displayRefreshRate();
-  }
-
-
-  Imaging::Interpolation::Type CoreService::interpolation() const
-  {
-    return m_config.interpolation();
-  }
-
-
-  const Imaging::Interpolation::Interpolations& CoreService::availableInterpolations() const
-  {
-    return Imaging::Interpolation::availableInterpolations;
   }
 
 
@@ -297,14 +291,6 @@ namespace Huenicorn::Core
     }
 
     m_runtime.m_grabber->setFrameRateLimit(refreshRate);
-  }
-
-
-  void CoreService::setInterpolation(
-    unsigned interpolation
-  )
-  {
-    m_config.setInterpolation(static_cast<Imaging::Interpolation::Type>(interpolation));
   }
 
 
