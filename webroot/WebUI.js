@@ -38,8 +38,21 @@ class WebUI
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.processingInfoNode = document.getElementById("processingInfo");
     this.transitionSmoothingLabelNode = document.getElementById("transitionSmoothingLabel");
-    this.transitionSmoothingInputNode.addEventListener("input", (event) => {this.transitionSmoothingLabelNode.textContent = event.target.value;});
+    this.transitionSmoothingInputNode.addEventListener("input", (event) => {
+      this.transitionSmoothingLabelNode.textContent = event.target.value;
+      this._highlightSmoothingPreset(event.target.valueAsNumber);
+    });
     this.transitionSmoothingInputNode.addEventListener("change", (event) => {this._setTransitionSmoothing(event.target.valueAsNumber);});
+
+    // Quick switches between a direct and a smooth transition smoothing, values in percent
+    this.smoothingPresets = [
+      {button : document.getElementById("gamingPresetButton"), value : WebUI.GamingSmoothing},
+      {button : document.getElementById("moviePresetButton"), value : WebUI.MovieSmoothing}
+    ];
+
+    for(let preset of this.smoothingPresets){
+      preset.button.addEventListener("click", () => {this._setTransitionSmoothing(preset.value);});
+    }
 
     this.saveProfileButton = document.getElementById("saveProfileButton");
     this.saveProfileButton.addEventListener("click", () => {this._saveProfile();});
@@ -277,6 +290,7 @@ class WebUI
     this.refreshRateLimitNode.textContent = `(max ${displayInfo.maxRefreshRate} Hz: ${limitedBy}. Display: ${displayInfo.displayRefreshRate} Hz, bridge: ${displayInfo.bridgeMaxRefreshRate} Hz)`;
     this.transitionSmoothingInputNode.value = displayInfo.selectedTransitionSmoothing;
     this.transitionSmoothingLabelNode.textContent = Math.round(displayInfo.selectedTransitionSmoothing);
+    this._highlightSmoothingPreset(displayInfo.selectedTransitionSmoothing);
 
     this.screenWidget.setDimensions(x, y, subsampleWidth);
     let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
@@ -414,6 +428,14 @@ class WebUI
   }
 
 
+  _highlightSmoothingPreset(transitionSmoothing)
+  {
+    for(let preset of this.smoothingPresets){
+      preset.button.classList.toggle("active", Math.round(transitionSmoothing) == preset.value);
+    }
+  }
+
+
   _setTransitionSmoothing(transitionSmoothing){
     let promise = RequestUtils.put("/api/setTransitionSmoothing", JSON.stringify(transitionSmoothing));
     promise.then((data) => {this._setTransitionSmoothingCallback(data.transitionSmoothing);});
@@ -425,6 +447,7 @@ class WebUI
   {
     this.transitionSmoothingInputNode.value = transitionSmoothing;
     this.transitionSmoothingLabelNode.textContent = Math.round(transitionSmoothing);
+    this._highlightSmoothingPreset(transitionSmoothing);
   }
 
 
@@ -470,3 +493,8 @@ class WebUI
     }
   }
 }
+
+
+// Transition smoothing presets [%]
+WebUI.GamingSmoothing = 10;
+WebUI.MovieSmoothing = 60;

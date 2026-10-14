@@ -59,6 +59,14 @@ button:hover
 }
 
 
+/* Transition smoothing preset matching the current slider value */
+button.presetButton.active
+{
+  box-shadow: inset var(--shadow);
+  border-color: var(--foregroundColor);
+}
+
+
 select, input[type=number]
 {
   text-align: center;
