@@ -16,6 +16,7 @@
 #include <Huenicorn/Serialization/JsonSerializer.hpp>
 #include <Huenicorn/Serialization/Credentials.hpp>
 #include <Huenicorn/Core/PreviewSequence.hpp>
+#include <Huenicorn/Core/Scenes.hpp>
 #include <Huenicorn/Core/Runtime.hpp>
 #include <Huenicorn/Network/Http/Server/SetupBackend.hpp>
 
@@ -408,6 +409,51 @@ namespace Huenicorn::Core
   )
   {
     return m_config.deleteScene(name);
+  }
+
+
+  bool CoreService::applyScene(
+    const std::string& name,
+    bool builtin
+  )
+  {
+    Config::StaticColors sceneColors;
+
+    if(builtin){
+      const Scenes::BuiltinScene* scene = Scenes::findBuiltin(name);
+      if(!scene){
+        return false;
+      }
+
+      std::vector<std::pair<uint8_t, float>> lampCenters;
+      for(const auto& [channelId, channel] : channels()){
+        if(channel.state == Hue::Api::Channel::State::Active){
+          lampCenters.emplace_back(channelId, (channel.uvs.min.x + channel.uvs.max.x) / 2.f);
+        }
+      }
+
+      sceneColors = Scenes::spread(*scene, std::move(lampCenters));
+    }
+    else{
+      const Config::Scenes savedScenes = m_config.scenes();
+      const auto sceneIt = savedScenes.find(name);
+      if(sceneIt == savedScenes.end()){
+        return false;
+      }
+
+      sceneColors = sceneIt->second;
+    }
+
+    // Lamps the scene doesn't cover keep their color
+    Config::StaticColors staticColors = m_config.staticColors();
+    for(const auto& [channelId, color] : sceneColors){
+      staticColors[channelId] = color;
+    }
+
+    m_config.setStaticColors(staticColors);
+    m_config.setSyncEnabled(false);
+
+    return true;
   }
 
 

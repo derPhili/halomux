@@ -11,6 +11,8 @@ class StaticScenePanel
     this.staticColors = {};
     // Saved scenes: static colors by name
     this.scenes = {};
+    // Built-in scenes from the backend: name, left and right color
+    this.builtinScenes = [];
 
     // Only one color update is in flight and only the newest waits, so dragging a color picker
     // doesn't flood the backend
@@ -47,7 +49,6 @@ class StaticScenePanel
 
     this.builtinScenesNode = document.getElementById("builtinScenes");
     this.customScenesNode = document.getElementById("customScenes");
-    this._renderBuiltinScenes();
 
     this.sceneNameNode = document.getElementById("sceneName");
     document.getElementById("saveSceneForm").addEventListener("submit", (event) => {
@@ -64,6 +65,9 @@ class StaticScenePanel
     RequestUtils.get("/api/lightMode")
     .then((lightMode) => {
       this.scenes = lightMode.scenes;
+      this.builtinScenes = lightMode.builtinScenes;
+      this._renderBuiltinScenes();
+      this._renderCustomScenes();
       this._updateSync(lightMode.syncEnabled);
       this._updateStaticColors(lightMode.staticColors);
     })
@@ -151,7 +155,7 @@ class StaticScenePanel
   }
 
 
-  // Spreads the colors of a built-in scene over the lamps, from left to right
+  // Spreads the colors of a built-in scene over the lamps, from left to right, as the backend does
   _spread(left, right)
   {
     let lamps = this._lamps();
@@ -196,9 +200,9 @@ class StaticScenePanel
   {
     this.builtinScenesNode.replaceChildren();
 
-    for(let scene of StaticScenePanel.BuiltinScenes){
+    for(let scene of this.builtinScenes){
       let item = this._sceneButton(scene.name, StaticScenePanel.swatchBackground([scene.left, scene.right]), () => {
-        this._applyColors(this._spread(scene.left, scene.right));
+        this._applyScene(scene.name, true);
       });
       item.dataset.left = scene.left;
       item.dataset.right = scene.right;
@@ -221,7 +225,7 @@ class StaticScenePanel
       }
 
       let item = this._sceneButton(name, StaticScenePanel.swatchBackground(ordered), () => {
-        this._applyColors({...this._currentLampColors(), ...colors});
+        this._applyScene(name, false);
       });
       item.dataset.scene = name;
 
@@ -295,6 +299,18 @@ class StaticScenePanel
     if(!this.colorsRequestInFlight){
       this._sendPendingColors();
     }
+  }
+
+
+  // The backend spreads built-in scenes over the lamps and turns sync off
+  _applyScene(name, builtin)
+  {
+    RequestUtils.put("/api/applyScene", JSON.stringify({name : name, builtin : builtin}))
+    .then((data) => {
+      this._updateStaticColors(data.staticColors);
+      this._updateSync(data.syncEnabled);
+    })
+    .catch((error) => {log(error);});
   }
 
 
@@ -415,18 +431,4 @@ StaticScenePanel.QuickColors = [
   {name : "Pink", value : "#ff32b4"},
   {name : "Warm white", value : "#ffb46e"},
   {name : "Cool white", value : "#e6eeff"}
-];
-
-// Colors of the leftmost and rightmost lamp
-StaticScenePanel.BuiltinScenes = [
-  {name : "Warm white", left : "#ffb46e", right : "#ffb46e"},
-  {name : "Daylight", left : "#e6eeff", right : "#e6eeff"},
-  {name : "Sunset", left : "#ff5e3a", right : "#ffaa3c"},
-  {name : "Ocean", left : "#005aff", right : "#00c8c8"},
-  {name : "Forest", left : "#1ea03c", right : "#96c828"},
-  {name : "Neon", left : "#ff00aa", right : "#00c8ff"},
-  {name : "Galaxy", left : "#5a28ff", right : "#c83cff"},
-  {name : "Fire", left : "#ff2800", right : "#ff8c00"},
-  {name : "Candlelight", left : "#ff7a1e", right : "#b4460a"},
-  {name : "Off", left : "#000000", right : "#000000"}
 ];

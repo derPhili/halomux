@@ -1,4 +1,5 @@
 #include <Huenicorn/Core/Logger.hpp>
+#include <Huenicorn/Core/Scenes.hpp>
 #include <Huenicorn/Serialization/Config.hpp>
 
 using namespace Huenicorn;
@@ -57,6 +58,21 @@ int main()
   expect("Invalid color", rejects(Serialization::Json{{"0", "red"}}));
   expect("Invalid channel", rejects(Serialization::Json{{"256", "#ffffff"}}));
   expect("Channel not a number", rejects(Serialization::Json{{"left", "#ffffff"}}));
+
+  // Built-in scenes: left color on the leftmost lamp, right color on the rightmost, mixed between
+  const Scenes::BuiltinScene* sunset = Scenes::findBuiltin("Sunset");
+  expect("Find built-in scene", sunset != nullptr && !Scenes::findBuiltin("Nope"));
+
+  const auto twoLamps = Scenes::spread(*sunset, {{1, 0.8f}, {0, 0.2f}});
+  expect("Left lamp", twoLamps.at(0) == sunset->left);
+  expect("Right lamp", twoLamps.at(1) == sunset->right);
+
+  const Scenes::BuiltinScene neon = *Scenes::findBuiltin("Neon");
+  const auto threeLamps = Scenes::spread(neon, {{0, 0.1f}, {1, 0.5f}, {2, 0.9f}});
+  expect("Middle lamp mixed", threeLamps.at(1) == Imaging::Color{128, 100, 213});
+
+  const auto oneLamp = Scenes::spread(neon, {{5, 0.7f}});
+  expect("Single lamp", oneLamp.size() == 1 && oneLamp.at(5) == neon.left);
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

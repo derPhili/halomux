@@ -356,6 +356,21 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Shows a scene on the lamps: its colors replace those of the lamps it covers, and sync is disabled
+     *
+     * Built-in scenes are spread over the active lamps, from left to right.
+     *
+     * @param name Scene name
+     * @param builtin Whether the scene is a built-in one, or a saved one
+     * @return true The scene exists
+     */
+    bool applyScene(
+      const std::string& name,
+      bool builtin
+    );
+
+
+    /**
      * @brief Set the streaming activity of the channel referenced by ID
      * 
      * @param channelId ID of the channel to affect
