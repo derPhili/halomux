@@ -189,5 +189,8 @@ namespace Huenicorn::Core
 
     // Sound transients, only while Config::audioReactive() is enabled (streaming thread)
     std::unique_ptr<Audio::AudioAnalyzer> m_audioAnalyzer;
+
+    // Start of the running preview (steady clock ticks), 0 when none
+    std::atomic<int64_t> m_previewStart{0};
   };
 }

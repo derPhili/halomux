@@ -339,6 +339,12 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Post, "/api/preview", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Json{{"duration", m_coreService->startPreview()}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Post, "/api/saveProfile", [this](const Request& /*req*/, Response& res){
       m_coreService->saveProfile();
 

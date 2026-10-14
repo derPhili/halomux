@@ -139,6 +139,8 @@ Um Lampen bestimmten Bildschirmbereichen zuzuweisen, öffne die Weboberfläche u
 
 Ist eine synchronisierte Lampe in der Liste ausgewählt, kannst du ihren Bildschirmbereich im Abschnitt zur Bildschirmaufteilung anpassen.
 
+Um die Einstellungen auszuprobieren, startet der Knopf „Preview“ (Karte „Settings“) eine 12-sekündige Testsequenz auf den Lampen statt des Bildschirminhalts: harte Farbschnitte (Glättung), eine dunkle Szene mit weißen Blitzen links, rechts und beidseitig (Highlight boost pro Lampe), einen langsamen Farbverlauf und einen Schnitt von Schwarz auf Weiß (Helligkeit). Sie durchläuft dieselbe Verarbeitung wie echte Bilder; danach geht es automatisch mit dem Bildschirm weiter.
+
 Bist du mit der Aufteilung zufrieden, speichere sie als Profil. Es wird bei späteren Starts automatisch geladen.
 
 Solange kein Profil gespeichert ist, öffnet sich die Lampenverwaltung beim Start automatisch.

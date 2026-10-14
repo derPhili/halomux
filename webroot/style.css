@@ -252,6 +252,20 @@ button:focus-visible, select:focus-visible, input:focus-visible
 }
 
 
+button:disabled
+{
+  cursor: default;
+}
+
+
+button.running
+{
+  border-color: var(--accent);
+  color: var(--accentStrong);
+  background: var(--accentSoft);
+}
+
+
 button.primary
 {
   background: var(--accent);

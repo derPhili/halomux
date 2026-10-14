@@ -84,6 +84,9 @@ class WebUI
       preset.button.addEventListener("click", () => {this._setTransitionSmoothing(preset.value);});
     }
 
+    this.previewButton = document.getElementById("previewButton");
+    this.previewButton.addEventListener("click", () => {this._startPreview();});
+
     this.saveProfileButton = document.getElementById("saveProfileButton");
     this.saveProfileButton.addEventListener("click", () => {this._saveProfile();});
 
@@ -434,6 +437,33 @@ class WebUI
       log(error);
       this._showLoading(false);
     });
+  }
+
+
+  _startPreview()
+  {
+    RequestUtils.post("/api/preview", JSON.stringify(null))
+    .then((data) => {
+      let remaining = Math.ceil(data.duration);
+      this.previewButton.disabled = true;
+      this.previewButton.classList.add("running");
+
+      let tick = () => {
+        if(remaining <= 0){
+          this.previewButton.disabled = false;
+          this.previewButton.classList.remove("running");
+          this.previewButton.textContent = "Preview";
+          return;
+        }
+
+        this.previewButton.textContent = `Previewing… ${remaining} s`;
+        remaining--;
+        setTimeout(tick, 1000);
+      };
+
+      tick();
+    })
+    .catch((error) => {log(error);});
   }
 
 

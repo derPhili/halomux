@@ -128,3 +128,25 @@ target_include_directories(TestTransientDetector PUBLIC
 )
 
 add_test(NAME TransientDetector COMMAND TestTransientDetector)
+
+
+# TestPreviewSequence: synthetic content of the settings preview
+add_executable(TestPreviewSequence
+  #Huenicorn
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestPreviewSequence.cpp
+)
+
+set_target_properties(TestPreviewSequence PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestPreviewSequence PUBLIC
+  include
+)
+
+target_link_libraries(TestPreviewSequence PUBLIC
+  glm::glm
+)
+
+add_test(NAME PreviewSequence COMMAND TestPreviewSequence)

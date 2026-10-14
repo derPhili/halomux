@@ -1,6 +1,7 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <future>
@@ -17,6 +18,7 @@
 #include <Huenicorn/Imaging/UV.hpp>
 
 #include <Huenicorn/Core/CoreService.hpp>
+#include <Huenicorn/Core/PreviewSequence.hpp>
 #include <Huenicorn/Hue/Api/Channel.hpp>
 
 #include <Huenicorn/Hue/Api/ApiTools.hpp>
@@ -320,8 +322,22 @@ namespace Huenicorn::Core
       m_channelRegions = std::move(regions);
     }
 
+    // Preview: synthetic content replaces the screen for a few seconds
+    float previewTime = -1.f;
+    if(const int64_t previewStart = m_previewStart; previewStart != 0){
+      const auto elapsed = std::chrono::steady_clock::now().time_since_epoch() - std::chrono::steady_clock::duration(previewStart);
+      previewTime = std::chrono::duration<float>(elapsed).count();
+
+      if(previewTime >= PreviewSequence::Duration){
+        m_previewStart = 0;
+        previewTime = -1.f;
+      }
+    }
+
+    const bool previewing = previewTime >= 0.f;
+
     Grabber::IGrabber::ChannelColors channelColors;
-    if(!m_grabber->grabChannelColors(channelColors)){
+    if(!m_grabber->grabChannelColors(channelColors) && !previewing){
       // Grabbers with asynchronous capture may produce slower than the core consumes
       return;
     }
@@ -335,7 +351,7 @@ namespace Huenicorn::Core
         return channelColor.first == channelId;
       });
 
-      if(channel.state == Hue::Api::Channel::State::Active && colorIt == channelColors.end()){
+      if(channel.state == Hue::Api::Channel::State::Active && colorIt == channelColors.end() && !previewing){
         // Activated after the last captured frame: wait for the next one
         continue;
       }
@@ -364,7 +380,10 @@ namespace Huenicorn::Core
         channel.acknowledgeShutdown();
       }
       else{
-        const Imaging::Color& color = colorIt->second;
+        // Horizontal position of the lamp's region, 0 = left, 1 = right
+        const float pan = glm::clamp((channel.uvs.min.x + channel.uvs.max.x) / 2.f, 0.f, 1.f);
+
+        const Imaging::Color color = previewing ? PreviewSequence::colorAt(previewTime, pan) : colorIt->second;
 
         glm::vec3 correctedColor;
         /*/
@@ -394,7 +413,6 @@ namespace Huenicorn::Core
         const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
         const float decay = std::exp(-tickDuration / BoostTimeConstant);
         // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
-        const float pan = glm::clamp((channel.uvs.min.x + channel.uvs.max.x) / 2.f, 0.f, 1.f);
         const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
 
         const float boost = channel.updateHighlightBoost(color.brightness(), m_config.highlightBoost(), decay, soundTrigger);

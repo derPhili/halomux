@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -14,6 +15,7 @@
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
 #include <Huenicorn/Serialization/JsonSerializer.hpp>
 #include <Huenicorn/Serialization/Credentials.hpp>
+#include <Huenicorn/Core/PreviewSequence.hpp>
 #include <Huenicorn/Core/Runtime.hpp>
 #include <Huenicorn/Network/Http/Server/SetupBackend.hpp>
 
@@ -232,6 +234,13 @@ namespace Huenicorn::Core
   float CoreService::highlightBoost() const
   {
     return m_config.highlightBoost() * 100.f;
+  }
+
+
+  float CoreService::startPreview()
+  {
+    m_runtime.m_previewStart = std::chrono::steady_clock::now().time_since_epoch().count();
+    return PreviewSequence::Duration;
   }
 
 

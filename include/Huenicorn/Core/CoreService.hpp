@@ -269,6 +269,14 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Plays the preview sequence on the lamps instead of the screen content
+     *
+     * @return float Duration of the preview [s]
+     */
+    float startPreview();
+
+
+    /**
      * @brief Set the global lamp brightness factor
      *
      * @param brightness Value in percent
