@@ -24,88 +24,93 @@
     </header>
 
     <main class="layout">
-      <section class="card">
-        <div class="cardHeader">
-          <h2>Screen regions</h2>
-          <span class="hint">Select an active lamp, then drag the corners of its region</span>
-        </div>
+      <div class="mainColumn">
+        <section class="card">
+          <div class="cardHeader">
+            <h2>Screen regions</h2>
+            <span class="hint">Select an active lamp, then drag the corners of its region</span>
+          </div>
 
-        <svg id="svgArea">
-          <!-- Catches the pointer over the whole widget -->
-          <rect x="0%" y="0%" width="100%" height="100%" fill="transparent"/>
-          <text id="legendText" x="50%" y="50%" style="text-anchor: middle;"></text>
+          <svg id="svgArea">
+            <!-- Catches the pointer over the whole widget -->
+            <rect x="0%" y="0%" width="100%" height="100%" fill="transparent"/>
+            <text id="legendText" x="50%" y="50%" style="text-anchor: middle;"></text>
 
-          <!-- Screen area -->
-          <svg x="6%" y="6%" width="88%" height="80%">
-            <rect x="0%" y="0%" width="100%" height="100%" id="screenArea"/>
+            <!-- Screen area -->
+            <svg x="6%" y="6%" width="88%" height="80%">
+              <rect x="0%" y="0%" width="100%" height="100%" id="screenArea"/>
 
-            <svg x="0%" y="0%" width="100%" height="100%" id="gridArea"></svg>
+              <svg x="0%" y="0%" width="100%" height="100%" id="gridArea"></svg>
 
-            <!-- UV area + handlers -->
-            <svg x="0%" y="0%" width="100%" height="100%">
-              <svg x="0%" y="0%" width="100%" height="100%" id="previewRectangles"></svg>
-              <svg x="0%" y="0%" width="100%" height="100%" id="uvArea" style="display: none;">
-                <rect x="0%" y="0%" width="100%" height="100%"/>
-                <text id="svgChannelName" x="50%" y="50%" dy="-0.5em" style="text-anchor: middle;"></text>
-                <text id="svgChannelUVSize" x="50%" y="50%" dy="1em" style="text-anchor: middle;"></text>
+              <!-- UV area + handlers -->
+              <svg x="0%" y="0%" width="100%" height="100%">
+                <svg x="0%" y="0%" width="100%" height="100%" id="previewRectangles"></svg>
+                <svg x="0%" y="0%" width="100%" height="100%" id="uvArea" style="display: none;">
+                  <rect x="0%" y="0%" width="100%" height="100%"/>
+                  <text id="svgChannelName" x="50%" y="50%" dy="-0.5em" style="text-anchor: middle;"></text>
+                  <text id="svgChannelUVSize" x="50%" y="50%" dy="1em" style="text-anchor: middle;"></text>
+                </svg>
+
+                <circle r="1.6%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"/>
+                <circle r="1.6%" cx="100%" cy="0%" class="handler" id="tr" style="display: none;"/>
+                <circle r="1.6%" cx="0%" cy="100%" class="handler" id="bl" style="display: none;"/>
+                <circle r="1.6%" cx="100%" cy="100%" class="handler" id="br" style="display: none;"/>
               </svg>
+            </svg>
 
-              <circle r="1.6%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"/>
-              <circle r="1.6%" cx="100%" cy="0%" class="handler" id="tr" style="display: none;"/>
-              <circle r="1.6%" cx="0%" cy="100%" class="handler" id="bl" style="display: none;"/>
-              <circle r="1.6%" cx="100%" cy="100%" class="handler" id="br" style="display: none;"/>
+            <svg x="35%" y="88%" width="30%" height="12%">
+              <svg x="0%" y="0%" width="100%" height="100%" id="gammaArea" style="display: none;">
+                <text x="50%" y="38%" style="text-anchor: middle;">Gamma correction</text>
+                <line x1="0%" y1="68%" x2="100%" y2="68%"/>
+                <circle r="2.4%" cx="50%" cy="68%" class="handler" id="gammaCursor"/>
+              </svg>
             </svg>
           </svg>
+        </section>
 
-          <svg x="35%" y="88%" width="30%" height="12%">
-            <svg x="0%" y="0%" width="100%" height="100%" id="gammaArea" style="display: none;">
-              <text x="50%" y="38%" style="text-anchor: middle;">Gamma correction</text>
-              <line x1="0%" y1="68%" x2="100%" y2="68%"/>
-              <circle r="2.4%" cx="50%" cy="68%" class="handler" id="gammaCursor"/>
-            </svg>
-          </svg>
-        </svg>
-      </section>
-
-      <aside class="sidebar">
         <section class="card" id="sceneCard">
           <div class="cardHeader">
             <h2>Static scene</h2>
             <span class="hint" id="sceneHint">Shown while sync is off</span>
           </div>
 
-          <div class="sceneSection">
-            <div class="presets">
-              <button type="button" class="presetButton" id="fullColorTab">Full color</button>
-              <button type="button" class="presetButton" id="perLampTab">Per lamp</button>
+          <div class="sceneSections">
+            <div class="sceneSection">
+              <h3>Color</h3>
+              <div class="presets">
+                <button type="button" class="presetButton" id="fullColorTab">Full color</button>
+                <button type="button" class="presetButton" id="perLampTab">Per lamp</button>
+              </div>
+
+              <div id="fullColorPanel" class="colorPanel">
+                <div class="quickColors" id="quickColors"></div>
+                <label class="colorField">
+                  <input type="color" id="fullColor" value="#ffb46e"/>
+                  <span>Custom color</span>
+                </label>
+              </div>
+
+              <div id="perLampPanel" class="colorPanel" style="display: none;"></div>
             </div>
 
-            <div id="fullColorPanel" class="colorPanel">
-              <div class="quickColors" id="quickColors"></div>
-              <label class="colorField">
-                <input type="color" id="fullColor" value="#ffb46e"/>
-                <span>Custom color</span>
-              </label>
+            <div class="sceneSection">
+              <h3>Presets</h3>
+              <div class="sceneGrid" id="builtinScenes"></div>
             </div>
 
-            <div id="perLampPanel" class="colorPanel" style="display: none;"></div>
-          </div>
-
-          <div class="sceneSection">
-            <h3>Presets</h3>
-            <div class="sceneGrid" id="builtinScenes"></div>
-          </div>
-
-          <div class="sceneSection">
-            <h3>My scenes</h3>
-            <div class="sceneGrid" id="customScenes"></div>
-            <form class="inlineSetting" id="saveSceneForm">
-              <input type="text" id="sceneName" maxlength="40" placeholder="Save current colors as…" required/>
-              <button type="submit">Save</button>
-            </form>
+            <div class="sceneSection">
+              <h3>My scenes</h3>
+              <div class="sceneGrid" id="customScenes"></div>
+              <form class="inlineSetting" id="saveSceneForm">
+                <input type="text" id="sceneName" maxlength="40" placeholder="Save current colors as…" required/>
+                <button type="submit">Save</button>
+              </form>
+            </div>
           </div>
         </section>
+      </div>
 
+      <aside class="sidebar">
         <section class="card" id="entertainmentConfigurations" style="display: none;">
           <div class="cardHeader">
             <h2>Entertainment area</h2>
