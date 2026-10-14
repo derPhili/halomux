@@ -37,10 +37,10 @@ Bevor du Hue Desktop Sync verwendest, musst du über die offizielle App von Phil
 ### Abhängigkeiten
 
 ```bash
-sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm mesa
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm mesa qt6-base qt6-svg qt6-webengine
 ```
 
-`libglvnd` liefert EGL und GLES (die Implementierung kommt vom NVIDIA-Treiber), `mesa` nur `libgbm` für den GPU-Test.
+`libglvnd` liefert EGL und GLES (die Implementierung kommt vom NVIDIA-Treiber), `mesa` nur `libgbm` für den GPU-Test. Qt 6 braucht nur die Desktop-Anwendung (`-DBUILD_GUI=OFF` baut ohne).
 
 Benötigt wird Mbed TLS 4.x.
 
@@ -71,10 +71,38 @@ cmake --build build -j
 ctest --test-dir build
 ```
 
+### Als Paket installieren (CachyOS/Arch)
+
+`dist/arch/PKGBUILD` baut den committeten Stand des Branches `master` dieses Repositorys und installiert ihn als Paket:
+
+```bash
+cd dist/arch
+makepkg -si
+systemctl --user enable --now hue-desktop-sync.service
+```
+
+Das Paket enthält:
+
+* `/usr/bin/hue-desktop-sync`: den Dienst, der die Lampen steuert
+* `/usr/lib/systemd/user/hue-desktop-sync.service`: die systemd-User-Unit dazu
+* `/usr/bin/hue-desktop-sync-gui`: die Desktop-Anwendung, im Startmenü als „Philip's Hue Desktop Sync“
+* `/etc/xdg/autostart/hue-desktop-sync-tray.desktop`: startet beim Login das Tray-Icon
+
+Für ein Update erst committen und nach `master` mergen, dann erneut `makepkg -si` und den Dienst neu starten. Eine Unit unter `~/.config/systemd/user/` hat Vorrang vor der aus dem Paket; eine früher von Hand installierte gehört deshalb entfernt (siehe unten).
+
+### Desktop-Anwendung
+
+Die Anwendung zeigt die Weboberfläche in einem eigenen Fenster (Qt WebEngine), ganz ohne Browser, und legt ein Tray-Icon in die Plasma-Leiste:
+
+* Linksklick: Fenster öffnen oder schließen
+* Rechtsklick: Sync an/aus, statische Szenen (eingebaute und eigene), Preview, Dienst starten (wenn er nicht läuft)
+
+Das Fenster zu schließen beendet nur das Fenster, das Tray-Icon bleibt. „Close tray icon“ beendet die Anwendung; die Lampen laufen trotzdem weiter, denn sie steuert allein der Dienst. Ein erneuter Start holt das Fenster der laufenden Instanz nach vorn. Läuft der Dienst beim Start der Anwendung nicht, startet sie ihn.
+
 ### Programm ausführen
 
-* Starte die Datei „hue-desktop-sync“ auf die Art, die dir am liebsten ist (im Terminal, wenn du Textausgaben sehen möchtest).
-* Öffne deinen Browser unter [127.0.0.1:8215](http://127.0.0.1:8215).
+* Starte die Datei „hue-desktop-sync“ auf die Art, die dir am liebsten ist (im Terminal, wenn du Textausgaben sehen möchtest), oder als systemd-Dienst.
+* Öffne die Desktop-Anwendung oder deinen Browser unter [127.0.0.1:8215](http://127.0.0.1:8215).
   Bei der Ersteinrichtung und solange noch kein Lampenprofil gespeichert ist, öffnet sich der Browser automatisch.
   (Der Port lässt sich in der Konfiguration ändern. Standard ist 8215.)
 
@@ -97,22 +125,15 @@ Klappt der Import nicht, wechselt Hue Desktop Sync automatisch auf Shared Memory
 
 #### Als systemd-Dienst
 
-Hue Desktop Sync kann als systemd-User-Dienst mit der grafischen Sitzung starten. Die Unit liegt unter `dist/systemd/hue-desktop-sync.service` und startet `~/.local/bin/hue-desktop-sync`. Die Ersteinrichtung und die erste Bildschirmauswahl unter Wayland sollten vorher einmal von Hand erledigt sein.
+Hue Desktop Sync startet als systemd-User-Dienst mit der grafischen Sitzung. Das Paket installiert die Unit (`dist/systemd/hue-desktop-sync.service.in`, mit dem Installationspfad gefüllt). Die Ersteinrichtung und die erste Bildschirmauswahl unter Wayland sollten vorher einmal erledigt sein.
 
-Installieren und aktivieren:
+Von einer früheren Installation von Hand (Unit unter `~/.config/systemd/user/`) auf das Paket wechseln:
 
 ```bash
-install -Dm755 build/hue-desktop-sync ~/.local/bin/hue-desktop-sync
-install -Dm644 dist/systemd/hue-desktop-sync.service ~/.config/systemd/user/hue-desktop-sync.service
+systemctl --user disable --now hue-desktop-sync.service
+rm ~/.config/systemd/user/hue-desktop-sync.service ~/.local/bin/hue-desktop-sync
 systemctl --user daemon-reload
 systemctl --user enable --now hue-desktop-sync.service
-```
-
-Nach einem neuen Build die installierte Datei ersetzen und den Dienst neu starten:
-
-```bash
-install -Dm755 build/hue-desktop-sync ~/.local/bin/hue-desktop-sync
-systemctl --user restart hue-desktop-sync.service
 ```
 
 Ausgaben ansehen:

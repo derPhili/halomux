@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Philip's Hue Desktop Sync (tray)
+Comment=Tray icon to switch sync and scenes
+Exec=hue-desktop-sync-gui --tray
+Icon=hue-desktop-sync
+Terminal=false
+NoDisplay=true
+X-KDE-autostart-phase=2
