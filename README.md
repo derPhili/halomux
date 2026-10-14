@@ -160,10 +160,6 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
 * **credentials**:
   * **clientkey**: (String) Schlüssel aus 32 Hexadezimalzeichen, erzeugt bei der Ersteinrichtung
   * **username**: (String) Benutzername (Base64 oder UUID), erzeugt bei der Ersteinrichtung
-* **interpolation**: (Unsigned) Kennung der gewünschten Interpolationsfunktion für das Subsampling
-  * Nearest = 0: Am günstigsten. Geringe Qualität bei feinen Details. Kann die Lampen flackern lassen
-  * Cubic = 1: Langsam und hart (für Tests beibehalten)
-  * Area = 2: (Empfohlen) Weich und gibt den Gesamtinhalt gut wieder
 * **profileName**: (String) Name des aktuellen, benutzerdefinierten Lampenprofils
 * **refreshRate**: (Unsigned) Frequenz von Bildschirmaufnahme und Lampenaktualisierung. Höchstens 60 Hz: Die Bridge gibt Farben mit etwa 25 Hz an die Lampen weiter, Philips empfiehlt 50–60 Hz Streamingrate. Höhere Werte werden beim Start und in der Weboberfläche auf 60 Hz begrenzt
 * **restoreToken**: (String) Token, um die Einstellungen der letzten Sitzung zu merken (nur Wayland)
@@ -181,7 +177,6 @@ Ein Beispiel:
     "clientkey": "01234567890ABCDEF0123456789ABCDE",
     "username": "AbCdEfGhIjKlMnOpQrStUvWxYz-0123456789012"
   },
-  "interpolation": 2,
   "profileName": "profile",
   "refreshRate": 60,
   "restoreToken": "aBcDeFgH_iJkLmNoPqRsT1",

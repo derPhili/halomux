@@ -27,10 +27,6 @@ namespace Huenicorn::Serialization
         jsonConfigData["restServerPort"] = *configData.restServerPort;
       }
 
-      if(configData.interpolation.has_value()){
-        jsonConfigData["interpolation"] = *configData.interpolation;
-      }
-
       if(configData.transitionSmoothing.has_value()){
         jsonConfigData["transitionSmoothing"] = *configData.transitionSmoothing;
       }
@@ -88,10 +84,6 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("subsampleWidth")){
         configData.subsampleWidth = jsonConfigData.at("subsampleWidth");
-      }
-
-      if(jsonConfigData.contains("interpolation")){
-        configData.interpolation = jsonConfigData.at("interpolation");
       }
 
       if(jsonConfigData.contains("transitionSmoothing")){

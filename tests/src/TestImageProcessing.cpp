@@ -55,7 +55,7 @@ int testRescaleBounds()
 
   // Invalid width: input is kept as is
   Imaging::ImageData unchanged;
-  Imaging::ImageProcessing::rescale(imageData, unchanged, 0, Imaging::Interpolation::Type::Area);
+  Imaging::ImageProcessing::rescale(imageData, unchanged, 0);
   if(unchanged.width() != imageData.width()){
     Core::Logger::error("Rescaling to a null width should keep the input");
     failures++;
@@ -63,7 +63,7 @@ int testRescaleBounds()
 
   // Very wide image: height must never be 0, format must be kept
   Imaging::ImageData resized;
-  Imaging::ImageProcessing::rescale(imageData, resized, 10, Imaging::Interpolation::Type::Area);
+  Imaging::ImageProcessing::rescale(imageData, resized, 10);
   if(resized.width() != 10 || resized.height() < 1 || resized.format != Imaging::PixelFormat::RGB){
     Core::Logger::error("Unexpected rescale output ", resized.width(), "x", resized.height());
     failures++;
@@ -91,10 +91,10 @@ int testRescaleSampled()
   Imaging::ImageData imageData{.imageMatrix = gradient, .format = Imaging::PixelFormat::BGRA};
 
   Imaging::ImageData full;
-  Imaging::ImageProcessing::rescale(imageData, full, 160, Imaging::Interpolation::Type::Area);
+  Imaging::ImageProcessing::rescale(imageData, full, 160);
 
   Imaging::ImageData sampled;
-  Imaging::ImageProcessing::rescaleSampled(imageData, sampled, 160, Imaging::Interpolation::Type::Area);
+  Imaging::ImageProcessing::rescaleSampled(imageData, sampled, 160);
 
   if(sampled.width() != full.width() || sampled.height() != full.height() || sampled.format != full.format){
     Core::Logger::error("Sampled rescale geometry mismatch: ", sampled.width(), "x", sampled.height(), " instead of ", full.width(), "x", full.height());
@@ -116,12 +116,6 @@ int testRescaleSampled()
 
 void testResize(const std::filesystem::path& samplesDirPath)
 {
-  std::unordered_map<Imaging::Interpolation::Type, std::filesystem::path> testOutputs = {
-    {Imaging::Interpolation::Type::Nearest, "Nearest"},
-    {Imaging::Interpolation::Type::Cubic, "Cubic"},
-    {Imaging::Interpolation::Type::Area, "Area"}
-  };
-
   std::filesystem::path samplesInputDirPath = samplesDirPath / "Inputs";
   std::filesystem::path samplesOutputDirPath = samplesDirPath / "Outputs";
 
@@ -135,16 +129,14 @@ void testResize(const std::filesystem::path& samplesDirPath)
   for(const auto& entry : std::filesystem::directory_iterator(samplesInputDirPath)){
     Imaging::ImageData imageData{.imageMatrix = cv::imread(entry.path().string()), .format = Imaging::PixelFormat::BGR};
 
-    for(const auto& [type, interpolationOutDir] : testOutputs){
-      std::filesystem::path fullpath = samplesOutputDirPath / std::filesystem::path(interpolationOutDir.string() + std::string("_") + entry.path().filename().string());
+    std::filesystem::path fullpath = samplesOutputDirPath / std::filesystem::path("resized_" + entry.path().filename().string());
 
-      Imaging::ImageData outputImageData;
-      Imaging::ImageProcessing::rescale(imageData, outputImageData, imageData.width() / 10, type);
+    Imaging::ImageData outputImageData;
+    Imaging::ImageProcessing::rescale(imageData, outputImageData, imageData.width() / 10);
 
-      Core::Logger::log("Saving ", fullpath);
+    Core::Logger::log("Saving ", fullpath);
 
-      cv::imwrite(fullpath.string(), outputImageData.imageMatrix);
-    }
+    cv::imwrite(fullpath.string(), outputImageData.imageMatrix);
   }
 }
 
@@ -192,7 +184,7 @@ void testPerf(const std::filesystem::path& samplesDirPath)
   int i = 0;
   while(std::chrono::duration_cast<std::chrono::seconds>(now - start).count() < 3){
     Imaging::ImageData resampledImage;
-    Imaging::ImageProcessing::rescale(imageData, resampledImage, imageData.width() / 10, Imaging::Interpolation::Type::Area);
+    Imaging::ImageProcessing::rescale(imageData, resampledImage, imageData.width() / 10);
 
     Imaging::ImageData croppedImage;
     Imaging::ImageProcessing::getSubImage(resampledImage, croppedImage, {{0.f, 0.f}, {0.05f, 0.05f}});

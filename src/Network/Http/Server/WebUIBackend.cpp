@@ -136,25 +136,6 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
-    m_httpServer.addRoute(HttpMethod::Get, "/api/interpolationInfo", [this](const Request& /*req*/, Response& res){
-      Json jsonAvailableInterpolations = Json::array();
-      for(const auto& [key, value] : m_coreService->availableInterpolations()){
-        jsonAvailableInterpolations.push_back({
-          {key, value},
-        });
-      }
-
-      Json jsonInterpolationInfo = {
-        {"available", jsonAvailableInterpolations},
-        {"current", m_coreService->interpolation()}
-      };
-
-      std::string response = jsonInterpolationInfo.dump();
-      res.contentType = "application/json";
-      res.body = response;
-    });
-
-
     // PUT METHODS
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setEntertainmentConfiguration", [this](const Request& req, Response& res){
@@ -264,22 +245,6 @@ namespace Huenicorn::Network::Http::Server
       };
 
       std::string response = jsonRefreshRate.dump();
-      res.contentType = "application/json";
-      res.body = response;
-    });
-
-
-    m_httpServer.addRoute(HttpMethod::Put, "/api/setInterpolation", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      unsigned interpolation = Json::parse(data).get<unsigned>();
-
-      m_coreService->setInterpolation(interpolation);
-
-      Json jsonInterpolation{
-        {"interpolation", m_coreService->interpolation()}
-      };
-
-      std::string response = jsonInterpolation.dump();
       res.contentType = "application/json";
       res.body = response;
     });

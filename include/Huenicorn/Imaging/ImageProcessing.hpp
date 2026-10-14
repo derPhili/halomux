@@ -3,7 +3,6 @@
 #include <vector>
 
 #include <Huenicorn/Imaging/ImageData.hpp>
-#include <Huenicorn/Imaging/Interpolation.hpp>
 #include <Huenicorn/Imaging/Color.hpp>
 #include <Huenicorn/Imaging/UV.hpp>
 
@@ -23,13 +22,11 @@ namespace Huenicorn::Imaging
      * 
      * @param image Input bitmap
      * @param targetWidth Target width of the output bitmap
-     * @param interpolationType Subsampling interpolation type
      */
     void rescale(
       const ImageData& inputImageData,
       ImageData& outputImageData,
-      int outputWidth,
-      Interpolation::Type interpolationType
+      int outputWidth
     );
 
 
@@ -43,14 +40,12 @@ namespace Huenicorn::Imaging
      * @param inputImageData Input image
      * @param outputImageData Output image
      * @param outputWidth Width of the output image
-     * @param interpolation Subsampling interpolation type
      * @param maxSampledRowsPerOutputRow Number of input rows averaged into each output row
      */
     void rescaleSampled(
       const ImageData& inputImageData,
       ImageData& outputImageData,
       int outputWidth,
-      Interpolation::Type interpolation,
       int maxSampledRowsPerOutputRow = 4
     );
 

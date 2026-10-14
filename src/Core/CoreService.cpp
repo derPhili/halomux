@@ -210,18 +210,6 @@ namespace Huenicorn::Core
   }
 
 
-  Imaging::Interpolation::Type CoreService::interpolation() const
-  {
-    return m_config.interpolation();
-  }
-
-
-  const Imaging::Interpolation::Interpolations& CoreService::availableInterpolations() const
-  {
-    return Imaging::Interpolation::availableInterpolations;
-  }
-
-
   float CoreService::transitionSmoothing() const
   {
     // Config stores a raw [0, 1) blend factor; the API/UI works in percent.
@@ -297,14 +285,6 @@ namespace Huenicorn::Core
     }
 
     m_runtime.m_grabber->setFrameRateLimit(refreshRate);
-  }
-
-
-  void CoreService::setInterpolation(
-    unsigned interpolation
-  )
-  {
-    m_config.setInterpolation(static_cast<Imaging::Interpolation::Type>(interpolation));
   }
 
 
