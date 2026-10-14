@@ -12,12 +12,12 @@
     <header class="appHeader">
       <img src="logo.svg" class="appLogo" alt="">
       <h1>Philip's Hue Desktop Sync</h1>
-      <label class="toggle syncToggle" title="On: lamps follow the screen and sound. Off: lamps show the static scene">
+      <label class="toggle syncToggle" title="Sync on: the lamps follow the screen (and the sound, if enabled).&#10;Sync off: the lamps show the static scene and screen capture pauses.">
         <input type="checkbox" id="syncToggle"/>
         <span class="toggleTrack"></span>
         <span id="syncLabel">Sync</span>
       </label>
-      <div class="headerStatus" title="Where captured frames are processed">
+      <div class="headerStatus" title="Where captured frames are processed.&#10;GPU (green): frames stay in video memory (DMA-BUF), lowest CPU load.&#10;CPU (orange): fallback through shared memory.">
         <span class="statusDot" id="statusDot"></span>
         <span id="processingInfo">…</span>
       </div>
@@ -27,11 +27,12 @@
       <div class="mainColumn">
         <section class="card">
           <div class="cardHeader">
-            <h2>Screen regions</h2>
+            <h2 title="Which part of the screen each lamp follows">Screen regions</h2>
             <span class="hint">Select an active lamp, then drag the corners of its region</span>
           </div>
 
           <svg id="svgArea">
+          <title>Each colored rectangle is the screen region a lamp follows, filled with the lamp's current color. Select an active lamp in the list to edit its region.</title>
             <!-- Catches the pointer over the whole widget -->
             <rect x="0%" y="0%" width="100%" height="100%" fill="transparent"/>
             <text id="legendText" x="50%" y="50%" style="text-anchor: middle;"></text>
@@ -51,10 +52,10 @@
                   <text id="svgChannelUVSize" x="50%" y="50%" dy="1em" style="text-anchor: middle;"></text>
                 </svg>
 
-                <circle r="1.6%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"/>
-                <circle r="1.6%" cx="100%" cy="0%" class="handler" id="tr" style="display: none;"/>
-                <circle r="1.6%" cx="0%" cy="100%" class="handler" id="bl" style="display: none;"/>
-                <circle r="1.6%" cx="100%" cy="100%" class="handler" id="br" style="display: none;"/>
+                <circle r="1.6%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"><title>Drag to move the top left corner of the region</title></circle>
+                <circle r="1.6%" cx="100%" cy="0%" class="handler" id="tr" style="display: none;"><title>Drag to move the top right corner of the region</title></circle>
+                <circle r="1.6%" cx="0%" cy="100%" class="handler" id="bl" style="display: none;"><title>Drag to move the bottom left corner of the region</title></circle>
+                <circle r="1.6%" cx="100%" cy="100%" class="handler" id="br" style="display: none;"><title>Drag to move the bottom right corner of the region</title></circle>
               </svg>
             </svg>
 
@@ -62,7 +63,7 @@
               <svg x="0%" y="0%" width="100%" height="100%" id="gammaArea" style="display: none;">
                 <text x="50%" y="38%" style="text-anchor: middle;">Gamma correction</text>
                 <line x1="0%" y1="68%" x2="100%" y2="68%"/>
-                <circle r="2.4%" cx="50%" cy="68%" class="handler" id="gammaCursor"/>
+                <circle r="2.4%" cx="50%" cy="68%" class="handler" id="gammaCursor"><title>Gamma correction of this lamp: to the right, dim colors get brighter; to the left, darker. In the middle, unchanged.</title></circle>
               </svg>
             </svg>
           </svg>
@@ -70,21 +71,21 @@
 
         <section class="card" id="sceneCard">
           <div class="cardHeader">
-            <h2>Static scene</h2>
+            <h2 title="Colors the lamps show while sync is off">Static scene</h2>
             <span class="hint" id="sceneHint">Shown while sync is off</span>
           </div>
 
           <div class="sceneSections">
             <div class="sceneSection">
-              <h3>Color</h3>
+              <h3 title="Pick colors yourself">Color</h3>
               <div class="presets">
-                <button type="button" class="presetButton" id="fullColorTab">Full color</button>
-                <button type="button" class="presetButton" id="perLampTab">Per lamp</button>
+                <button type="button" class="presetButton" id="fullColorTab" title="One color for all lamps">Full color</button>
+                <button type="button" class="presetButton" id="perLampTab" title="A separate color for each active lamp">Per lamp</button>
               </div>
 
               <div id="fullColorPanel" class="colorPanel">
                 <div class="quickColors" id="quickColors"></div>
-                <label class="colorField">
+                <label class="colorField" title="Opens a color picker. The chosen color shows on all lamps and turns sync off">
                   <input type="color" id="fullColor" value="#ffb46e"/>
                   <span>Custom color</span>
                 </label>
@@ -94,16 +95,16 @@
             </div>
 
             <div class="sceneSection">
-              <h3>Presets</h3>
+              <h3 title="Built-in scenes: a left and a right color, spread over the lamps from left to right">Presets</h3>
               <div class="sceneGrid" id="builtinScenes"></div>
             </div>
 
             <div class="sceneSection">
-              <h3>My scenes</h3>
+              <h3 title="Scenes you saved. Click one to show it, × deletes it">My scenes</h3>
               <div class="sceneGrid" id="customScenes"></div>
               <form class="inlineSetting" id="saveSceneForm">
-                <input type="text" id="sceneName" maxlength="40" placeholder="Save current colors as…" required/>
-                <button type="submit">Save</button>
+                <input type="text" id="sceneName" maxlength="40" placeholder="Save current colors as…" required title="Name for the current lamp colors. A scene with the same name is replaced"/>
+                <button type="submit" title="Saves the current colors of the active lamps under this name">Save</button>
               </form>
             </div>
           </div>
@@ -113,25 +114,25 @@
       <aside class="sidebar">
         <section class="card" id="entertainmentConfigurations" style="display: none;">
           <div class="cardHeader">
-            <h2>Entertainment area</h2>
+            <h2 title="Entertainment area of the Hue bridge to stream to, as set up in the Hue app">Entertainment area</h2>
           </div>
-          <select id="entertainmentConfigurationsSelect"></select>
+          <select id="entertainmentConfigurationsSelect" title="Switches to another entertainment area of the bridge, with its own lamps and saved regions"></select>
         </section>
 
         <section class="card">
           <div class="cardHeader">
-            <h2>Lamps</h2>
+            <h2 title="Lamps of the entertainment area">Lamps</h2>
             <span class="hint">Drag between lists</span>
           </div>
 
           <div class="lampLists">
             <div class="lampList">
-              <h3>Active</h3>
+              <h3 title="Lamps driven by this application. Click one to edit its screen region">Active</h3>
               <div id="activeChannelsList" class="channelList"></div>
             </div>
 
             <div class="lampList">
-              <h3>Available</h3>
+              <h3 title="Lamps of the area left alone. Drag one to Active to drive it">Available</h3>
               <div id="inactiveChannelsList" class="channelList"></div>
             </div>
           </div>
@@ -140,15 +141,15 @@
 
       <section class="card settingsCard" id="advancedSettings">
         <div class="cardHeader">
-          <h2>Settings</h2>
+          <h2 title="How the lamps react. Changes apply immediately and are kept">Settings</h2>
           <button type="button" id="previewButton" title="Plays a 12 s test sequence on the lamps instead of the screen: color cuts, flashes, a slow fade and a black to white cut, through the current settings">Preview</button>
         </div>
 
         <div class="settingsGroups">
           <div class="settingsGroup">
-            <h3>Light</h3>
+            <h3 title="Brightness and how fast colors change">Light</h3>
 
-            <div class="setting" title="Scales the brightness of all lamps">
+            <div class="setting" title="Scales the brightness of all lamps, in sync and with static scenes. 100% = full brightness">
               <div class="settingHeader">
                 <label for="brightness">Brightness</label>
                 <span class="value"><span id="brightnessLabel">0</span>%</span>
@@ -156,7 +157,7 @@
               <input type="range" id="brightness" min="0" max="100" step="1" value="0"/>
             </div>
 
-            <div class="setting">
+            <div class="setting" title="Eases each lamp toward a new color instead of jumping to it. Higher = calmer, but the lamps lag behind the picture">
               <div class="settingHeader">
                 <label for="transitionSmoothing">Transition smoothing</label>
                 <span class="value"><span id="transitionSmoothingLabel">0</span>%</span>
@@ -170,9 +171,9 @@
           </div>
 
           <div class="settingsGroup">
-            <h3>Highlight boost</h3>
+            <h3 title="Short brightness flashes on sudden bright moments">Highlight boost</h3>
 
-            <div class="setting" title="Lamps flash brighter when their screen region suddenly gets brighter (explosions, lightning, cuts to bright scenes)">
+            <div class="setting" title="Lamps flash brighter when their screen region suddenly gets brighter (explosions, lightning, cuts to bright scenes), then fade back within about a second. 0% = off">
               <div class="settingHeader">
                 <label for="highlightBoost">Strength</label>
                 <span class="value"><span id="highlightBoostLabel">0</span>%</span>
@@ -186,7 +187,7 @@
               </div>
             </div>
 
-            <label class="toggle" title="Sudden loudness jumps in the PC sound (explosions, shots, beats) also trigger the highlight boost, panned by lamp position">
+            <label class="toggle" title="Sudden loudness jumps in the PC sound (explosions, shots, beats) also trigger the highlight boost: the left channel for left lamps, the right one for right lamps. Steady loud music doesn't keep triggering">
               <input type="checkbox" id="audioReactive"/>
               <span class="toggleTrack"></span>
               <span>React to sound</span>
@@ -194,16 +195,16 @@
           </div>
 
           <div class="settingsGroup">
-            <h3>Capture</h3>
+            <h3 title="How the screen is captured">Capture</h3>
 
-            <div class="setting">
+            <div class="setting" title="Resolution the screen is reduced to before averaging the regions. Smaller is cheaper and averages more; larger follows small details">
               <div class="settingHeader">
                 <label for="availableSubsampleWidths">Subsample resolution</label>
               </div>
               <select id="availableSubsampleWidths"></select>
             </div>
 
-            <div class="setting">
+            <div class="setting" title="How many times per second colors are captured and sent to the bridge. At most 60 Hz: the bridge doesn't process more">
               <div class="settingHeader">
                 <label for="refreshRate">Refresh rate</label>
               </div>
@@ -219,8 +220,8 @@
     </main>
 
     <footer class="actions">
-      <button class="primary" id="saveProfileButton">Save profile</button>
-      <button class="danger" id="stopButton">Shut down</button>
+      <button class="primary" id="saveProfileButton" title="Saves the lamps' screen regions, gamma and activity, loaded on every start. Settings and scenes are saved automatically">Save profile</button>
+      <button class="danger" id="stopButton" title="Stops the service: the lamps go back to their state from before. The desktop application can start it again">Shut down</button>
       <span id="versionSection"></span>
     </footer>
 
@@ -228,8 +229,8 @@
       <div class="overlayContent">
         <div id="confirmStopSection" style="display: none;">
           <p>Do you really want to stop Philip's Hue Desktop Sync?</p>
-          <button class="danger" id="confirmStopButton">Shut down</button>
-          <button id="cancelStopButton">Cancel</button>
+          <button class="danger" id="confirmStopButton" title="Stops the service now">Shut down</button>
+          <button id="cancelStopButton" title="Keeps the service running">Cancel</button>
         </div>
 
         <div id="stoppedInfoSection" style="display: none;">

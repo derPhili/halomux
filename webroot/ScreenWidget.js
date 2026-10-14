@@ -330,6 +330,10 @@ class ScreenWidget
       textNode.setAttribute("y", height / 2 + ay);
 
       rectNode.classList.add("previewRegion");
+
+      let titleNode = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      titleNode.textContent = `${activeChannel.formatMembers()}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it`;
+      rectNode.appendChild(titleNode);
       rectNode.style.fill = this.regionColors[activeChannelId] || ScreenWidget.IdleRegionFill;
       this.previewRegions[activeChannelId] = rectNode;
 

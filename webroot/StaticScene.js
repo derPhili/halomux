@@ -41,7 +41,7 @@ class StaticScenePanel
       button.type = "button";
       button.className = "quickColor";
       button.style.background = color.value;
-      button.title = color.name;
+      button.title = `${color.name}: shows this color on all lamps and turns sync off`;
       button.dataset.color = color.value;
       button.addEventListener("click", () => {this._applyFullColor(color.value);});
       this.quickColorsNode.appendChild(button);
@@ -125,6 +125,7 @@ class StaticScenePanel
     for(let lamp of lamps){
       let field = document.createElement("label");
       field.className = "colorField";
+      field.title = `Color of ${lamp.formatMembers()} while sync is off. Picking one turns sync off`;
 
       let input = document.createElement("input");
       input.type = "color";
@@ -170,7 +171,7 @@ class StaticScenePanel
   }
 
 
-  _sceneButton(name, background, onClick)
+  _sceneButton(name, background, onClick, tooltip)
   {
     let item = document.createElement("div");
     item.className = "sceneItem";
@@ -178,7 +179,7 @@ class StaticScenePanel
     let button = document.createElement("button");
     button.type = "button";
     button.className = "sceneButton";
-    button.title = name;
+    button.title = tooltip;
     button.addEventListener("click", onClick);
 
     let swatch = document.createElement("span");
@@ -201,9 +202,12 @@ class StaticScenePanel
     this.builtinScenesNode.replaceChildren();
 
     for(let scene of this.builtinScenes){
+      let tooltip = scene.left == scene.right
+        ? `${scene.name}: ${scene.left} on all lamps. Turns sync off`
+        : `${scene.name}: from ${scene.left} on the leftmost lamp to ${scene.right} on the rightmost. Turns sync off`;
       let item = this._sceneButton(scene.name, StaticScenePanel.swatchBackground([scene.left, scene.right]), () => {
         this._applyScene(scene.name, true);
-      });
+      }, tooltip);
       item.dataset.left = scene.left;
       item.dataset.right = scene.right;
       this.builtinScenesNode.appendChild(item);
@@ -226,13 +230,13 @@ class StaticScenePanel
 
       let item = this._sceneButton(name, StaticScenePanel.swatchBackground(ordered), () => {
         this._applyScene(name, false);
-      });
+      }, `${name}: shows your saved colors on the lamps it covers. Turns sync off`);
       item.dataset.scene = name;
 
       let deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "deleteScene";
-      deleteButton.title = `Delete ${name}`;
+      deleteButton.title = `Deletes the saved scene "${name}", after asking`;
       deleteButton.textContent = "×";
       deleteButton.addEventListener("click", () => {
         if(confirm(`Delete the scene "${name}"?`)){
