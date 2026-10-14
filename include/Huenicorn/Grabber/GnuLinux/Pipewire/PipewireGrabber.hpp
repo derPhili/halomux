@@ -159,6 +159,16 @@ namespace Huenicorn::Grabber
     ) override;
 
 
+    /**
+     * @brief Pauses or resumes the screencast stream
+     *
+     * @param paused Whether to stop capturing
+     */
+    virtual void setPaused(
+      bool paused
+    ) override;
+
+
   private:
     // Methods
     /**
@@ -241,6 +251,15 @@ namespace Huenicorn::Grabber
     );
 
     static int _onUpdateFrameRateLimit(
+      spa_loop* loop,
+      bool async,
+      uint32_t seq,
+      const void* data,
+      size_t size,
+      void* userData
+    );
+
+    static int _onUpdatePaused(
       spa_loop* loop,
       bool async,
       uint32_t seq,
