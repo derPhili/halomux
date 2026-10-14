@@ -1,0 +1,48 @@
+# Builds the committed state of the local repository's master branch:
+#   cd dist/arch && makepkg -si
+# cpp-httplib comes from /usr/local (installed from source), so it isn't listed
+
+pkgname=hue-desktop-sync
+pkgver=1.2.0
+pkgrel=1
+pkgdesc="Philip's Hue Desktop Sync: Philips Hue lamps following the screen and sound on KDE Plasma (Wayland)"
+arch=('x86_64')
+license=('GPL-3.0-or-later')
+depends=(
+  'brotli'
+  'curl'
+  'glib2'
+  'libdrm'
+  'libglvnd'
+  'mbedtls'
+  'opencv'
+  'pipewire'
+  'qt6-base'
+  'qt6-svg'
+  'qt6-webengine'
+  'xdg-desktop-portal'
+)
+makedepends=('cmake' 'git' 'glm' 'nlohmann-json')
+install=hue-desktop-sync.install
+source=("$pkgname::git+file://${startdir%/dist/arch}#branch=master")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$pkgname"
+  local version
+  version=$(sed -n 's/^project(HueDesktopSync VERSION \([0-9.]*\))$/\1/p' CMakeLists.txt)
+  printf "%s.r%s.g%s" "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cmake -S "$pkgname" -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_GUI=ON
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+}

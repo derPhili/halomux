@@ -8,6 +8,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 set(BUILD_TESTS FALSE CACHE BOOL "Build tests")
+set(BUILD_GUI TRUE CACHE BOOL "Build the desktop application (tray icon and window)")
+
+include(GNUInstallDirs)
 
 
 # Check mandatory libraries
@@ -224,6 +227,62 @@ target_compile_options(hue-desktop-sync PRIVATE
   -Wno-deprecated-declarations
   -Wno-deprecated-copy
 )
+
+# Desktop application: tray icon and a window with the web UI
+if(${BUILD_GUI})
+  find_package(Qt6 REQUIRED COMPONENTS Widgets Network WebEngineWidgets)
+
+  add_executable(hue-desktop-sync-gui
+    ${CMAKE_CURRENT_SOURCE_DIR}/gui/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gui/DesktopApp.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gui/MainWindow.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gui/resources.qrc
+  )
+
+  add_dependencies(hue-desktop-sync-gui generate_version_header)
+
+  set_target_properties(hue-desktop-sync-gui PROPERTIES
+    CXX_STANDARD 20
+    AUTOMOC ON
+    AUTORCC ON
+  )
+
+  target_include_directories(hue-desktop-sync-gui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+  target_link_libraries(hue-desktop-sync-gui PRIVATE
+    Qt6::Widgets
+    Qt6::Network
+    Qt6::WebEngineWidgets
+  )
+
+  target_compile_options(hue-desktop-sync-gui PRIVATE
+    -Werror
+    -Wall
+    -Wextra
+    -pedantic
+  )
+
+  install(TARGETS hue-desktop-sync-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(FILES dist/hue-desktop-sync.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+  install(FILES dist/hue-desktop-sync-tray.desktop DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart)
+endif()
+
+
+# Installation
+set(HUE_DESKTOP_SYNC_DOCDIR ${CMAKE_INSTALL_DATADIR}/doc/hue-desktop-sync)
+set(HUE_DESKTOP_SYNC_FULL_DOCDIR ${CMAKE_INSTALL_FULL_DATADIR}/doc/hue-desktop-sync)
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/dist/systemd/hue-desktop-sync.service.in
+  ${CMAKE_CURRENT_BINARY_DIR}/hue-desktop-sync.service
+  @ONLY
+)
+
+install(TARGETS hue-desktop-sync RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hue-desktop-sync.service DESTINATION lib/systemd/user)
+install(FILES assets/logo.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps RENAME hue-desktop-sync.svg)
+install(FILES README.md DESTINATION ${HUE_DESKTOP_SYNC_DOCDIR})
+
 
 if(${BUILD_TESTS})
   include(tests/AddTests.cmake)

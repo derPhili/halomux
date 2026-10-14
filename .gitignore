@@ -2,3 +2,8 @@
 build/
 
 *.json
+# makepkg
+dist/arch/src/
+dist/arch/pkg/
+dist/arch/hue-desktop-sync/
+dist/arch/*.pkg.tar.*

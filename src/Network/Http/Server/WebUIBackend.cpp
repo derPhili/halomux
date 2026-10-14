@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <Huenicorn/Core/CoreService.hpp>
+#include <Huenicorn/Core/Scenes.hpp>
 #include <Huenicorn/Serialization/Config.hpp>
 #include <Huenicorn/Serialization/Json.hpp>
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
@@ -141,10 +142,20 @@ namespace Huenicorn::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/lightMode", [this](const Request& /*req*/, Response& res){
+      Json jsonBuiltinScenes = Json::array();
+      for(const auto& scene : Core::Scenes::Builtin){
+        jsonBuiltinScenes.push_back({
+          {"name", scene.name},
+          {"left", scene.left.toHex()},
+          {"right", scene.right.toHex()}
+        });
+      }
+
       Json jsonLightMode = {
         {"syncEnabled", m_coreService->syncEnabled()},
         {"staticColors", m_coreService->staticColors()},
-        {"scenes", m_coreService->scenes()}
+        {"scenes", m_coreService->scenes()},
+        {"builtinScenes", jsonBuiltinScenes}
       };
 
       res.contentType = "application/json";
@@ -344,6 +355,23 @@ namespace Huenicorn::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"succeeded", saved}, {"scenes", m_coreService->scenes()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/applyScene", [this](const Request& req, Response& res){
+      const Json jsonScene = Json::parse(req.body);
+      const bool applied = m_coreService->applyScene(jsonScene.at("name"), jsonScene.value("builtin", false));
+
+      if(!applied){
+        res.status = 404;
+      }
+
+      res.contentType = "application/json";
+      res.body = Json{
+        {"succeeded", applied},
+        {"syncEnabled", m_coreService->syncEnabled()},
+        {"staticColors", m_coreService->staticColors()}
+      }.dump();
     });
 
 
