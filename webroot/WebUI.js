@@ -37,6 +37,11 @@ class WebUI
     this.refreshRateInputNode.addEventListener("change", (event) => {this._setRefreshRate(event.target.valueAsNumber);});
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.processingInfoNode = document.getElementById("processingInfo");
+
+    this.brightnessInputNode = document.getElementById("brightness");
+    this.brightnessLabelNode = document.getElementById("brightnessLabel");
+    this.brightnessInputNode.addEventListener("input", (event) => {this.brightnessLabelNode.textContent = event.target.value;});
+    this.brightnessInputNode.addEventListener("change", (event) => {this._setBrightness(event.target.valueAsNumber);});
     this.transitionSmoothingLabelNode = document.getElementById("transitionSmoothingLabel");
     this.transitionSmoothingInputNode.addEventListener("input", (event) => {
       this.transitionSmoothingLabelNode.textContent = event.target.value;
@@ -292,6 +297,9 @@ class WebUI
     this.transitionSmoothingLabelNode.textContent = Math.round(displayInfo.selectedTransitionSmoothing);
     this._highlightSmoothingPreset(displayInfo.selectedTransitionSmoothing);
 
+    this.brightnessInputNode.value = displayInfo.selectedBrightness;
+    this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
+
     this.screenWidget.setDimensions(x, y, subsampleWidth);
     let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
 
@@ -433,6 +441,17 @@ class WebUI
     for(let preset of this.smoothingPresets){
       preset.button.classList.toggle("active", Math.round(transitionSmoothing) == preset.value);
     }
+  }
+
+
+  _setBrightness(brightness)
+  {
+    RequestUtils.put("/api/setBrightness", JSON.stringify(brightness))
+    .then((data) => {
+      this.brightnessInputNode.value = data.brightness;
+      this.brightnessLabelNode.textContent = Math.round(data.brightness);
+    })
+    .catch((error) => {log(error);});
   }
 
 

@@ -152,6 +152,14 @@ namespace Huenicorn::Core
     float transitionSmoothing() const;
 
 
+    /**
+     * @brief Returns the global lamp brightness factor
+     *
+     * @return float Value in percent
+     */
+    float brightness() const;
+
+
     // Setters
     /**
      * @brief Sets the current entertainment configuration
@@ -221,6 +229,16 @@ namespace Huenicorn::Core
      */
     void setTransitionSmoothing(
       float transitionSmoothing
+    );
+
+
+    /**
+     * @brief Set the global lamp brightness factor
+     *
+     * @param brightness Value in percent
+     */
+    void setBrightness(
+      float brightness
     );
 
 

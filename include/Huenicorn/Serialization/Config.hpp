@@ -31,6 +31,10 @@ namespace Huenicorn::Serialization
         jsonConfigData["transitionSmoothing"] = *configData.transitionSmoothing;
       }
 
+      if(configData.brightness.has_value()){
+        jsonConfigData["brightness"] = *configData.brightness;
+      }
+
       if(configData.boundBackendIP.has_value()){
         jsonConfigData["boundBackendIP"] = *configData.boundBackendIP;
       }
@@ -88,6 +92,10 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("transitionSmoothing")){
         configData.transitionSmoothing = jsonConfigData.at("transitionSmoothing");
+      }
+
+      if(jsonConfigData.contains("brightness")){
+        configData.brightness = jsonConfigData.at("brightness");
       }
 
       if(jsonConfigData.contains("restoreToken")){

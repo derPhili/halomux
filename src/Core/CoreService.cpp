@@ -223,6 +223,12 @@ namespace Huenicorn::Core
   }
 
 
+  float CoreService::brightness() const
+  {
+    return m_config.brightness() * 100.f;
+  }
+
+
   bool CoreService::setEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )
@@ -299,6 +305,16 @@ namespace Huenicorn::Core
   )
   {
     m_config.setTransitionSmoothing(transitionSmoothing / 100.f);
+  }
+
+
+  void CoreService::setBrightness(
+    float brightness
+  )
+  {
+    if(std::isfinite(brightness)){
+      m_config.setBrightness(brightness / 100.f);
+    }
   }
 
 

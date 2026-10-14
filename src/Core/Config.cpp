@@ -78,6 +78,13 @@ namespace Huenicorn::Core
   }
 
 
+  float Config::brightness() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().brightness.value();
+  }
+
+
   const std::optional<std::string>& Config::restoreToken() const
   {
     return m_configData->restoreToken;
@@ -166,6 +173,16 @@ namespace Huenicorn::Core
   }
 
 
+  void Config::setBrightness(
+    float brightness
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().brightness = std::clamp(brightness, 0.f, 1.0f);
+    _save();
+  }
+
+
   void Config::setRestoreToken(
     const std::string& restoreToken
   )
@@ -187,6 +204,7 @@ namespace Huenicorn::Core
       .refreshRate = 0,
       .subsampleWidth = 0,
       .transitionSmoothing = 0.f,
+      .brightness = 1.f,
       .restoreToken = std::nullopt
     };
 

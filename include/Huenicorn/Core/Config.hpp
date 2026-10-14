@@ -28,6 +28,7 @@ namespace Huenicorn::Core
       std::optional<unsigned> refreshRate{0};
       std::optional<unsigned> subsampleWidth{0};
       std::optional<float> transitionSmoothing{0.f};
+      std::optional<float> brightness{1.f};
       std::optional<std::string> restoreToken;
     };
 
@@ -126,6 +127,14 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns the global lamp brightness factor
+     *
+     * @return float Value in [0, 1.0]
+    */
+    float brightness() const;
+
+
+    /**
      * @brief Returns the registered restoration token for screen selection portal
      * 
      * @return Optional restore token string
@@ -191,6 +200,16 @@ namespace Huenicorn::Core
     */
     void setTransitionSmoothing(
       float transitionSmoothing
+    );
+
+
+    /**
+     * @brief Registers the global lamp brightness factor
+     *
+     * @param brightness Value, clamped to [0, 1.0]
+    */
+    void setBrightness(
+      float brightness
     );
 
 

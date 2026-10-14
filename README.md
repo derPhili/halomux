@@ -165,6 +165,7 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
 * **restoreToken**: (String) Token, um die Einstellungen der letzten Sitzung zu merken (nur Wayland)
 * **restServerPort**: (Unsigned) Port, auf dem die Weboberfläche antwortet
 * **subsampleWidth**: (Unsigned) Breite des verarbeiteten, verkleinerten Bildes
+* **brightness**: (Float) Globale Helligkeit aller Lampen, zwischen 0 und 1 (in der Weboberfläche 0–100 %). Wirkt nach Gamma und Glättung wie ein Dimmer
 * **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97. In der Weboberfläche gibt es neben dem Slider die Voreinstellungen „Gaming“ (10 %, Lampen folgen fast sofort) und „Movie“ (60 %, glättet harte Schnitte und Blitze)
 
 Ein Beispiel:

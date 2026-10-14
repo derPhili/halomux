@@ -369,6 +369,10 @@ namespace Huenicorn::Core
         channel.hasPreviousXyb = true;
 
         xybColor.z = glm::pow(xybColor.z, channel.gammaExponent());
+
+        // Global dimmer, applied last so it scales what the lamp would otherwise show
+        xybColor.z *= m_config.brightness();
+
         correctedColor = xybColor;
         //*/
 
