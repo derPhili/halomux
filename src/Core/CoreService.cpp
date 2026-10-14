@@ -204,6 +204,12 @@ namespace Huenicorn::Core
   }
 
 
+  Grabber::IGrabber::ProcessingInfo CoreService::processingInfo() const
+  {
+    return m_runtime.m_grabber->processingInfo();
+  }
+
+
   unsigned CoreService::displayRefreshRate() const
   {
     return m_runtime.m_grabber->displayRefreshRate();

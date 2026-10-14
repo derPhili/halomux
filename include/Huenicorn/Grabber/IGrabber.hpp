@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -51,6 +52,17 @@ namespace Huenicorn::Grabber
     using ChannelRegions = std::vector<std::pair<uint8_t, Imaging::UVs>>;
     // Average color of a channel's region, keyed by channel ID
     using ChannelColors = std::vector<std::pair<uint8_t, Imaging::Color>>;
+
+
+    /**
+     * @brief Where captured frames are processed
+     *
+     */
+    struct ProcessingInfo
+    {
+      bool gpu{false};
+      std::string details; // GPU name and buffer type, or why the CPU is used
+    };
 
     // Constructor / Destructor
     /**
@@ -121,6 +133,14 @@ namespace Huenicorn::Grabber
     virtual bool grabChannelColors(
       ChannelColors& colors
     ) = 0;
+
+
+    /**
+     * @brief Returns where the last captured frame was processed
+     *
+     * @return ProcessingInfo GPU or CPU, with details
+     */
+    virtual ProcessingInfo processingInfo() const = 0;
 
 
     /**

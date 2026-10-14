@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Grabber/IGrabber.hpp>
 
 #include <Huenicorn/Hue/Api/EntertainmentConfiguration.hpp>
 
@@ -133,6 +134,14 @@ namespace Huenicorn::Core
      * @return unsigned Display refresh rate
      */
     unsigned displayRefreshRate() const;
+
+
+    /**
+     * @brief Returns where captured frames are processed (GPU or CPU)
+     *
+     * @return Grabber::IGrabber::ProcessingInfo Processing path and details
+     */
+    Grabber::IGrabber::ProcessingInfo processingInfo() const;
 
 
     /**

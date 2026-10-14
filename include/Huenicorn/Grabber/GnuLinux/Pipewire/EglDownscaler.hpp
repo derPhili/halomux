@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <EGL/egl.h>
@@ -79,6 +80,17 @@ namespace Huenicorn::Grabber
     std::vector<uint64_t> supportedModifiers(
       uint32_t drmFormat
     ) const;
+
+
+    /**
+     * @brief Returns the name of the GPU (GL renderer string)
+     *
+     * @return const std::string& GPU name
+     */
+    const std::string& renderer() const
+    {
+      return m_renderer;
+    }
 
 
     /**
@@ -163,6 +175,7 @@ namespace Huenicorn::Grabber
 
 
     // EGL
+    std::string m_renderer;
     EGLDisplay m_display{EGL_NO_DISPLAY};
     EGLContext m_context{EGL_NO_CONTEXT};
 

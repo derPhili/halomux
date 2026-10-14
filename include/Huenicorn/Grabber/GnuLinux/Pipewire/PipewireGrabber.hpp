@@ -92,6 +92,12 @@ namespace Huenicorn::Grabber
       bool dmaBufFailed{false};
       bool usingDmaBuf{false};
       spa_source* renegotiateEvent{nullptr};
+
+      // Processing path of the last frame, read by the web UI
+      std::atomic<bool> lastFrameOnGpu{false};
+      mutable std::mutex processingInfoMutex;
+      std::string gpuName;
+      std::string cpuReason{"Shared memory"};
     };
 
 
@@ -138,6 +144,9 @@ namespace Huenicorn::Grabber
     virtual bool grabChannelColors(
       ChannelColors& colors
     ) override;
+
+
+    virtual ProcessingInfo processingInfo() const override;
 
 
     /**

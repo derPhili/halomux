@@ -136,6 +136,19 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Get, "/api/processingInfo", [this](const Request& /*req*/, Response& res){
+      auto processingInfo = m_coreService->processingInfo();
+
+      Json jsonProcessingInfo = {
+        {"backend", processingInfo.gpu ? "GPU" : "CPU"},
+        {"details", processingInfo.details}
+      };
+
+      res.contentType = "application/json";
+      res.body = jsonProcessingInfo.dump();
+    });
+
+
     // PUT METHODS
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setEntertainmentConfiguration", [this](const Request& req, Response& res){

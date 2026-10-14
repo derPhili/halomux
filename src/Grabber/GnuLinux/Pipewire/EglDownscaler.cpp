@@ -522,6 +522,10 @@ void main()
       return false;
     }
 
+    if(const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER))){
+      m_renderer = renderer;
+    }
+
     const char* glExtensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     if(!hasExtension(glExtensions, "GL_OES_EGL_image_external_essl3")){
       Core::Logger::warn("[gpu] Missing GL_OES_EGL_image_external_essl3");

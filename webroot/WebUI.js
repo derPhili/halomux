@@ -36,6 +36,7 @@ class WebUI
     this.refreshRateLimitNode = document.getElementById("refreshRateLimit");
     this.refreshRateInputNode.addEventListener("change", (event) => {this._setRefreshRate(event.target.valueAsNumber);});
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
+    this.processingInfoNode = document.getElementById("processingInfo");
     this.transitionSmoothingLabelNode = document.getElementById("transitionSmoothingLabel");
     this.transitionSmoothingInputNode.addEventListener("input", (event) => {this.transitionSmoothingLabelNode.textContent = event.target.value;});
     this.transitionSmoothingInputNode.addEventListener("change", (event) => {this._setTransitionSmoothing(event.target.valueAsNumber);});
@@ -65,6 +66,10 @@ class WebUI
     let displayInfoPromise = RequestUtils.get("/api/displayInfo");
     displayInfoPromise.then((data) => {this._displayInfoCallback(data);});
     displayInfoPromise.catch((error) => {log(error);});
+
+    // Refreshed periodically: the grabber falls back to the CPU at runtime if the GPU path fails
+    this._refreshProcessingInfo();
+    setInterval(() => {this._refreshProcessingInfo();}, 5000);
 
 
     let entertainmentConfigurationsPromise = RequestUtils.get("/api/entertainmentConfigurations");
@@ -295,6 +300,16 @@ class WebUI
 
     this._initAdvancedSettings();
     this.availableSubsamplesNode.value = subsampleWidth.toString();
+  }
+
+
+  _refreshProcessingInfo()
+  {
+    RequestUtils.get("/api/processingInfo")
+    .then((processingInfo) => {
+      this.processingInfoNode.textContent = `${processingInfo.backend} (${processingInfo.details})`;
+    })
+    .catch((error) => {log(error);});
   }
 
 
