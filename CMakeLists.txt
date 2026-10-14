@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.10.0)
 
 project(HueDesktopSync VERSION 1.2.0)
 
+# Without a build type, nothing is optimized
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 set(BUILD_TESTS FALSE CACHE BOOL "Build tests")
 
 
