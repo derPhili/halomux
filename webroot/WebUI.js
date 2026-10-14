@@ -35,6 +35,9 @@ class WebUI
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.processingInfoNode = document.getElementById("processingInfo");
 
+    this.audioReactiveNode = document.getElementById("audioReactive");
+    this.audioReactiveNode.addEventListener("change", (event) => {this._setAudioReactive(event.target.checked);});
+
     this.highlightBoostInputNode = document.getElementById("highlightBoost");
     this.highlightBoostLabelNode = document.getElementById("highlightBoostLabel");
     this.highlightBoostInputNode.addEventListener("input", (event) => {
@@ -298,6 +301,7 @@ class WebUI
     this.highlightBoostInputNode.value = displayInfo.selectedHighlightBoost;
     this.highlightBoostLabelNode.textContent = Math.round(displayInfo.selectedHighlightBoost);
     this._highlightPreset(this.boostPresets, displayInfo.selectedHighlightBoost);
+    this.audioReactiveNode.checked = displayInfo.selectedAudioReactive;
 
     this.brightnessInputNode.value = displayInfo.selectedBrightness;
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
@@ -470,6 +474,14 @@ class WebUI
       this.highlightBoostLabelNode.textContent = Math.round(data.highlightBoost);
       this._highlightPreset(this.boostPresets, data.highlightBoost);
     })
+    .catch((error) => {log(error);});
+  }
+
+
+  _setAudioReactive(audioReactive)
+  {
+    RequestUtils.put("/api/setAudioReactive", JSON.stringify(audioReactive))
+    .then((data) => {this.audioReactiveNode.checked = data.audioReactive;})
     .catch((error) => {log(error);});
   }
 

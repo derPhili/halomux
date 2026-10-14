@@ -83,6 +83,10 @@ set(APP_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/App/main.cpp
 )
 
+set(AUDIO_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Audio/AudioAnalyzer.cpp
+)
+
 set(CORE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
 
@@ -136,6 +140,7 @@ set(TIMING_SOURCE
 # Declare executable
 add_executable(huenicorn
   ${APP_SOURCE}
+  ${AUDIO_SOURCE}
   ${CORE_SOURCE}
   ${HUE_SOURCE}
   ${IMAGING_SOURCE}

@@ -112,12 +112,14 @@ namespace Huenicorn::Hue::Api
      * @param measuredBrightness Brightness of the region in this frame, in [0, 1]
      * @param strength Boost reached by a full jump, in [0, 1]
      * @param decay Fraction of the boost kept since the previous call, in [0, 1]
+     * @param externalTrigger Additional trigger in [0, 1] (e.g. a sound transient), the stronger one wins
      * @return float Boost in [0, 1], the fraction of the remaining brightness headroom to add
      */
     float updateHighlightBoost(
       float measuredBrightness,
       float strength,
-      float decay
+      float decay,
+      float externalTrigger = 0.f
     );
 
 

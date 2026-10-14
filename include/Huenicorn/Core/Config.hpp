@@ -29,6 +29,7 @@ namespace Huenicorn::Core
       std::optional<unsigned> subsampleWidth{0};
       std::optional<float> transitionSmoothing{0.f};
       std::optional<float> highlightBoost{0.f};
+      std::optional<bool> audioReactive{false};
       std::optional<float> brightness{1.f};
       std::optional<std::string> restoreToken;
     };
@@ -136,6 +137,14 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns whether transients in the PC sound also trigger the highlight boost
+     *
+     * @return true Sound reactive
+    */
+    bool audioReactive() const;
+
+
+    /**
      * @brief Returns the global lamp brightness factor
      *
      * @return float Value in [0, 1.0]
@@ -219,6 +228,16 @@ namespace Huenicorn::Core
     */
     void setHighlightBoost(
       float highlightBoost
+    );
+
+
+    /**
+     * @brief Registers whether transients in the PC sound also trigger the highlight boost
+     *
+     * @param audioReactive Sound reactive
+    */
+    void setAudioReactive(
+      bool audioReactive
     );
 
 

@@ -85,6 +85,13 @@ namespace Huenicorn::Core
   }
 
 
+  bool Config::audioReactive() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().audioReactive.value();
+  }
+
+
   float Config::brightness() const
   {
     std::lock_guard lock(m_mutex);
@@ -180,6 +187,16 @@ namespace Huenicorn::Core
   }
 
 
+  void Config::setAudioReactive(
+    bool audioReactive
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().audioReactive = audioReactive;
+    _save();
+  }
+
+
   void Config::setHighlightBoost(
     float highlightBoost
   )
@@ -222,6 +239,7 @@ namespace Huenicorn::Core
       .subsampleWidth = 0,
       .transitionSmoothing = 0.f,
       .highlightBoost = 0.f,
+      .audioReactive = false,
       .brightness = 1.f,
       .restoreToken = std::nullopt
     };

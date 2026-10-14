@@ -235,6 +235,20 @@ namespace Huenicorn::Core
   }
 
 
+  bool CoreService::audioReactive() const
+  {
+    return m_config.audioReactive();
+  }
+
+
+  void CoreService::setAudioReactive(
+    bool audioReactive
+  )
+  {
+    m_config.setAudioReactive(audioReactive);
+  }
+
+
   bool CoreService::setEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )

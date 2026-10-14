@@ -35,6 +35,10 @@ namespace Huenicorn::Serialization
         jsonConfigData["highlightBoost"] = *configData.highlightBoost;
       }
 
+      if(configData.audioReactive.has_value()){
+        jsonConfigData["audioReactive"] = *configData.audioReactive;
+      }
+
       if(configData.brightness.has_value()){
         jsonConfigData["brightness"] = *configData.brightness;
       }
@@ -100,6 +104,10 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("highlightBoost")){
         configData.highlightBoost = jsonConfigData.at("highlightBoost");
+      }
+
+      if(jsonConfigData.contains("audioReactive")){
+        configData.audioReactive = jsonConfigData.at("audioReactive");
       }
 
       if(jsonConfigData.contains("brightness")){

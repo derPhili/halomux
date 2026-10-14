@@ -129,6 +129,7 @@ namespace Huenicorn::Network::Http::Server
         {"bridgeMaxRefreshRate", Stream::MaxStreamingRate},
         {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()},
         {"selectedHighlightBoost", m_coreService->highlightBoost()},
+        {"selectedAudioReactive", m_coreService->audioReactive()},
         {"selectedBrightness", m_coreService->brightness()}
       };
 
@@ -293,6 +294,14 @@ namespace Huenicorn::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"highlightBoost", m_coreService->highlightBoost()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setAudioReactive", [this](const Request& req, Response& res){
+      m_coreService->setAudioReactive(Json::parse(req.body).get<bool>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"audioReactive", m_coreService->audioReactive()}}.dump();
     });
 
 

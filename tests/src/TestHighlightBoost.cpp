@@ -62,6 +62,15 @@ int main()
 
   {
     Hue::Api::Channel channel(true, {}, 0.f);
+    channel.updateHighlightBoost(0.5f, 0.8f, decay);
+
+    // Sound trigger on steady picture, and the stronger trigger wins
+    expectNear("External trigger", channel.updateHighlightBoost(0.5f, 0.8f, decay, 0.5f), 0.4f);
+    expectNear("Visual trigger stronger than external", channel.updateHighlightBoost(0.9f, 0.8f, decay, 0.25f), 0.8f);
+  }
+
+  {
+    Hue::Api::Channel channel(true, {}, 0.f);
     channel.updateHighlightBoost(0.1f, 0.f, decay);
     expectNear("Disabled boost", channel.updateHighlightBoost(0.9f, 0.f, decay), 0.f);
   }

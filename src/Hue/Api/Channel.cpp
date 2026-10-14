@@ -81,14 +81,16 @@ namespace Huenicorn::Hue::Api
   float Channel::updateHighlightBoost(
     float measuredBrightness,
     float strength,
-    float decay
+    float decay,
+    float externalTrigger
   )
   {
     const float rise = hasPreviousMeasuredBrightness ? measuredBrightness - previousMeasuredBrightness : 0.f;
     previousMeasuredBrightness = measuredBrightness;
     hasPreviousMeasuredBrightness = true;
 
-    const float trigger = glm::clamp((rise - BoostThreshold) / (BoostFullJump - BoostThreshold), 0.f, 1.f);
+    const float visualTrigger = glm::clamp((rise - BoostThreshold) / (BoostFullJump - BoostThreshold), 0.f, 1.f);
+    const float trigger = glm::max(visualTrigger, glm::clamp(externalTrigger, 0.f, 1.f));
 
     // Instant attack, exponential release
     highlightBoost = glm::max(highlightBoost * decay, glm::clamp(strength, 0.f, 1.f) * trigger);

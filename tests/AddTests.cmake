@@ -110,3 +110,21 @@ target_link_libraries(TestHighlightBoost PUBLIC
 )
 
 add_test(NAME HighlightBoost COMMAND TestHighlightBoost)
+
+
+# TestTransientDetector: sound transient detection on synthetic energies
+add_executable(TestTransientDetector
+  #Huenicorn
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestTransientDetector.cpp
+)
+
+set_target_properties(TestTransientDetector PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestTransientDetector PUBLIC
+  include
+)
+
+add_test(NAME TransientDetector COMMAND TestTransientDetector)
