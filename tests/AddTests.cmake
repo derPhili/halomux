@@ -85,7 +85,7 @@ target_link_libraries(TestGpuDownscale PUBLIC
   ${GBM_LIBRARIES}
 )
 
-add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/HuenicornFullWebUI.png)
+add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/WebUI.png)
 
 
 # TestHighlightBoost: brightness flash envelope of a channel

@@ -1,115 +1,194 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Philip's Hue Desktop Sync</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
   </head>
 
   <body>
-    <h1>Philip's Hue Desktop Sync</h1>
+    <header class="appHeader">
+      <img src="logo.svg" class="appLogo" alt="">
+      <h1>Philip's Hue Desktop Sync</h1>
+      <div class="headerStatus" title="Where captured frames are processed">
+        <span class="statusDot" id="statusDot"></span>
+        <span id="processingInfo">…</span>
+      </div>
+    </header>
 
-    <svg width="960px" height="540px" id="svgArea">
-      <!-- SVG area -->
-      <text x="50%" y="30px" fill="var(--foregroundColor)" style="text-anchor: middle;">Screen partitioning</text>
-      <text id="legendText" x="50%" y="50%" fill="var(--foregroundColor)" style="text-anchor: middle;"></text>
-      <rect x="0%" y="0%" width="100%" height="100%"/>
+    <main class="layout">
+      <section class="card">
+        <div class="cardHeader">
+          <h2>Screen regions</h2>
+          <span class="hint">Select an active lamp, then drag the corners of its region</span>
+        </div>
 
-      <!-- Screen area -->
-      <svg x="10%" y="10%" width="80%" height="80%">
-        <rect x="0%" y="0%" width="100%" height="100%" id="screenArea"/>
-        
-        <svg x="0%" y="0%" width="100%" height="100%" id="gridArea"></svg>
+        <svg id="svgArea">
+          <!-- Catches the pointer over the whole widget -->
+          <rect x="0%" y="0%" width="100%" height="100%" fill="transparent"/>
+          <text id="legendText" x="50%" y="50%" style="text-anchor: middle;"></text>
 
-        <!-- UV area + handlers -->
-        <svg x="0%" y="0%" width="100%" height="100%">
-          <svg x="0%" y="0%" width="100%" height="100%" id="previewRectangles"></svg>
-          <svg x="0%" y="0%" width="100%" height="100%" id="uvArea" style="display: none;">
-            <rect x="0%" y="0%" width="100%" height="100%"/>
-            <text id="svgChannelName" x="50%" y="50%" dy="-0.5em" fill="var(--foregroundColor)" style="text-anchor: middle;"></text>
-            <text id="svgChannelUVSize" x="50%" y="50%" dy="0.5em" fill="var(--foregroundColor)" style="text-anchor: middle;"></text>
+          <!-- Screen area -->
+          <svg x="6%" y="6%" width="88%" height="80%">
+            <rect x="0%" y="0%" width="100%" height="100%" id="screenArea"/>
+
+            <svg x="0%" y="0%" width="100%" height="100%" id="gridArea"></svg>
+
+            <!-- UV area + handlers -->
+            <svg x="0%" y="0%" width="100%" height="100%">
+              <svg x="0%" y="0%" width="100%" height="100%" id="previewRectangles"></svg>
+              <svg x="0%" y="0%" width="100%" height="100%" id="uvArea" style="display: none;">
+                <rect x="0%" y="0%" width="100%" height="100%"/>
+                <text id="svgChannelName" x="50%" y="50%" dy="-0.5em" style="text-anchor: middle;"></text>
+                <text id="svgChannelUVSize" x="50%" y="50%" dy="1em" style="text-anchor: middle;"></text>
+              </svg>
+
+              <circle r="1.6%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"/>
+              <circle r="1.6%" cx="100%" cy="0%" class="handler" id="tr" style="display: none;"/>
+              <circle r="1.6%" cx="0%" cy="100%" class="handler" id="bl" style="display: none;"/>
+              <circle r="1.6%" cx="100%" cy="100%" class="handler" id="br" style="display: none;"/>
+            </svg>
           </svg>
 
-          <circle r="2.5%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"/>
-          <circle r="2.5%" cx="100%" cy="0%" class="handler" id="tr" style="display: none;"/>
-          <circle r="2.5%" cx="0%" cy="100%" class="handler" id="bl" style="display: none;"/>
-          <circle r="2.5%" cx="100%" cy="100%" class="handler" id="br" style="display: none;"/>
+          <svg x="35%" y="88%" width="30%" height="12%">
+            <svg x="0%" y="0%" width="100%" height="100%" id="gammaArea" style="display: none;">
+              <text x="50%" y="38%" style="text-anchor: middle;">Gamma correction</text>
+              <line x1="0%" y1="68%" x2="100%" y2="68%"/>
+              <circle r="2.4%" cx="50%" cy="68%" class="handler" id="gammaCursor"/>
+            </svg>
+          </svg>
         </svg>
-      </svg>
-      <svg x="35%" y="90%" width="30%" height="10%">
-        <svg x="0%" y="0%" width="100%" height="100%" id="gammaArea" style="display: none;">
-          <text x="50%" y="40%" fill="var(--foregroundColor)" style="text-anchor: middle;">Gamma correction</text>
-          <line x1="0%" y1="60%" x2="100%" y2="60%" stroke="var(--foregroundColor)"/>
-          <circle r="3.0%" cx="50%" cy="60%" class="handler" id="gammaCursor"/>
-        </svg>
-      </svg>
-    </svg>
-
-
-    <section id="entertainmentConfigurations">
-      <h2>Select entertainment configuration</h2>
-      <select id="entertainmentConfigurationsSelect"></select>
-    </section>
-
-    <section id="channelLists">
-      <div class="listContainer">
-        <h2>Inactive channels</h2>
-        <div id="inactiveChannelsList" class="channelList"></div>
-      </div>
-
-      <div class="listContainer">
-        <h2>Active channels</h2>
-        <div id="activeChannelsList" class="channelList"></div>
-      </div>
-    </section>
-
-    <section>
-      <h2>Settings</h2>
-
-      <section id="advancedSettings">
-        <p>Processing: <span id="processingInfo">…</span></p>
-        <p>Subsample resolution:<select id="availableSubsampleWidths"></select></p>
-        <p>Refresh rate [Hz]: <input type="number" id="refreshRate" min="1" step="1" value="10"/> <span id="refreshRateLimit"></span></p>
-        <p>Transition smoothing: <input type="range" id="transitionSmoothing" min="0" max="95" step="1" value="0"/> <span id="transitionSmoothingLabel">0</span>%</p>
-        <p>
-          <button type="button" class="presetButton" id="gamingPresetButton" title="10%: lights follow the screen almost instantly (90% after ~20 ms at 50 Hz)">Gaming</button>
-          <button type="button" class="presetButton" id="moviePresetButton" title="60%: smooths hard cuts and flashes (90% after ~90 ms at 50 Hz)">Movie</button>
-        </p>
-        <p title="Scales the brightness of all lamps">Brightness: <input type="range" id="brightness" min="0" max="100" step="1" value="0"/> <span id="brightnessLabel">0</span>%</p>
-        <p title="Lamps flash brighter when their screen region suddenly gets brighter (explosions, lightning, cuts to bright scenes)">Highlight boost: <input type="range" id="highlightBoost" min="0" max="100" step="1" value="0"/> <span id="highlightBoostLabel">0</span>%</p>
-        <p>
-          <button type="button" class="presetButton" id="subtleBoostButton" title="20% of the remaining brightness on a full jump">Subtle</button>
-          <button type="button" class="presetButton" id="moderateBoostButton" title="40% of the remaining brightness on a full jump">Moderate</button>
-          <button type="button" class="presetButton" id="highBoostButton" title="60% of the remaining brightness on a full jump">High</button>
-          <button type="button" class="presetButton" id="intenseBoostButton" title="85% of the remaining brightness on a full jump">Intense</button>
-        </p>
-        <p title="Sudden loudness jumps in the PC sound (explosions, shots, beats) also trigger the highlight boost, panned by lamp position"><label><input type="checkbox" id="audioReactive"/> React to sound</label></p>
       </section>
-    </section>
 
-    <p>
-      <button id="saveProfileButton">Save profile</button>
-    </p>
-    <p>
-      <button id="stopButton">Shut down</button>
-    </p>
+      <aside class="sidebar">
+        <section class="card" id="entertainmentConfigurations" style="display: none;">
+          <div class="cardHeader">
+            <h2>Entertainment area</h2>
+          </div>
+          <select id="entertainmentConfigurationsSelect"></select>
+        </section>
 
-    <section id="versionSection"></section>
+        <section class="card">
+          <div class="cardHeader">
+            <h2>Lamps</h2>
+            <span class="hint">Drag between lists</span>
+          </div>
+
+          <div class="lampLists">
+            <div class="lampList">
+              <h3>Active</h3>
+              <div id="activeChannelsList" class="channelList"></div>
+            </div>
+
+            <div class="lampList">
+              <h3>Available</h3>
+              <div id="inactiveChannelsList" class="channelList"></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="card settingsCard" id="advancedSettings">
+        <div class="cardHeader">
+          <h2>Settings</h2>
+        </div>
+
+        <div class="settingsGroups">
+          <div class="settingsGroup">
+            <h3>Light</h3>
+
+            <div class="setting" title="Scales the brightness of all lamps">
+              <div class="settingHeader">
+                <label for="brightness">Brightness</label>
+                <span class="value"><span id="brightnessLabel">0</span>%</span>
+              </div>
+              <input type="range" id="brightness" min="0" max="100" step="1" value="0"/>
+            </div>
+
+            <div class="setting">
+              <div class="settingHeader">
+                <label for="transitionSmoothing">Transition smoothing</label>
+                <span class="value"><span id="transitionSmoothingLabel">0</span>%</span>
+              </div>
+              <input type="range" id="transitionSmoothing" min="0" max="95" step="1" value="0"/>
+              <div class="presets">
+                <button type="button" class="presetButton" id="gamingPresetButton" title="10%: lights follow the screen almost instantly (90% after ~20 ms at 50 Hz)">Gaming</button>
+                <button type="button" class="presetButton" id="moviePresetButton" title="60%: smooths hard cuts and flashes (90% after ~90 ms at 50 Hz)">Movie</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settingsGroup">
+            <h3>Highlight boost</h3>
+
+            <div class="setting" title="Lamps flash brighter when their screen region suddenly gets brighter (explosions, lightning, cuts to bright scenes)">
+              <div class="settingHeader">
+                <label for="highlightBoost">Strength</label>
+                <span class="value"><span id="highlightBoostLabel">0</span>%</span>
+              </div>
+              <input type="range" id="highlightBoost" min="0" max="100" step="1" value="0"/>
+              <div class="presets">
+                <button type="button" class="presetButton" id="subtleBoostButton" title="20% of the remaining brightness on a full jump">Subtle</button>
+                <button type="button" class="presetButton" id="moderateBoostButton" title="40% of the remaining brightness on a full jump">Moderate</button>
+                <button type="button" class="presetButton" id="highBoostButton" title="60% of the remaining brightness on a full jump">High</button>
+                <button type="button" class="presetButton" id="intenseBoostButton" title="85% of the remaining brightness on a full jump">Intense</button>
+              </div>
+            </div>
+
+            <label class="toggle" title="Sudden loudness jumps in the PC sound (explosions, shots, beats) also trigger the highlight boost, panned by lamp position">
+              <input type="checkbox" id="audioReactive"/>
+              <span class="toggleTrack"></span>
+              <span>React to sound</span>
+            </label>
+          </div>
+
+          <div class="settingsGroup">
+            <h3>Capture</h3>
+
+            <div class="setting">
+              <div class="settingHeader">
+                <label for="availableSubsampleWidths">Subsample resolution</label>
+              </div>
+              <select id="availableSubsampleWidths"></select>
+            </div>
+
+            <div class="setting">
+              <div class="settingHeader">
+                <label for="refreshRate">Refresh rate</label>
+              </div>
+              <div class="inlineSetting">
+                <input type="number" id="refreshRate" min="1" step="1" value="10"/>
+                <span class="value">Hz</span>
+              </div>
+              <span class="hint" id="refreshRateLimit"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="actions">
+      <button class="primary" id="saveProfileButton">Save profile</button>
+      <button class="danger" id="stopButton">Shut down</button>
+      <span id="versionSection"></span>
+    </footer>
 
     <div id="overlay">
       <div class="overlayContent">
         <div id="confirmStopSection" style="display: none;">
           <p>Do you really want to stop Philip's Hue Desktop Sync?</p>
-          <button id="confirmStopButton">Yes</button>
-          <button id="cancelStopButton">No</button>
+          <button class="danger" id="confirmStopButton">Shut down</button>
+          <button id="cancelStopButton">Cancel</button>
         </div>
 
         <div id="stoppedInfoSection" style="display: none;">
-          <p style="padding-top: 20px;">Philip's Hue Desktop Sync is now off</p>
+          <p>Philip's Hue Desktop Sync is now off</p>
         </div>
 
         <div id="loadingInfoSection" style="display: none;">
-          <p style="padding-top: 20px;" id="loadingTextInfo"></p>
+          <p id="loadingTextInfo"></p>
         </div>
       </div>
     </div>
@@ -117,7 +196,6 @@
     <script src="Channel.js"></script>
     <script src="Utils.js"></script>
     <script src="Version.js"></script>
-    <script src="Rainbow.js"></script>
     <script src="ScreenWidget.js"></script>
     <script src="WebUI.js"></script>
     <script src="mainWebUI.js"></script>

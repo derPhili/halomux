@@ -1,106 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Philip's Hue Desktop Sync – Setup</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
   </head>
 
   <body>
-    <h1>Philip's Hue Desktop Sync – Setup</h1>
+    <header class="appHeader">
+      <img src="logo.svg" class="appLogo" alt="">
+      <h1>Philip's Hue Desktop Sync</h1>
+      <span class="hint" style="margin-left: auto;">Setup</span>
+    </header>
 
-    <section id="setupSection">
-      <div class="step">
-        <h1>Welcome !</h1>
-        <p>Philip's Hue Desktop Sync requires a quick initial setup to get started</p>
-        <button onclick="setupUI.incStep()">Proceed</button>
-        <button onclick="setupUI.abort()">Abort</button>
-      </div>
-
-      <div class="step">
-        <h1>Identify Hue Bridge</h1>
-        <p>
-          Please enter the address of your Hue bridge<br/>
-          (or try an automatic identification)
-        </p>
-        <p><input type="text" id="bridgeAddress"/></p>
-        <p id="bridgeAddressErrorMessage" class="errorMessage"></p>
-        <p><button onclick="setupUI.autodetectBridge()">Auto-detect</button></p>
-
-        <div id="multipleBridgeSection" style="display: none">
-          <p>You seem to have multiple bridges.<br/>Please select one below (or input it manually above):</p>
-          
-          <p><select id="bridgeCandidates"></select></p>
+    <main class="setupPage">
+      <section class="card" id="setupSection">
+        <div class="step">
+          <h2>Welcome</h2>
+          <p>Philip's Hue Desktop Sync needs a quick initial setup to connect to your Hue bridge.</p>
+          <div class="buttonRow">
+            <button class="primary" onclick="setupUI.incStep()">Get started</button>
+            <button onclick="setupUI.abort()">Abort</button>
+          </div>
         </div>
 
-        <button onclick="setupUI.validateAddress()">Validate</button>
-        <button onclick="setupUI.abort()">Abort</button>
-      </div>
+        <div class="step">
+          <h2>Hue bridge</h2>
+          <p>Enter the address of your Hue bridge, or detect it automatically.</p>
+          <div class="field">
+            <label for="bridgeAddress">Bridge address</label>
+            <input type="text" id="bridgeAddress" placeholder="192.168.0.42"/>
+          </div>
+          <p id="bridgeAddressErrorMessage" class="errorMessage"></p>
 
-      <div class="step">
-        <h1>API key</h1>
-        <p>
-          Some credentials are required to manage the Hue bridge.
-        </p>
-        <p>
-          If you already have these informations and can retrieve them, they can be provided in the fields below.
-        </p>
-        <p><label>Username:</label><input type="text" id="username"/></p>
-        <p><label>Clientkey:</label><input type="text" id="clientkey"/></p>
-        <p id="credentialsErrorMessage" class="errorMessage"></p>
-        
-        <p>
-          <button onclick="setupUI.validateCredentials()" style="width: 200px">Validate</button>
-          <button onclick="setupUI.incStep()" style="width: 200px">I don't have credentials yet</button>
-        </p>
-        <button onclick="setupUI.abort()">Abort</button>
-      </div>
+          <div id="multipleBridgeSection" class="field" style="display: none">
+            <label for="bridgeCandidates">Several bridges were found, pick one (or enter it above)</label>
+            <select id="bridgeCandidates"></select>
+          </div>
 
-      <div class="step">
-        <h1>Register a new user</h1>
-        <p>
-          In order to register a new user, you now need to press the central button on your Hue bridge.
-        </p>
-        <p>
-          Once this is done, you have one minute to press the registration button below.
-        </p>
-        <p id="newUserErrorMessage" class="errorMessage"></p>
-        <p>
-          <button onclick="setupUI.registerNewUser()" style="width: 200px">Register new user</button>
-        </p>
-        <button onclick="setupUI.abort()">Abort</button>
-      </div>
-
-      <div id="finishSection" style="display: none;">
-        <h1>
-          Philip's Hue Desktop Sync is now ready!
-        </h1>
-        
-        <p>Feel free to manually edit the config file located at<br/>
-          <a id="configFilePath"></a>
-        </p>
-        <p>
-          The Light Manager will be available at this current page address.<br/>
-          You might want to bookmark it for further use.
-        </p>
-        
-        <div id="refreshSection" style="display: none">
-          <p>You can now refresh this page to access the Light Manager</p>
-          <p><button onclick="window.location.reload()">Refresh</button></p>
+          <div class="buttonRow">
+            <button class="primary" onclick="setupUI.validateAddress()">Continue</button>
+            <button onclick="setupUI.autodetectBridge()">Auto-detect</button>
+            <button onclick="setupUI.abort()">Abort</button>
+          </div>
         </div>
-      </div>
 
-      <div id="abortSection" style="display: none;">
-        <h1>The setup was aborted</h1>
-        <p>Hope to see you again soon !</p>
-      </div>
-    </section>
+        <div class="step">
+          <h2>Credentials</h2>
+          <p>Managing the bridge requires credentials. If you already have some, enter them below.</p>
+          <div class="field">
+            <label for="username">Username</label>
+            <input type="text" id="username"/>
+          </div>
+          <div class="field">
+            <label for="clientkey">Client key</label>
+            <input type="text" id="clientkey"/>
+          </div>
+          <p id="credentialsErrorMessage" class="errorMessage"></p>
 
-    <section id="versionSection"></section>
+          <div class="buttonRow">
+            <button class="primary" onclick="setupUI.validateCredentials()">Continue</button>
+            <button onclick="setupUI.incStep()">I don't have credentials yet</button>
+            <button onclick="setupUI.abort()">Abort</button>
+          </div>
+        </div>
+
+        <div class="step">
+          <h2>Register a new user</h2>
+          <p>Press the central button on your Hue bridge. You then have one minute to register below.</p>
+          <p id="newUserErrorMessage" class="errorMessage"></p>
+
+          <div class="buttonRow">
+            <button class="primary" onclick="setupUI.registerNewUser()">Register new user</button>
+            <button onclick="setupUI.abort()">Abort</button>
+          </div>
+        </div>
+
+        <div id="finishSection" style="display: none;">
+          <h2>Ready</h2>
+          <p>The configuration file can be edited manually at<br/><a id="configFilePath"></a></p>
+          <p class="hint">The light manager is served at this page's address, you may want to bookmark it.</p>
+
+          <div id="refreshSection" style="display: none">
+            <div class="buttonRow">
+              <button class="primary" onclick="window.location.reload()">Open the light manager</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="abortSection" style="display: none;">
+          <h2>Setup aborted</h2>
+          <p>You can restart the application at any time to run it again.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="actions">
+      <span id="versionSection"></span>
+    </footer>
 
     <script src="Utils.js"></script>
     <script src="Version.js"></script>
-    <script src="Rainbow.js"></script>
     <script src="mainSetup.js"></script>
   </body>
 </html>

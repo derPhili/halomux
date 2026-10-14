@@ -110,20 +110,33 @@ class MathUtils
 }
 
 
-class StyleUtils
+class ColorUtils
 {
-  static greenRedGradient(proportion)
+  /**
+   * Converts a streamed color (CIE xy chromaticity and brightness, as sent to the bridge) to sRGB
+   */
+  static xyBrightnessToRgb(x, y, brightness)
   {
-    let rFactor = proportion;
-    let gFactor = 1 - proportion;
-    let bFactor = 0;
+    if(y <= 0 || brightness <= 0){
+      return {r : 0, g : 0, b : 0};
+    }
 
-    let norm = Math.sqrt(rFactor * rFactor + gFactor * gFactor + bFactor * bFactor);
+    // xyY with Y = 1, then linear sRGB (D65)
+    let X = x / y;
+    let Z = (1 - x - y) / y;
+    let rgb = [
+       3.2406 * X - 1.5372 - 0.4986 * Z,
+      -0.9689 * X + 1.8758 + 0.0415 * Z,
+       0.0557 * X - 0.2040 + 1.0570 * Z
+    ].map(value => Math.max(0, value));
 
-    rFactor /= norm;
-    gFactor /= norm;
-    bFactor /= norm;
+    // Full chroma at the streamed brightness
+    let maximum = Math.max(...rgb, 1e-6);
+    rgb = rgb.map(value => value / maximum * Math.min(1, brightness));
 
-    return `rgb(${rFactor * 255}, ${gFactor * 255}, ${bFactor * 255})`;
+    let encode = (value) => value <= 0.0031308 ? 12.92 * value : 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
+    let [r, g, b] = rgb.map(value => Math.round(encode(value) * 255));
+
+    return {r : r, g : g, b : b};
   }
 }

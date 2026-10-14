@@ -14,7 +14,7 @@ Er überträgt die farbige Atmosphäre deines Computerbildschirms in Echtzeit au
 
 ### Screenshot
 
-| ![Screenshot](screenshots/Hue Desktop SyncFullWebUI.png) |
+| ![Screenshot](screenshots/WebUI.png) |
 |:--:|
 | *Bildunterschrift: Weboberfläche von Philip's Hue Desktop Sync* |
 
@@ -127,7 +127,7 @@ Beim ersten Start öffnet Hue Desktop Sync die Einrichtungsseite in deinem Brows
 
 Nach erfolgreichem Abschluss der Einrichtung setzt Hue Desktop Sync seinen normalen Ablauf fort.
 
-Lade die Webseite anschließend neu, um zur Oberfläche des Light Managers zu gelangen.
+Lade die Webseite anschließend neu, um zur Weboberfläche zu gelangen.
 
 #### Normaler Ablauf
 
@@ -135,7 +135,7 @@ Beim ersten Start fordert KDE über das Bildschirmfreigabe-Portal auf, eine Quel
 
 Beim Start sucht Hue Desktop Sync nach einem gespeicherten Profil und beginnt mit dem Streamen der Farben.
 
-Um Lampen bestimmten Bildschirmbereichen zuzuweisen, öffne die Weboberfläche und ziehe die verfügbaren Lampen per Drag-and-Drop aus der linken in die rechte Liste.
+Um Lampen bestimmten Bildschirmbereichen zuzuweisen, öffne die Weboberfläche und ziehe die Lampen unter „Lamps“ per Drag-and-Drop von „Available“ nach „Active“. Jede aktive Lampe zeigt dort und in ihrem Bildschirmbereich live ihre aktuelle Farbe; die Kopfzeile zeigt, ob GPU oder CPU rechnet.
 
 Ist eine synchronisierte Lampe in der Liste ausgewählt, kannst du ihren Bildschirmbereich im Abschnitt zur Bildschirmaufteilung anpassen.
 
