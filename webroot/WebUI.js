@@ -37,7 +37,22 @@ class WebUI
 
     this.highlightBoostInputNode = document.getElementById("highlightBoost");
     this.highlightBoostLabelNode = document.getElementById("highlightBoostLabel");
-    this.highlightBoostInputNode.addEventListener("input", (event) => {this.highlightBoostLabelNode.textContent = event.target.value;});
+    this.highlightBoostInputNode.addEventListener("input", (event) => {
+      this.highlightBoostLabelNode.textContent = event.target.value;
+      this._highlightPreset(this.boostPresets, event.target.valueAsNumber);
+    });
+
+    // Highlight boost strengths, values in percent
+    this.boostPresets = [
+      {button : document.getElementById("subtleBoostButton"), value : 20},
+      {button : document.getElementById("moderateBoostButton"), value : 40},
+      {button : document.getElementById("highBoostButton"), value : 60},
+      {button : document.getElementById("intenseBoostButton"), value : 85}
+    ];
+
+    for(let preset of this.boostPresets){
+      preset.button.addEventListener("click", () => {this._setHighlightBoost(preset.value);});
+    }
     this.highlightBoostInputNode.addEventListener("change", (event) => {this._setHighlightBoost(event.target.valueAsNumber);});
 
     this.brightnessInputNode = document.getElementById("brightness");
@@ -282,6 +297,7 @@ class WebUI
 
     this.highlightBoostInputNode.value = displayInfo.selectedHighlightBoost;
     this.highlightBoostLabelNode.textContent = Math.round(displayInfo.selectedHighlightBoost);
+    this._highlightPreset(this.boostPresets, displayInfo.selectedHighlightBoost);
 
     this.brightnessInputNode.value = displayInfo.selectedBrightness;
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
@@ -423,8 +439,14 @@ class WebUI
 
   _highlightSmoothingPreset(transitionSmoothing)
   {
-    for(let preset of this.smoothingPresets){
-      preset.button.classList.toggle("active", Math.round(transitionSmoothing) == preset.value);
+    this._highlightPreset(this.smoothingPresets, transitionSmoothing);
+  }
+
+
+  _highlightPreset(presets, value)
+  {
+    for(let preset of presets){
+      preset.button.classList.toggle("active", Math.round(value) == preset.value);
     }
   }
 
@@ -446,6 +468,7 @@ class WebUI
     .then((data) => {
       this.highlightBoostInputNode.value = data.highlightBoost;
       this.highlightBoostLabelNode.textContent = Math.round(data.highlightBoost);
+      this._highlightPreset(this.boostPresets, data.highlightBoost);
     })
     .catch((error) => {log(error);});
   }
