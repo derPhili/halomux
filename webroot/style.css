@@ -176,11 +176,43 @@ a
 }
 
 
+.mainColumn
+{
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+
 .sidebar
 {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  align-self: stretch;
+}
+
+
+/* The lamps card ends with the main column */
+.sidebar > .card:last-child
+{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.sidebar > .card:last-child .lampLists, .sidebar > .card:last-child .lampList:last-child
+{
+  flex: 1;
+}
+
+
+.sidebar > .card:last-child .lampList:last-child .channelList
+{
+  flex: 1;
+  max-height: none;
 }
 
 
@@ -590,9 +622,11 @@ input[type=range]::-moz-range-thumb
 }
 
 
-.sceneSection + .sceneSection
+.sceneSections
 {
-  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 28px;
 }
 
 
