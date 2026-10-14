@@ -101,6 +101,32 @@ namespace Huenicorn::Hue::Api
      */
     void acknowledgeShutdown();
 
+
+    /**
+     * @brief Tracks sudden brightening of the channel's region and returns the resulting boost
+     *
+     * A rise of the measured (unsmoothed) brightness above BoostThreshold triggers a boost,
+     * proportional to the rise up to BoostFullJump. The boost starts instantly and decays
+     * by decay on each call; darkening or steady content never triggers it.
+     *
+     * @param measuredBrightness Brightness of the region in this frame, in [0, 1]
+     * @param strength Boost reached by a full jump, in [0, 1]
+     * @param decay Fraction of the boost kept since the previous call, in [0, 1]
+     * @param externalTrigger Additional trigger in [0, 1] (e.g. a sound transient), the stronger one wins
+     * @return float Boost in [0, 1], the fraction of the remaining brightness headroom to add
+     */
+    float updateHighlightBoost(
+      float measuredBrightness,
+      float strength,
+      float decay,
+      float externalTrigger = 0.f
+    );
+
+
+    // Brightness rise ignored as noise, and rise giving the full boost
+    static constexpr float BoostThreshold = 0.05f;
+    static constexpr float BoostFullJump = 0.30f;
+
     // Attributes
     State state{State::Inactive};
     Devices devices;
@@ -111,5 +137,10 @@ namespace Huenicorn::Hue::Api
     // used to ease transitions when Config::transitionSmoothing() > 0.
     glm::vec3 previousXyb{Imaging::Color::XYBBlack};
     bool hasPreviousXyb{false};
+
+    // Transient highlight boost state (see updateHighlightBoost())
+    float previousMeasuredBrightness{0.f};
+    bool hasPreviousMeasuredBrightness{false};
+    float highlightBoost{0.f};
   };
 }

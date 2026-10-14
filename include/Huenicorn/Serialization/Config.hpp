@@ -31,6 +31,18 @@ namespace Huenicorn::Serialization
         jsonConfigData["transitionSmoothing"] = *configData.transitionSmoothing;
       }
 
+      if(configData.highlightBoost.has_value()){
+        jsonConfigData["highlightBoost"] = *configData.highlightBoost;
+      }
+
+      if(configData.audioReactive.has_value()){
+        jsonConfigData["audioReactive"] = *configData.audioReactive;
+      }
+
+      if(configData.brightness.has_value()){
+        jsonConfigData["brightness"] = *configData.brightness;
+      }
+
       if(configData.boundBackendIP.has_value()){
         jsonConfigData["boundBackendIP"] = *configData.boundBackendIP;
       }
@@ -88,6 +100,18 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("transitionSmoothing")){
         configData.transitionSmoothing = jsonConfigData.at("transitionSmoothing");
+      }
+
+      if(jsonConfigData.contains("highlightBoost")){
+        configData.highlightBoost = jsonConfigData.at("highlightBoost");
+      }
+
+      if(jsonConfigData.contains("audioReactive")){
+        configData.audioReactive = jsonConfigData.at("audioReactive");
+      }
+
+      if(jsonConfigData.contains("brightness")){
+        configData.brightness = jsonConfigData.at("brightness");
       }
 
       if(jsonConfigData.contains("restoreToken")){

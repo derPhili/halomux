@@ -78,6 +78,27 @@ namespace Huenicorn::Core
   }
 
 
+  float Config::highlightBoost() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().highlightBoost.value();
+  }
+
+
+  bool Config::audioReactive() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().audioReactive.value();
+  }
+
+
+  float Config::brightness() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().brightness.value();
+  }
+
+
   const std::optional<std::string>& Config::restoreToken() const
   {
     return m_configData->restoreToken;
@@ -166,6 +187,36 @@ namespace Huenicorn::Core
   }
 
 
+  void Config::setAudioReactive(
+    bool audioReactive
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().audioReactive = audioReactive;
+    _save();
+  }
+
+
+  void Config::setHighlightBoost(
+    float highlightBoost
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().highlightBoost = std::clamp(highlightBoost, 0.f, 1.0f);
+    _save();
+  }
+
+
+  void Config::setBrightness(
+    float brightness
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().brightness = std::clamp(brightness, 0.f, 1.0f);
+    _save();
+  }
+
+
   void Config::setRestoreToken(
     const std::string& restoreToken
   )
@@ -187,6 +238,9 @@ namespace Huenicorn::Core
       .refreshRate = 0,
       .subsampleWidth = 0,
       .transitionSmoothing = 0.f,
+      .highlightBoost = 0.f,
+      .audioReactive = false,
+      .brightness = 1.f,
       .restoreToken = std::nullopt
     };
 

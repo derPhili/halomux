@@ -165,7 +165,10 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
 * **restoreToken**: (String) Token, um die Einstellungen der letzten Sitzung zu merken (nur Wayland)
 * **restServerPort**: (Unsigned) Port, auf dem die Weboberfläche antwortet
 * **subsampleWidth**: (Unsigned) Breite des verarbeiteten, verkleinerten Bildes
-* **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97
+* **brightness**: (Float) Globale Helligkeit aller Lampen, zwischen 0 und 1 (in der Weboberfläche 0–100 %). Wirkt nach Gamma und Glättung wie ein Dimmer
+* **audioReactive**: (Boolean) Ob zusätzlich der PC-Sound Lichtblitze auslöst (Schalter „React to sound“). Huenicorn hört dafür über Pipewire den Monitor des Standard-Ausgabegeräts mit (kein Mikrofon) und erkennt Transienten: Liegt die Energie eines Audiopuffers mehr als 6 dB über dem Mittel der letzten ~0,5 s, löst das aus, ab 12 dB voll. Gleichmäßig laute Musik löst daher nicht ständig aus, Leises unter −50 dBFS nie. Linker und rechter Kanal werden nach der horizontalen Position des Lampenbereichs verteilt. Bild und Sound wirken zusammen, der stärkere Auslöser gewinnt; die Stärke kommt von `highlightBoost`
+* **highlightBoost**: (Float) Stärke der Lichtblitze bei plötzlich heller werdenden Bildbereichen (Explosionen, Blitze, Schnitte in helle Szenen), zwischen 0 (aus) und 1 (in der Weboberfläche 0–100 %). Steigt die ungeglättete Helligkeit im Bereich einer Lampe von einem Bild zum nächsten um mehr als 5 %, geht die Lampe sofort einen Teil des Weges zur vollen Helligkeit (bei einem Sprung ab 30 % genau um den eingestellten Anteil) und klingt mit einer Zeitkonstante von 250 ms ab. Verdunkeln und reine Farbwechsel lösen nichts aus. Wirkt pro Lampe und nach der Glättung. Voreinstellungen in der Weboberfläche: Subtle (20 %), Moderate (40 %), High (60 %), Intense (85 %)
+* **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97. In der Weboberfläche gibt es neben dem Slider die Voreinstellungen „Gaming“ (10 %, Lampen folgen fast sofort) und „Movie“ (60 %, glättet harte Schnitte und Blitze)
 
 Ein Beispiel:
 

@@ -127,7 +127,10 @@ namespace Huenicorn::Network::Http::Server
         {"maxRefreshRate", m_coreService->maxRefreshRate()},
         {"displayRefreshRate", m_coreService->displayRefreshRate()},
         {"bridgeMaxRefreshRate", Stream::MaxStreamingRate},
-        {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()}
+        {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()},
+        {"selectedHighlightBoost", m_coreService->highlightBoost()},
+        {"selectedAudioReactive", m_coreService->audioReactive()},
+        {"selectedBrightness", m_coreService->brightness()}
       };
 
       std::string response = jsonDisplayInfo.dump();
@@ -275,6 +278,30 @@ namespace Huenicorn::Network::Http::Server
       std::string response = jsonTransitionSmoothing.dump();
       res.contentType = "application/json";
       res.body = response;
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setBrightness", [this](const Request& req, Response& res){
+      m_coreService->setBrightness(Json::parse(req.body).get<float>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"brightness", m_coreService->brightness()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setHighlightBoost", [this](const Request& req, Response& res){
+      m_coreService->setHighlightBoost(Json::parse(req.body).get<float>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"highlightBoost", m_coreService->highlightBoost()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setAudioReactive", [this](const Request& req, Response& res){
+      m_coreService->setAudioReactive(Json::parse(req.body).get<bool>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"audioReactive", m_coreService->audioReactive()}}.dump();
     });
 
 

@@ -152,6 +152,30 @@ namespace Huenicorn::Core
     float transitionSmoothing() const;
 
 
+    /**
+     * @brief Returns the strength of the brightness flash on sudden brightening
+     *
+     * @return float Value in percent
+     */
+    float highlightBoost() const;
+
+
+    /**
+     * @brief Returns whether transients in the PC sound also trigger the highlight boost
+     *
+     * @return true Sound reactive
+     */
+    bool audioReactive() const;
+
+
+    /**
+     * @brief Returns the global lamp brightness factor
+     *
+     * @return float Value in percent
+     */
+    float brightness() const;
+
+
     // Setters
     /**
      * @brief Sets the current entertainment configuration
@@ -221,6 +245,36 @@ namespace Huenicorn::Core
      */
     void setTransitionSmoothing(
       float transitionSmoothing
+    );
+
+
+    /**
+     * @brief Set the strength of the brightness flash on sudden brightening
+     *
+     * @param highlightBoost Value in percent
+     */
+    void setHighlightBoost(
+      float highlightBoost
+    );
+
+
+    /**
+     * @brief Sets whether transients in the PC sound also trigger the highlight boost
+     *
+     * @param audioReactive Sound reactive
+     */
+    void setAudioReactive(
+      bool audioReactive
+    );
+
+
+    /**
+     * @brief Set the global lamp brightness factor
+     *
+     * @param brightness Value in percent
+     */
+    void setBrightness(
+      float brightness
     );
 
 

@@ -64,13 +64,26 @@
     </section>
 
     <section>
-      <h2>Advanced settings <input type="checkbox" id="advancedSettingsCheckbox"/> </h2>
+      <h2>Settings</h2>
 
       <section id="advancedSettings">
         <p>Processing: <span id="processingInfo">…</span></p>
         <p>Subsample resolution:<select id="availableSubsampleWidths"></select></p>
         <p>Refresh rate [Hz]: <input type="number" id="refreshRate" min="1" step="1" value="10"/> <span id="refreshRateLimit"></span></p>
         <p>Transition smoothing: <input type="range" id="transitionSmoothing" min="0" max="95" step="1" value="0"/> <span id="transitionSmoothingLabel">0</span>%</p>
+        <p>
+          <button type="button" class="presetButton" id="gamingPresetButton" title="10%: lights follow the screen almost instantly (90% after ~20 ms at 50 Hz)">Gaming</button>
+          <button type="button" class="presetButton" id="moviePresetButton" title="60%: smooths hard cuts and flashes (90% after ~90 ms at 50 Hz)">Movie</button>
+        </p>
+        <p title="Scales the brightness of all lamps">Brightness: <input type="range" id="brightness" min="0" max="100" step="1" value="0"/> <span id="brightnessLabel">0</span>%</p>
+        <p title="Lamps flash brighter when their screen region suddenly gets brighter (explosions, lightning, cuts to bright scenes)">Highlight boost: <input type="range" id="highlightBoost" min="0" max="100" step="1" value="0"/> <span id="highlightBoostLabel">0</span>%</p>
+        <p>
+          <button type="button" class="presetButton" id="subtleBoostButton" title="20% of the remaining brightness on a full jump">Subtle</button>
+          <button type="button" class="presetButton" id="moderateBoostButton" title="40% of the remaining brightness on a full jump">Moderate</button>
+          <button type="button" class="presetButton" id="highBoostButton" title="60% of the remaining brightness on a full jump">High</button>
+          <button type="button" class="presetButton" id="intenseBoostButton" title="85% of the remaining brightness on a full jump">Intense</button>
+        </p>
+        <p title="Sudden loudness jumps in the PC sound (explosions, shots, beats) also trigger the highlight boost, panned by lamp position"><label><input type="checkbox" id="audioReactive"/> React to sound</label></p>
       </section>
     </section>
 

@@ -27,9 +27,6 @@ class WebUI
     this.entertainmentConfigurationsSelectNode = document.getElementById("entertainmentConfigurationsSelect");
     this.entertainmentConfigurationsSelectNode.addEventListener("change", (event) => {this._setEntertainmentConfiguration(event.target.value);});
 
-    this.advancedSettingsCheckbox = document.getElementById("advancedSettingsCheckbox");
-    this.advancedSettingsCheckbox.addEventListener("click", (e) => {this._toggleAdvancedDisplay(e.target.checked);});
-    this.advancedSettingsNode = document.getElementById("advancedSettings");
     this.availableSubsamplesNode = document.getElementById("availableSubsampleWidths");
     this.availableSubsamplesNode.addEventListener("change", (event) => {this._setSubsampleWidth(parseInt(event.target.value));});
     this.refreshRateInputNode = document.getElementById("refreshRate");
@@ -37,9 +34,50 @@ class WebUI
     this.refreshRateInputNode.addEventListener("change", (event) => {this._setRefreshRate(event.target.valueAsNumber);});
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.processingInfoNode = document.getElementById("processingInfo");
+
+    this.audioReactiveNode = document.getElementById("audioReactive");
+    this.audioReactiveNode.addEventListener("change", (event) => {this._setAudioReactive(event.target.checked);});
+
+    this.highlightBoostInputNode = document.getElementById("highlightBoost");
+    this.highlightBoostLabelNode = document.getElementById("highlightBoostLabel");
+    this.highlightBoostInputNode.addEventListener("input", (event) => {
+      this.highlightBoostLabelNode.textContent = event.target.value;
+      this._highlightPreset(this.boostPresets, event.target.valueAsNumber);
+    });
+
+    // Highlight boost strengths, values in percent
+    this.boostPresets = [
+      {button : document.getElementById("subtleBoostButton"), value : 20},
+      {button : document.getElementById("moderateBoostButton"), value : 40},
+      {button : document.getElementById("highBoostButton"), value : 60},
+      {button : document.getElementById("intenseBoostButton"), value : 85}
+    ];
+
+    for(let preset of this.boostPresets){
+      preset.button.addEventListener("click", () => {this._setHighlightBoost(preset.value);});
+    }
+    this.highlightBoostInputNode.addEventListener("change", (event) => {this._setHighlightBoost(event.target.valueAsNumber);});
+
+    this.brightnessInputNode = document.getElementById("brightness");
+    this.brightnessLabelNode = document.getElementById("brightnessLabel");
+    this.brightnessInputNode.addEventListener("input", (event) => {this.brightnessLabelNode.textContent = event.target.value;});
+    this.brightnessInputNode.addEventListener("change", (event) => {this._setBrightness(event.target.valueAsNumber);});
     this.transitionSmoothingLabelNode = document.getElementById("transitionSmoothingLabel");
-    this.transitionSmoothingInputNode.addEventListener("input", (event) => {this.transitionSmoothingLabelNode.textContent = event.target.value;});
+    this.transitionSmoothingInputNode.addEventListener("input", (event) => {
+      this.transitionSmoothingLabelNode.textContent = event.target.value;
+      this._highlightSmoothingPreset(event.target.valueAsNumber);
+    });
     this.transitionSmoothingInputNode.addEventListener("change", (event) => {this._setTransitionSmoothing(event.target.valueAsNumber);});
+
+    // Quick switches between a direct and a smooth transition smoothing, values in percent
+    this.smoothingPresets = [
+      {button : document.getElementById("gamingPresetButton"), value : WebUI.GamingSmoothing},
+      {button : document.getElementById("moviePresetButton"), value : WebUI.MovieSmoothing}
+    ];
+
+    for(let preset of this.smoothingPresets){
+      preset.button.addEventListener("click", () => {this._setTransitionSmoothing(preset.value);});
+    }
 
     this.saveProfileButton = document.getElementById("saveProfileButton");
     this.saveProfileButton.addEventListener("click", () => {this._saveProfile();});
@@ -138,25 +176,6 @@ class WebUI
       this.screenWidget.currentChannel.gammaFactor = Utils.truncate(gammaFactor, 2);
     });
     promise.catch((error) => {log(error);});
-  }
-
-
-  _initAdvancedSettings()
-  {
-    let showAdvancedSettings = false;
-    this.advancedSettingsCheckbox.checked = showAdvancedSettings;
-    this._toggleAdvancedDisplay(showAdvancedSettings);
-  }
-
-
-  _toggleAdvancedDisplay(checked)
-  {
-    if(checked){
-      this.advancedSettingsNode.style.display = "block";
-    }
-    else{
-      this.advancedSettingsNode.style.display = "none";
-    }
   }
 
 
@@ -277,6 +296,15 @@ class WebUI
     this.refreshRateLimitNode.textContent = `(max ${displayInfo.maxRefreshRate} Hz: ${limitedBy}. Display: ${displayInfo.displayRefreshRate} Hz, bridge: ${displayInfo.bridgeMaxRefreshRate} Hz)`;
     this.transitionSmoothingInputNode.value = displayInfo.selectedTransitionSmoothing;
     this.transitionSmoothingLabelNode.textContent = Math.round(displayInfo.selectedTransitionSmoothing);
+    this._highlightSmoothingPreset(displayInfo.selectedTransitionSmoothing);
+
+    this.highlightBoostInputNode.value = displayInfo.selectedHighlightBoost;
+    this.highlightBoostLabelNode.textContent = Math.round(displayInfo.selectedHighlightBoost);
+    this._highlightPreset(this.boostPresets, displayInfo.selectedHighlightBoost);
+    this.audioReactiveNode.checked = displayInfo.selectedAudioReactive;
+
+    this.brightnessInputNode.value = displayInfo.selectedBrightness;
+    this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
     this.screenWidget.setDimensions(x, y, subsampleWidth);
     let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
@@ -298,7 +326,6 @@ class WebUI
     let gradientColor = StyleUtils.greenRedGradient(proportion);
     this.availableSubsamplesNode.style.color = gradientColor;
 
-    this._initAdvancedSettings();
     this.availableSubsamplesNode.value = subsampleWidth.toString();
   }
 
@@ -414,6 +441,51 @@ class WebUI
   }
 
 
+  _highlightSmoothingPreset(transitionSmoothing)
+  {
+    this._highlightPreset(this.smoothingPresets, transitionSmoothing);
+  }
+
+
+  _highlightPreset(presets, value)
+  {
+    for(let preset of presets){
+      preset.button.classList.toggle("active", Math.round(value) == preset.value);
+    }
+  }
+
+
+  _setBrightness(brightness)
+  {
+    RequestUtils.put("/api/setBrightness", JSON.stringify(brightness))
+    .then((data) => {
+      this.brightnessInputNode.value = data.brightness;
+      this.brightnessLabelNode.textContent = Math.round(data.brightness);
+    })
+    .catch((error) => {log(error);});
+  }
+
+
+  _setHighlightBoost(highlightBoost)
+  {
+    RequestUtils.put("/api/setHighlightBoost", JSON.stringify(highlightBoost))
+    .then((data) => {
+      this.highlightBoostInputNode.value = data.highlightBoost;
+      this.highlightBoostLabelNode.textContent = Math.round(data.highlightBoost);
+      this._highlightPreset(this.boostPresets, data.highlightBoost);
+    })
+    .catch((error) => {log(error);});
+  }
+
+
+  _setAudioReactive(audioReactive)
+  {
+    RequestUtils.put("/api/setAudioReactive", JSON.stringify(audioReactive))
+    .then((data) => {this.audioReactiveNode.checked = data.audioReactive;})
+    .catch((error) => {log(error);});
+  }
+
+
   _setTransitionSmoothing(transitionSmoothing){
     let promise = RequestUtils.put("/api/setTransitionSmoothing", JSON.stringify(transitionSmoothing));
     promise.then((data) => {this._setTransitionSmoothingCallback(data.transitionSmoothing);});
@@ -425,6 +497,7 @@ class WebUI
   {
     this.transitionSmoothingInputNode.value = transitionSmoothing;
     this.transitionSmoothingLabelNode.textContent = Math.round(transitionSmoothing);
+    this._highlightSmoothingPreset(transitionSmoothing);
   }
 
 
@@ -470,3 +543,8 @@ class WebUI
     }
   }
 }
+
+
+// Transition smoothing presets [%]
+WebUI.GamingSmoothing = 10;
+WebUI.MovieSmoothing = 60;

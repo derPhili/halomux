@@ -86,3 +86,45 @@ target_link_libraries(TestGpuDownscale PUBLIC
 )
 
 add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/HuenicornFullWebUI.png)
+
+
+# TestHighlightBoost: brightness flash envelope of a channel
+add_executable(TestHighlightBoost
+  #Huenicorn
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestHighlightBoost.cpp
+)
+
+set_target_properties(TestHighlightBoost PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestHighlightBoost PUBLIC
+  include
+)
+
+target_link_libraries(TestHighlightBoost PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+add_test(NAME HighlightBoost COMMAND TestHighlightBoost)
+
+
+# TestTransientDetector: sound transient detection on synthetic energies
+add_executable(TestTransientDetector
+  #Huenicorn
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestTransientDetector.cpp
+)
+
+set_target_properties(TestTransientDetector PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestTransientDetector PUBLIC
+  include
+)
+
+add_test(NAME TransientDetector COMMAND TestTransientDetector)

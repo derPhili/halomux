@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 
+#include <Huenicorn/Audio/AudioAnalyzer.hpp>
 #include <Huenicorn/Core/CoreService.hpp>
 #include <Huenicorn/Core/Config.hpp>
 #include <Huenicorn/Hue/Api/EntertainmentConfigurationSelector.hpp>
@@ -185,5 +186,8 @@ namespace Huenicorn::Core
     //  Image Processing
     Grabber::IGrabber* m_grabber;
     Grabber::IGrabber::ChannelRegions m_channelRegions;
+
+    // Sound transients, only while Config::audioReactive() is enabled (streaming thread)
+    std::unique_ptr<Audio::AudioAnalyzer> m_audioAnalyzer;
   };
 }

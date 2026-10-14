@@ -1,6 +1,7 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <future>
 
@@ -292,6 +293,18 @@ namespace Huenicorn::Core
 
   void Runtime::_update()
   {
+    // Start or stop listening to the sound when the setting changes
+    if(m_config.audioReactive() != static_cast<bool>(m_audioAnalyzer)){
+      if(m_audioAnalyzer){
+        m_audioAnalyzer.reset();
+      }
+      else{
+        m_audioAnalyzer = std::make_unique<Audio::AudioAnalyzer>();
+      }
+    }
+
+    const Audio::AudioAnalyzer::Triggers soundTriggers = m_audioAnalyzer ? m_audioAnalyzer->takeTriggers() : Audio::AudioAnalyzer::Triggers{0.f, 0.f};
+
     std::lock_guard channelsLock(m_channelsMutex);
 
     // The grabber averages the regions of the active channels on each captured frame
@@ -346,6 +359,8 @@ namespace Huenicorn::Core
         channelStream.g = 0;
         channelStream.b = 0;
         channel.hasPreviousXyb = false;
+        channel.hasPreviousMeasuredBrightness = false;
+        channel.highlightBoost = 0.f;
         channel.acknowledgeShutdown();
       }
       else{
@@ -369,6 +384,22 @@ namespace Huenicorn::Core
         channel.hasPreviousXyb = true;
 
         xybColor.z = glm::pow(xybColor.z, channel.gammaExponent());
+
+        // Global dimmer, applied last so it scales what the lamp would otherwise show
+        xybColor.z *= m_config.brightness();
+
+        // Flash on sudden brightening, after smoothing so it isn't eased away: the boost takes
+        // the lamp part of the way to full brightness and fades with a fixed time constant
+        static constexpr float BoostTimeConstant = 0.25f; // [s]
+        const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
+        const float decay = std::exp(-tickDuration / BoostTimeConstant);
+        // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
+        const float pan = glm::clamp((channel.uvs.min.x + channel.uvs.max.x) / 2.f, 0.f, 1.f);
+        const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
+
+        const float boost = channel.updateHighlightBoost(color.brightness(), m_config.highlightBoost(), decay, soundTrigger);
+        xybColor.z += boost * (1.f - xybColor.z);
+
         correctedColor = xybColor;
         //*/
 

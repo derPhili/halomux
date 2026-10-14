@@ -223,6 +223,32 @@ namespace Huenicorn::Core
   }
 
 
+  float CoreService::brightness() const
+  {
+    return m_config.brightness() * 100.f;
+  }
+
+
+  float CoreService::highlightBoost() const
+  {
+    return m_config.highlightBoost() * 100.f;
+  }
+
+
+  bool CoreService::audioReactive() const
+  {
+    return m_config.audioReactive();
+  }
+
+
+  void CoreService::setAudioReactive(
+    bool audioReactive
+  )
+  {
+    m_config.setAudioReactive(audioReactive);
+  }
+
+
   bool CoreService::setEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )
@@ -299,6 +325,26 @@ namespace Huenicorn::Core
   )
   {
     m_config.setTransitionSmoothing(transitionSmoothing / 100.f);
+  }
+
+
+  void CoreService::setBrightness(
+    float brightness
+  )
+  {
+    if(std::isfinite(brightness)){
+      m_config.setBrightness(brightness / 100.f);
+    }
+  }
+
+
+  void CoreService::setHighlightBoost(
+    float highlightBoost
+  )
+  {
+    if(std::isfinite(highlightBoost)){
+      m_config.setHighlightBoost(highlightBoost / 100.f);
+    }
   }
 
 
