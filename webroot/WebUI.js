@@ -281,6 +281,10 @@ class WebUI
     id.textContent = `#${channel.channelId}`;
 
     entryNode.replaceChildren(swatch, name, id);
+
+    entryNode.title = channel.node
+      ? `${channel.formatMembers()}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it`
+      : `${channel.formatMembers()}: not driven. Drag to Active to have it follow the screen`;
   }
 
 
