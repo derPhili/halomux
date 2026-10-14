@@ -554,6 +554,217 @@ input[type=range]::-moz-range-thumb
 }
 
 
+/* Sync switch */
+
+.syncToggle
+{
+  margin-left: auto;
+  padding: 5px 12px 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--textMuted);
+  font-size: 13px;
+}
+
+
+.syncToggle + .headerStatus
+{
+  margin-left: 0;
+}
+
+
+.syncToggle:has(input:checked)
+{
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+
+/* Static scene */
+
+.sceneSection
+{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+.sceneSection + .sceneSection
+{
+  margin-top: 18px;
+}
+
+
+.colorPanel
+{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+.quickColors
+{
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 30px));
+  justify-content: space-between;
+  gap: 4px;
+}
+
+
+.quickColor
+{
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+
+.quickColor:hover
+{
+  border-color: var(--textMuted);
+}
+
+
+.quickColor.active, .sceneButton.active
+{
+  border-color: var(--accent);
+}
+
+
+.colorField
+{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+
+input[type=color]
+{
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--borderStrong);
+  border-radius: var(--radiusSmall);
+  background: var(--surfaceRaised);
+  cursor: pointer;
+}
+
+
+input[type=color]::-moz-color-swatch
+{
+  border: none;
+  border-radius: 5px;
+}
+
+
+input[type=color]::-webkit-color-swatch-wrapper
+{
+  padding: 0;
+}
+
+
+input[type=color]::-webkit-color-swatch
+{
+  border: none;
+  border-radius: 5px;
+}
+
+
+.sceneGrid
+{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+
+.sceneGrid:empty::before
+{
+  content: "No saved scene yet";
+  grid-column: 1 / -1;
+  color: var(--textFaint);
+  font-size: 12px;
+}
+
+
+.sceneItem
+{
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+
+.sceneButton
+{
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 8px;
+  font-size: 13px;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+
+
+.sceneButton:has(+ .deleteScene)
+{
+  padding-right: 28px;
+}
+
+
+.sceneSwatch
+{
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+
+.sceneName
+{
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+
+.deleteScene
+{
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  min-height: 0;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--textFaint);
+  font-size: 15px;
+  line-height: 1;
+}
+
+
+.deleteScene:hover
+{
+  background: transparent;
+  color: var(--danger);
+}
+
+
 /* Lamps */
 
 .lampLists

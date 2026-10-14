@@ -12,6 +12,11 @@
     <header class="appHeader">
       <img src="logo.svg" class="appLogo" alt="">
       <h1>Philip's Hue Desktop Sync</h1>
+      <label class="toggle syncToggle" title="On: lamps follow the screen and sound. Off: lamps show the static scene">
+        <input type="checkbox" id="syncToggle"/>
+        <span class="toggleTrack"></span>
+        <span id="syncLabel">Sync</span>
+      </label>
       <div class="headerStatus" title="Where captured frames are processed">
         <span class="statusDot" id="statusDot"></span>
         <span id="processingInfo">…</span>
@@ -63,6 +68,44 @@
       </section>
 
       <aside class="sidebar">
+        <section class="card" id="sceneCard">
+          <div class="cardHeader">
+            <h2>Static scene</h2>
+            <span class="hint" id="sceneHint">Shown while sync is off</span>
+          </div>
+
+          <div class="sceneSection">
+            <div class="presets">
+              <button type="button" class="presetButton" id="fullColorTab">Full color</button>
+              <button type="button" class="presetButton" id="perLampTab">Per lamp</button>
+            </div>
+
+            <div id="fullColorPanel" class="colorPanel">
+              <div class="quickColors" id="quickColors"></div>
+              <label class="colorField">
+                <input type="color" id="fullColor" value="#ffb46e"/>
+                <span>Custom color</span>
+              </label>
+            </div>
+
+            <div id="perLampPanel" class="colorPanel" style="display: none;"></div>
+          </div>
+
+          <div class="sceneSection">
+            <h3>Presets</h3>
+            <div class="sceneGrid" id="builtinScenes"></div>
+          </div>
+
+          <div class="sceneSection">
+            <h3>My scenes</h3>
+            <div class="sceneGrid" id="customScenes"></div>
+            <form class="inlineSetting" id="saveSceneForm">
+              <input type="text" id="sceneName" maxlength="40" placeholder="Save current colors as…" required/>
+              <button type="submit">Save</button>
+            </form>
+          </div>
+        </section>
+
         <section class="card" id="entertainmentConfigurations" style="display: none;">
           <div class="cardHeader">
             <h2>Entertainment area</h2>
@@ -198,6 +241,7 @@
     <script src="Utils.js"></script>
     <script src="Version.js"></script>
     <script src="ScreenWidget.js"></script>
+    <script src="StaticScene.js"></script>
     <script src="WebUI.js"></script>
     <script src="mainWebUI.js"></script>
   </body>

@@ -141,6 +141,15 @@ Ist eine synchronisierte Lampe in der Liste ausgewählt, kannst du ihren Bildsch
 
 Um die Einstellungen auszuprobieren, startet der Knopf „Preview“ (Karte „Settings“) eine 12-sekündige Testsequenz auf den Lampen statt des Bildschirminhalts: harte Farbschnitte (Glättung), eine dunkle Szene mit weißen Blitzen links, rechts und beidseitig (Highlight boost pro Lampe), einen langsamen Farbverlauf und einen Schnitt von Schwarz auf Weiß (Helligkeit). Sie durchläuft dieselbe Verarbeitung wie echte Bilder; danach geht es automatisch mit dem Bildschirm weiter.
 
+Der Schalter „Sync“ in der Kopfzeile wechselt zwischen Bildschirm/Sound und statischen Farben. Ohne Sync zeigen die Lampen die Szene aus der Karte „Static scene“; Bildschirmaufnahme und Sound-Analyse pausieren dann. Dort gibt es:
+
+* **Full color**: eine Farbe für alle Lampen, aus Schnellfarben oder einem Farbwähler
+* **Per lamp**: eine eigene Farbe für jede aktive Lampe
+* **Presets**: eingebaute Szenen wie Sunset, Ocean oder Neon. Ihre beiden Farben werden von links nach rechts über die Lampen verteilt, nach der Position ihrer Bildschirmbereiche
+* **My scenes**: die aktuellen Farben unter einem Namen speichern und wieder löschen
+
+Eine Farbe oder Szene auszuwählen schaltet Sync automatisch aus. Szenenwechsel blenden in etwa einer Sekunde über und lösen keinen Highlight boost aus; die Helligkeit gilt weiterhin. Die Lampen bleiben dabei im Entertainment-Modus, die Hue-App kann sie also solange nicht steuern.
+
 Bist du mit der Aufteilung zufrieden, speichere sie als Profil. Es wird bei späteren Starts automatisch geladen.
 
 Solange kein Profil gespeichert ist, öffnet sich die Lampenverwaltung beim Start automatisch.
@@ -170,6 +179,9 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
 * **brightness**: (Float) Globale Helligkeit aller Lampen, zwischen 0 und 1 (in der Weboberfläche 0–100 %). Wirkt nach Gamma und Glättung wie ein Dimmer
 * **audioReactive**: (Boolean) Ob zusätzlich der PC-Sound Lichtblitze auslöst (Schalter „React to sound“). Hue Desktop Sync hört dafür über Pipewire den Monitor des Standard-Ausgabegeräts mit (kein Mikrofon) und erkennt Transienten: Liegt die Energie eines Audiopuffers mehr als 6 dB über dem Mittel der letzten ~0,5 s, löst das aus, ab 12 dB voll. Gleichmäßig laute Musik löst daher nicht ständig aus, Leises unter −50 dBFS nie. Linker und rechter Kanal werden nach der horizontalen Position des Lampenbereichs verteilt. Bild und Sound wirken zusammen, der stärkere Auslöser gewinnt; die Stärke kommt von `highlightBoost`
 * **highlightBoost**: (Float) Stärke der Lichtblitze bei plötzlich heller werdenden Bildbereichen (Explosionen, Blitze, Schnitte in helle Szenen), zwischen 0 (aus) und 1 (in der Weboberfläche 0–100 %). Steigt die ungeglättete Helligkeit im Bereich einer Lampe von einem Bild zum nächsten um mehr als 5 %, geht die Lampe sofort einen Teil des Weges zur vollen Helligkeit (bei einem Sprung ab 30 % genau um den eingestellten Anteil) und klingt mit einer Zeitkonstante von 250 ms ab. Verdunkeln und reine Farbwechsel lösen nichts aus. Wirkt pro Lampe und nach der Glättung. Voreinstellungen in der Weboberfläche: Subtle (20 %), Moderate (40 %), High (60 %), Intense (85 %)
+* **syncEnabled**: (Boolean) Ob die Lampen Bildschirm und Sound folgen (`true`) oder die statischen Farben zeigen (Schalter „Sync“)
+* **staticColors**: (Objekt) Statische Farbe je Kanal-ID im Format `#rrggbb`, z. B. `{"0": "#ff5e3a", "1": "#ffaa3c"}`. Kanäle ohne Eintrag leuchten warmweiß
+* **scenes**: (Objekt) Gespeicherte Szenen: Name → Farben im Format von `staticColors`
 * **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97. In der Weboberfläche gibt es neben dem Slider die Voreinstellungen „Gaming“ (10 %, Lampen folgen fast sofort) und „Movie“ (60 %, glättet harte Schnitte und Blitze)
 
 Ein Beispiel:

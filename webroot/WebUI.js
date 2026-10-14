@@ -22,6 +22,8 @@ class WebUI
     this.activeChannels = {};
 
     this.screenWidget = new ScreenWidget(this);
+    this.syncEnabled = true;
+    this.staticScene = new StaticScenePanel(this);
     
     this.entertainmentConfigurationsNode = document.getElementById("entertainmentConfigurations");
     this.entertainmentConfigurationsSelectNode = document.getElementById("entertainmentConfigurationsSelect");
@@ -118,7 +120,7 @@ class WebUI
     setInterval(() => {this._refreshProcessingInfo();}, 5000);
 
     this._refreshLampColors();
-
+    this.staticScene.init();
 
     let entertainmentConfigurationsPromise = RequestUtils.get("/api/entertainmentConfigurations");
     entertainmentConfigurationsPromise.then((data) => {this._entertainmentConfigurationsCallback(data);});
@@ -227,6 +229,14 @@ class WebUI
     }
     
     this.screenWidget.showPreview();
+    this.staticScene.refreshLamps();
+  }
+
+
+  onSyncChanged(syncEnabled)
+  {
+    this.syncEnabled = syncEnabled;
+    this._refreshProcessingInfo();
   }
 
 
@@ -357,8 +367,18 @@ class WebUI
 
   _refreshProcessingInfo()
   {
+    if(!this.syncEnabled){
+      this.processingInfoNode.textContent = "Capture paused · static scene";
+      this.statusDotNode.classList.remove("gpu", "cpu");
+      return;
+    }
+
     RequestUtils.get("/api/processingInfo")
     .then((processingInfo) => {
+      if(!this.syncEnabled){
+        return;
+      }
+
       this.processingInfoNode.textContent = `${processingInfo.backend} · ${processingInfo.details}`;
       this.statusDotNode.classList.toggle("gpu", processingInfo.backend == "GPU");
       this.statusDotNode.classList.toggle("cpu", processingInfo.backend != "GPU");

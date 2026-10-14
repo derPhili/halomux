@@ -66,9 +66,19 @@ class RequestUtils
 
 
   static put(url, data = {}){
+    return RequestUtils._send("PUT", url, data);
+  }
+
+
+  static delete(url, data = {}){
+    return RequestUtils._send("DELETE", url, data);
+  }
+
+
+  static _send(method, url, data){
     return new Promise((resolve, reject) => {
       var xhr = new XMLHttpRequest();
-      xhr.open("PUT", url);
+      xhr.open(method, url);
       xhr.setRequestHeader("Accept", "application/json");
       xhr.setRequestHeader("Content-Type", "application/json");
       xhr.onreadystatechange = function(){
