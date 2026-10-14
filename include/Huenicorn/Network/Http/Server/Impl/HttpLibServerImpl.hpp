@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <optional>
 
 #include <httplib.h>
@@ -65,7 +66,20 @@ namespace Huenicorn::Network::Http::Server
         handler(r, w);
 
         res.status = w.status;
-        res.set_content(w.body, w.contentType);
+
+        // Brotli costs more than it saves on small responses: with the web UI polling the
+        // lamp colors several times per second, it took most of the process' CPU time.
+        // httplib doesn't compress responses with a fixed length content provider.
+        static constexpr size_t CompressionThreshold = 1024;
+        if(!w.body.empty() && w.body.size() < CompressionThreshold){
+          auto body = std::make_shared<const std::string>(std::move(w.body));
+          res.set_content_provider(body->size(), w.contentType, [body](size_t offset, size_t length, httplib::DataSink& sink){
+            return sink.write(body->data() + offset, length);
+          });
+        }
+        else{
+          res.set_content(w.body, w.contentType);
+        }
       };
     }
 
