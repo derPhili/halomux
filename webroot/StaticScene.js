@@ -66,6 +66,8 @@ class StaticScenePanel
     .then((lightMode) => {
       this.scenes = lightMode.scenes;
       this.builtinScenes = lightMode.builtinScenes;
+      // A preview started elsewhere (tray) or before a reload
+      this.webUI.showPreviewRunning(lightMode.previewRemaining);
       this._renderBuiltinScenes();
       this._renderCustomScenes();
       this._updateSync(lightMode.syncEnabled);
