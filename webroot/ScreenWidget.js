@@ -197,6 +197,10 @@ class ScreenWidget
 
     this.draggedHandle = null;
     this.currentChannel = null;
+
+    // Live lamp colors shown in the regions of the lamps not being edited
+    this.previewRegions = {};
+    this.regionColors = {};
   }
 
 
@@ -291,6 +295,7 @@ class ScreenWidget
   showPreview(exceptedChannelId = null)
   {
     this.previewArea.innerHTML = "";
+    this.previewRegions = {};
 
     let activeChannels = this.webApp.activeChannels;
     let screenWidgetResolution = this.screenWidgetResolution();
@@ -310,8 +315,7 @@ class ScreenWidget
       var textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
 
       //textNode.innerHTML = activeChannel.name; // Todo
-      textNode.innerHTML = activeChannel.formatMembers();
-      textNode.setAttribute("fill", "rgba(255, 255, 255, 0.2)");
+      textNode.textContent = activeChannel.formatMembers();
       textNode.setAttribute("text-anchor", "middle");
 
       let uvs = activeChannel.uvs;
@@ -325,8 +329,9 @@ class ScreenWidget
       textNode.setAttribute("x", width / 2 + ax);
       textNode.setAttribute("y", height / 2 + ay);
 
-      rectNode.style.stroke = "rgba(255, 255, 255, 0.2)";
-      rectNode.style.strokeWidth = "1px";
+      rectNode.classList.add("previewRegion");
+      rectNode.style.fill = this.regionColors[activeChannelId] || ScreenWidget.IdleRegionFill;
+      this.previewRegions[activeChannelId] = rectNode;
 
       let previewRectangle = new Rectangle(rectNode);
 
@@ -391,8 +396,22 @@ class ScreenWidget
   }
 
 
+  setRegionColor(channelId, color)
+  {
+    this.regionColors[channelId] = color;
+
+    let region = this.previewRegions[channelId];
+    if(region){
+      region.style.fill = color;
+    }
+  }
+
+
   _updateUVs(uvData)
   {
     this.webApp.notifyUV(uvData);
   }
 }
+
+
+ScreenWidget.IdleRegionFill = "rgba(255, 255, 255, 0.04)";

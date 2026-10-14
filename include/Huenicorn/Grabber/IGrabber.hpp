@@ -155,6 +155,19 @@ namespace Huenicorn::Grabber
 
 
     /**
+     * @brief Stops or resumes capturing, while the lamps don't follow the screen
+     *
+     * Until a frame is captured after resuming, grabChannelColors() returns false.
+     *
+     * @param paused Whether to stop capturing
+     */
+    virtual void setPaused(
+      bool /*paused*/
+    )
+    {}
+
+
+    /**
      * @brief Returns a list of available subsample resolutions
      * 
      * @return Resolutions List of available subsample resolutions

@@ -7,7 +7,7 @@ enable_testing()
 
 # TestImageProcessing
 add_executable(TestImageProcessing
-  #Huenicorn
+  # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
@@ -33,11 +33,11 @@ add_test(NAME ImageProcessing COMMAND TestImageProcessing)
 
 # TestGrabber (manual: needs a graphical session)
 # Reuses every application source but the entry point
-get_target_property(HUENICORN_SOURCES huenicorn SOURCES)
-list(FILTER HUENICORN_SOURCES EXCLUDE REGEX "/src/App/")
+get_target_property(APP_SOURCES hue-desktop-sync SOURCES)
+list(FILTER APP_SOURCES EXCLUDE REGEX "/src/App/")
 
 add_executable(TestGrabber
-  ${HUENICORN_SOURCES}
+  ${APP_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGrabber.cpp
 )
 
@@ -45,22 +45,22 @@ add_dependencies(TestGrabber generate_version_header generate_webroot_header)
 
 set_target_properties(TestGrabber PROPERTIES CXX_STANDARD 20)
 
-get_target_property(HUENICORN_INCLUDE_DIRECTORIES huenicorn INCLUDE_DIRECTORIES)
-get_target_property(HUENICORN_COMPILE_DEFINITIONS huenicorn COMPILE_DEFINITIONS)
-get_target_property(HUENICORN_LINK_LIBRARIES huenicorn LINK_LIBRARIES)
+get_target_property(APP_INCLUDE_DIRECTORIES hue-desktop-sync INCLUDE_DIRECTORIES)
+get_target_property(APP_COMPILE_DEFINITIONS hue-desktop-sync COMPILE_DEFINITIONS)
+get_target_property(APP_LINK_LIBRARIES hue-desktop-sync LINK_LIBRARIES)
 
-target_include_directories(TestGrabber PUBLIC ${HUENICORN_INCLUDE_DIRECTORIES})
-if(HUENICORN_COMPILE_DEFINITIONS)
-  target_compile_definitions(TestGrabber PUBLIC ${HUENICORN_COMPILE_DEFINITIONS})
+target_include_directories(TestGrabber PUBLIC ${APP_INCLUDE_DIRECTORIES})
+if(APP_COMPILE_DEFINITIONS)
+  target_compile_definitions(TestGrabber PUBLIC ${APP_COMPILE_DEFINITIONS})
 endif()
-target_link_libraries(TestGrabber PUBLIC ${HUENICORN_LINK_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(TestGrabber PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
 
 
 # TestGpuDownscale: GPU downscale of a real DMA-BUF against the exact CPU area average
 pkg_check_modules(GBM REQUIRED gbm)
 
 add_executable(TestGpuDownscale
-  #Huenicorn
+  # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
@@ -85,12 +85,12 @@ target_link_libraries(TestGpuDownscale PUBLIC
   ${GBM_LIBRARIES}
 )
 
-add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/HuenicornFullWebUI.png)
+add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/WebUI.png)
 
 
 # TestHighlightBoost: brightness flash envelope of a channel
 add_executable(TestHighlightBoost
-  #Huenicorn
+  # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
@@ -114,7 +114,7 @@ add_test(NAME HighlightBoost COMMAND TestHighlightBoost)
 
 # TestTransientDetector: sound transient detection on synthetic energies
 add_executable(TestTransientDetector
-  #Huenicorn
+  # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test
@@ -128,3 +128,48 @@ target_include_directories(TestTransientDetector PUBLIC
 )
 
 add_test(NAME TransientDetector COMMAND TestTransientDetector)
+
+
+# TestPreviewSequence: synthetic content of the settings preview
+add_executable(TestPreviewSequence
+  #Huenicorn
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestPreviewSequence.cpp
+)
+
+set_target_properties(TestPreviewSequence PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestPreviewSequence PUBLIC
+  include
+)
+
+target_link_libraries(TestPreviewSequence PUBLIC
+  glm::glm
+)
+
+add_test(NAME PreviewSequence COMMAND TestPreviewSequence)
+
+
+# TestStaticColors: color notation and serialization of the static scenes
+add_executable(TestStaticColors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestStaticColors.cpp
+)
+
+set_target_properties(TestStaticColors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestStaticColors PUBLIC
+  include
+)
+
+target_link_libraries(TestStaticColors PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+add_test(NAME StaticColors COMMAND TestStaticColors)

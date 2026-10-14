@@ -1,6 +1,7 @@
 #include <Huenicorn/Hue/Api/ApiTools.hpp>
 
 #include <Huenicorn/Core/Logger.hpp>
+#include <Huenicorn/Version.hpp>
 #include <Huenicorn/Hue/Api/BridgeAddress.hpp>
 #include <Huenicorn/Hue/Auth/Credentials.hpp>
 #include <Huenicorn/Network/Http/Client/Client.hpp>
@@ -21,7 +22,6 @@ namespace Huenicorn::Hue::Api
     {
       // I don't always abbreviate variable names
       // but when I do, it's because I don't have a 32:9 monitor
-      // (If someones has such a display, please tell me about Huenicorn's performance)
       EntertainmentConfigurations entConfs;
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
@@ -209,7 +209,7 @@ namespace Huenicorn::Hue::Api
   std::optional<Network::Http::Client::Response> ApiTools::registerNewUser(const std::string& bridgeAddress)
   {
     std::string sessionUsername = Platform::adapter.getUsername();
-    std::string deviceType = "huenicorn#" + sessionUsername;
+    std::string deviceType = std::string(Huenicorn::AppId) + "#" + sessionUsername;
 
     Serialization::Json request = {{"devicetype", deviceType}, {"generateclientkey", true}};
     return Network::Http::Client::sendRequest(HttpProtocol + bridgeAddress + "/api", "POST", request.dump());

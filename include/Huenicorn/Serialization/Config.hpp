@@ -8,6 +8,41 @@
 namespace Huenicorn::Serialization
 {
   template<>
+  struct JsonSerializer<Huenicorn::Core::Config::StaticColors>
+  {
+    // Object of #rrggbb colors keyed by channel ID
+    static void to_json(
+      Json& jsonStaticColors,
+      const Huenicorn::Core::Config::StaticColors& staticColors
+    )
+    {
+      jsonStaticColors = Json::object();
+      for(const auto& [channelId, color] : staticColors){
+        jsonStaticColors[std::to_string(channelId)] = color.toHex();
+      }
+    }
+
+
+    static void from_json(
+      const Json& jsonStaticColors,
+      Huenicorn::Core::Config::StaticColors& staticColors
+    )
+    {
+      staticColors.clear();
+      for(const auto& [key, jsonColor] : jsonStaticColors.items()){
+        const int channelId = std::stoi(key);
+        const auto color = Imaging::Color::fromHex(jsonColor.get<std::string>());
+        if(channelId < 0 || channelId > 255 || !color.has_value()){
+          throw std::invalid_argument("Invalid static color " + key + ": " + jsonColor.dump());
+        }
+
+        staticColors.emplace(static_cast<uint8_t>(channelId), color.value());
+      }
+    }
+  };
+
+
+  template<>
   struct JsonSerializer<Huenicorn::Core::Config::Data>
   {
     static void to_json(
@@ -41,6 +76,18 @@ namespace Huenicorn::Serialization
 
       if(configData.brightness.has_value()){
         jsonConfigData["brightness"] = *configData.brightness;
+      }
+
+      if(configData.syncEnabled.has_value()){
+        jsonConfigData["syncEnabled"] = *configData.syncEnabled;
+      }
+
+      if(configData.staticColors.has_value()){
+        jsonConfigData["staticColors"] = *configData.staticColors;
+      }
+
+      if(configData.scenes.has_value()){
+        jsonConfigData["scenes"] = *configData.scenes;
       }
 
       if(configData.boundBackendIP.has_value()){
@@ -112,6 +159,18 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("brightness")){
         configData.brightness = jsonConfigData.at("brightness");
+      }
+
+      if(jsonConfigData.contains("syncEnabled")){
+        configData.syncEnabled = jsonConfigData.at("syncEnabled");
+      }
+
+      if(jsonConfigData.contains("staticColors")){
+        configData.staticColors = jsonConfigData.at("staticColors").get<Huenicorn::Core::Config::StaticColors>();
+      }
+
+      if(jsonConfigData.contains("scenes")){
+        configData.scenes = jsonConfigData.at("scenes").get<Huenicorn::Core::Config::Scenes>();
       }
 
       if(jsonConfigData.contains("restoreToken")){

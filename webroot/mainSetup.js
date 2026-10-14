@@ -193,7 +193,8 @@ class SetupUI
     this.stepId = stepId;
     let i = 0;
     for(let stepNode of this.stepNodes){
-      let display = (i++ == this.stepId) ? "block" : "none";
+      // "" restores the stylesheet layout (flex)
+      let display = (i++ == this.stepId) ? "" : "none";
       stepNode.style.display = display;
     }
 
@@ -213,7 +214,7 @@ class SetupUI
       stepNode.style.display = "none";
     }
 
-    document.getElementById("finishSection").style.display = "block";
+    document.getElementById("finishSection").style.display = "flex";
 
     this.pingFunctionInterval = setInterval(
       this._ping
@@ -231,7 +232,7 @@ class SetupUI
       stepNode.style.display = "none";
     }
 
-    document.getElementById("abortSection").style.display = "block";
+    document.getElementById("abortSection").style.display = "flex";
   }
 
 

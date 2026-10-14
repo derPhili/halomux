@@ -99,6 +99,27 @@ namespace Huenicorn::Core
   }
 
 
+  bool Config::syncEnabled() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().syncEnabled.value();
+  }
+
+
+  Config::StaticColors Config::staticColors() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().staticColors.value();
+  }
+
+
+  Config::Scenes Config::scenes() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().scenes.value();
+  }
+
+
   const std::optional<std::string>& Config::restoreToken() const
   {
     return m_configData->restoreToken;
@@ -217,6 +238,51 @@ namespace Huenicorn::Core
   }
 
 
+  void Config::setSyncEnabled(
+    bool syncEnabled
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().syncEnabled = syncEnabled;
+    _save();
+  }
+
+
+  void Config::setStaticColors(
+    const StaticColors& staticColors
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().staticColors = staticColors;
+    _save();
+  }
+
+
+  void Config::saveScene(
+    const std::string& name,
+    const StaticColors& staticColors
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().scenes.value()[name] = staticColors;
+    _save();
+  }
+
+
+  bool Config::deleteScene(
+    const std::string& name
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    if(m_configData.value().scenes.value().erase(name) == 0){
+      return false;
+    }
+
+    _save();
+    return true;
+  }
+
+
   void Config::setRestoreToken(
     const std::string& restoreToken
   )
@@ -241,6 +307,9 @@ namespace Huenicorn::Core
       .highlightBoost = 0.f,
       .audioReactive = false,
       .brightness = 1.f,
+      .syncEnabled = true,
+      .staticColors = StaticColors{},
+      .scenes = Scenes{},
       .restoreToken = std::nullopt
     };
 

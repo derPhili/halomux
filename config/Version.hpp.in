@@ -5,4 +5,8 @@
 namespace Huenicorn
 {
   inline const std::string Version = "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@";
+
+  // Displayed name, and technical one (executable, service, configuration directory, bridge user)
+  inline constexpr const char* AppName = "Philip's Hue Desktop Sync";
+  inline constexpr const char* AppId = "hue-desktop-sync";
 }

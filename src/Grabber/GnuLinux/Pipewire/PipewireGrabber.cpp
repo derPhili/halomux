@@ -582,10 +582,10 @@ namespace Huenicorn::Grabber
     pw->renegotiateEvent = pw_loop_add_event(pw_main_loop_get_loop(pw->loop), _onRenegotiate, pw);
 
     // The GL context lives in this thread, like every Pipewire callback using it
-    if(const char* disableGpu = std::getenv("HUENICORN_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
-      Core::Logger::log("[gpu] Disabled by HUENICORN_DISABLE_GPU");
+    if(const char* disableGpu = std::getenv("HUE_DESKTOP_SYNC_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
+      Core::Logger::log("[gpu] Disabled by HUE_DESKTOP_SYNC_DISABLE_GPU");
       auto lock = std::lock_guard(pw->processingInfoMutex);
-      pw->cpuReason = "GPU disabled by HUENICORN_DISABLE_GPU, shared memory";
+      pw->cpuReason = "GPU disabled by HUE_DESKTOP_SYNC_DISABLE_GPU, shared memory";
     }
     else{
       pw->gpu = std::make_unique<EglDownscaler>();
@@ -639,7 +639,7 @@ namespace Huenicorn::Grabber
       NULL
     );
 
-    std::string streamName = "HuenicornStream";
+    std::string streamName = "HueDesktopSyncVideo";
 
     pw->stream = pw_stream_new_simple(
       pw_main_loop_get_loop(pw->loop),
@@ -811,6 +811,33 @@ namespace Huenicorn::Grabber
   }
 
 
+  int PipewireGrabber::_onUpdatePaused(
+    spa_loop* /*loop*/,
+    bool /*async*/,
+    uint32_t /*seq*/,
+    const void* data,
+    size_t /*size*/,
+    void* userData
+  )
+  {
+    // Runs in the Pipewire thread, so no frame is being processed meanwhile
+    PipewireData* pw = static_cast<PipewireData*>(userData);
+    const bool paused = *static_cast<const bool*>(data);
+
+    if(paused){
+      // Don't hand out the colors of a frame captured before the pause
+      auto lock = std::lock_guard(pw->channels.mutex);
+      pw->channels.hasColors = false;
+    }
+
+    if(!pw->stream){
+      return 0;
+    }
+
+    return pw_stream_set_active(pw->stream, !paused);
+  }
+
+
 #pragma GCC diagnostic pop
 
 
@@ -824,6 +851,18 @@ namespace Huenicorn::Grabber
 
     unsigned maxFramerate = frameRate;
     pw_loop_invoke(pw_main_loop_get_loop(m_pwData.loop), _onUpdateFrameRateLimit, 0, &maxFramerate, sizeof(maxFramerate), false, &m_pwData);
+  }
+
+
+  void PipewireGrabber::setPaused(
+    bool paused
+  )
+  {
+    if(!m_pwData.loop){
+      return;
+    }
+
+    pw_loop_invoke(pw_main_loop_get_loop(m_pwData.loop), _onUpdatePaused, 0, &paused, sizeof(paused), false, &m_pwData);
   }
 
 

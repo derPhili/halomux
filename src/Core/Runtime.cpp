@@ -1,6 +1,7 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <future>
@@ -17,12 +18,23 @@
 #include <Huenicorn/Imaging/UV.hpp>
 
 #include <Huenicorn/Core/CoreService.hpp>
+#include <Huenicorn/Core/PreviewSequence.hpp>
 #include <Huenicorn/Hue/Api/Channel.hpp>
 
 #include <Huenicorn/Hue/Api/ApiTools.hpp>
 
 
 using namespace std::chrono_literals;
+
+
+namespace
+{
+  // Shown by lamps without a static color yet: warm white
+  const Huenicorn::Imaging::Color DefaultStaticColor{255, 180, 110};
+
+  // Time constant of the fade between static colors [s]
+  constexpr float StaticFadeTimeConstant = 0.35f;
+}
 
 
 namespace Huenicorn::Core
@@ -67,7 +79,7 @@ namespace Huenicorn::Core
       Logger::error("Could not load suitable entertainment configuration.");
       return;
 
-      // TODO : Add tool to create entertainment configurations inside Huenicorn
+      // TODO : Add tool to create entertainment configurations inside the application
       // so the official application would no longer be a requirement
     }
 
@@ -293,8 +305,11 @@ namespace Huenicorn::Core
 
   void Runtime::_update()
   {
+    // Without sync, the lamps show the static colors: nothing to capture or listen to
+    const bool syncing = m_config.syncEnabled();
+
     // Start or stop listening to the sound when the setting changes
-    if(m_config.audioReactive() != static_cast<bool>(m_audioAnalyzer)){
+    if((m_config.audioReactive() && syncing) != static_cast<bool>(m_audioAnalyzer)){
       if(m_audioAnalyzer){
         m_audioAnalyzer.reset();
       }
@@ -306,6 +321,18 @@ namespace Huenicorn::Core
     const Audio::AudioAnalyzer::Triggers soundTriggers = m_audioAnalyzer ? m_audioAnalyzer->takeTriggers() : Audio::AudioAnalyzer::Triggers{0.f, 0.f};
 
     std::lock_guard channelsLock(m_channelsMutex);
+
+    if(syncing == m_capturePaused){
+      m_capturePaused = !syncing;
+      m_grabber->setPaused(m_capturePaused);
+
+      // A jump between the static colors and the screen is no highlight
+      for(auto& [channelId, channel] : m_channels){
+        channel.hasPreviousMeasuredBrightness = false;
+      }
+    }
+
+    const Config::StaticColors staticColors = syncing ? Config::StaticColors{} : m_config.staticColors();
 
     // The grabber averages the regions of the active channels on each captured frame
     Grabber::IGrabber::ChannelRegions regions;
@@ -320,8 +347,22 @@ namespace Huenicorn::Core
       m_channelRegions = std::move(regions);
     }
 
+    // Preview: synthetic content replaces the screen for a few seconds
+    float previewTime = -1.f;
+    if(const int64_t previewStart = m_previewStart; previewStart != 0){
+      const auto elapsed = std::chrono::steady_clock::now().time_since_epoch() - std::chrono::steady_clock::duration(previewStart);
+      previewTime = std::chrono::duration<float>(elapsed).count();
+
+      if(previewTime >= PreviewSequence::Duration){
+        m_previewStart = 0;
+        previewTime = -1.f;
+      }
+    }
+
+    const bool previewing = previewTime >= 0.f;
+
     Grabber::IGrabber::ChannelColors channelColors;
-    if(!m_grabber->grabChannelColors(channelColors)){
+    if(syncing && !m_grabber->grabChannelColors(channelColors) && !previewing){
       // Grabbers with asynchronous capture may produce slower than the core consumes
       return;
     }
@@ -335,7 +376,7 @@ namespace Huenicorn::Core
         return channelColor.first == channelId;
       });
 
-      if(channel.state == Hue::Api::Channel::State::Active && colorIt == channelColors.end()){
+      if(channel.state == Hue::Api::Channel::State::Active && syncing && colorIt == channelColors.end() && !previewing){
         // Activated after the last captured frame: wait for the next one
         continue;
       }
@@ -364,7 +405,22 @@ namespace Huenicorn::Core
         channel.acknowledgeShutdown();
       }
       else{
-        const Imaging::Color& color = colorIt->second;
+        // Horizontal position of the lamp's region, 0 = left, 1 = right
+        const float pan = glm::clamp((channel.uvs.min.x + channel.uvs.max.x) / 2.f, 0.f, 1.f);
+
+        Imaging::Color color;
+        if(previewing){
+          color = PreviewSequence::colorAt(previewTime, pan);
+        }
+        else if(!syncing){
+          const auto staticColorIt = staticColors.find(channelId);
+          color = staticColorIt != staticColors.end() ? staticColorIt->second : DefaultStaticColor;
+        }
+        else{
+          color = colorIt->second;
+        }
+
+        const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
 
         glm::vec3 correctedColor;
         /*/
@@ -377,6 +433,10 @@ namespace Huenicorn::Core
         // fast-changing content doesn't produce an abrupt strobe-like cut.
         // transitionSmoothing == 0 reproduces the previous (instant) behavior.
         float smoothing = m_config.transitionSmoothing();
+        if(!syncing && !previewing){
+          // Fade softly between static colors, whatever the smoothing tuned for the screen
+          smoothing = std::max(smoothing, std::exp(-tickDuration / StaticFadeTimeConstant));
+        }
         if(channel.hasPreviousXyb && smoothing > 0.f){
           xybColor = glm::mix(channel.previousXyb, xybColor, 1.f - smoothing);
         }
@@ -391,13 +451,13 @@ namespace Huenicorn::Core
         // Flash on sudden brightening, after smoothing so it isn't eased away: the boost takes
         // the lamp part of the way to full brightness and fades with a fixed time constant
         static constexpr float BoostTimeConstant = 0.25f; // [s]
-        const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
         const float decay = std::exp(-tickDuration / BoostTimeConstant);
         // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
-        const float pan = glm::clamp((channel.uvs.min.x + channel.uvs.max.x) / 2.f, 0.f, 1.f);
         const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
 
-        const float boost = channel.updateHighlightBoost(color.brightness(), m_config.highlightBoost(), decay, soundTrigger);
+        // Static colors don't flash when switching scenes
+        const float boostStrength = syncing || previewing ? m_config.highlightBoost() : 0.f;
+        const float boost = channel.updateHighlightBoost(color.brightness(), boostStrength, decay, soundTrigger);
         xybColor.z += boost * (1.f - xybColor.z);
 
         correctedColor = xybColor;

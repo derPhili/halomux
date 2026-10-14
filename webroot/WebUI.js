@@ -22,6 +22,8 @@ class WebUI
     this.activeChannels = {};
 
     this.screenWidget = new ScreenWidget(this);
+    this.syncEnabled = true;
+    this.staticScene = new StaticScenePanel(this);
     
     this.entertainmentConfigurationsNode = document.getElementById("entertainmentConfigurations");
     this.entertainmentConfigurationsSelectNode = document.getElementById("entertainmentConfigurationsSelect");
@@ -34,6 +36,11 @@ class WebUI
     this.refreshRateInputNode.addEventListener("change", (event) => {this._setRefreshRate(event.target.valueAsNumber);});
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.processingInfoNode = document.getElementById("processingInfo");
+    this.statusDotNode = document.getElementById("statusDot");
+
+    // Live color dot of each active lamp, by channel ID
+    this.lampSwatches = {};
+    window.addEventListener("resize", () => {this._redrawScreenWidget();});
 
     this.audioReactiveNode = document.getElementById("audioReactive");
     this.audioReactiveNode.addEventListener("change", (event) => {this._setAudioReactive(event.target.checked);});
@@ -79,6 +86,9 @@ class WebUI
       preset.button.addEventListener("click", () => {this._setTransitionSmoothing(preset.value);});
     }
 
+    this.previewButton = document.getElementById("previewButton");
+    this.previewButton.addEventListener("click", () => {this._startPreview();});
+
     this.saveProfileButton = document.getElementById("saveProfileButton");
     this.saveProfileButton.addEventListener("click", () => {this._saveProfile();});
 
@@ -109,6 +119,8 @@ class WebUI
     this._refreshProcessingInfo();
     setInterval(() => {this._refreshProcessingInfo();}, 5000);
 
+    this._refreshLampColors();
+    this.staticScene.init();
 
     let entertainmentConfigurationsPromise = RequestUtils.get("/api/entertainmentConfigurations");
     entertainmentConfigurationsPromise.then((data) => {this._entertainmentConfigurationsCallback(data);});
@@ -217,12 +229,21 @@ class WebUI
     }
     
     this.screenWidget.showPreview();
+    this.staticScene.refreshLamps();
+  }
+
+
+  onSyncChanged(syncEnabled)
+  {
+    this.syncEnabled = syncEnabled;
+    this._refreshProcessingInfo();
   }
 
 
   _refreshActiveChannels(channels)
   {
     this.activeChannelsNode.innerHTML = "";
+    this.lampSwatches = {};
     for(let channelData of channels){
       let newChannelEntryNode = document.createElement("p");
       newChannelEntryNode.draggable = true;
@@ -237,11 +258,29 @@ class WebUI
         this._manageChannel(channelData.channelId);
       });
 
-      newChannelEntryNode.innerHTML = newChannel.formatMembers();
+      this._fillChannelEntry(newChannelEntryNode, newChannel);
+      this.lampSwatches[newChannel.channelId] = newChannelEntryNode.querySelector(".lampSwatch");
 
       this.activeChannelsNode.appendChild(newChannelEntryNode);
       this.activeChannels[newChannel.channelId] = newChannel;
     }
+  }
+
+
+  _fillChannelEntry(entryNode, channel)
+  {
+    let swatch = document.createElement("span");
+    swatch.className = "lampSwatch";
+
+    let name = document.createElement("span");
+    name.textContent = channel.formatMembers();
+
+    let id = document.createElement("span");
+    id.className = "hint";
+    id.style.marginLeft = "auto";
+    id.textContent = `#${channel.channelId}`;
+
+    entryNode.replaceChildren(swatch, name, id);
   }
 
 
@@ -277,7 +316,7 @@ class WebUI
         event.dataTransfer.setData("channelData", JSON.stringify(newChannel));
       });
 
-      newChannelEntryNode.innerHTML = newChannel.formatMembers();
+      this._fillChannelEntry(newChannelEntryNode, newChannel);
 
       this.inactiveChannelsNode.appendChild(newChannelEntryNode);
     }
@@ -322,19 +361,27 @@ class WebUI
       this.availableSubsamplesNode.appendChild(newOption);
     }
     
-    let proportion = parseInt(this.availableSubsamplesNode.value) / this.screenWidget.width;
-    let gradientColor = StyleUtils.greenRedGradient(proportion);
-    this.availableSubsamplesNode.style.color = gradientColor;
-
     this.availableSubsamplesNode.value = subsampleWidth.toString();
   }
 
 
   _refreshProcessingInfo()
   {
+    if(!this.syncEnabled){
+      this.processingInfoNode.textContent = "Capture paused · static scene";
+      this.statusDotNode.classList.remove("gpu", "cpu");
+      return;
+    }
+
     RequestUtils.get("/api/processingInfo")
     .then((processingInfo) => {
-      this.processingInfoNode.textContent = `${processingInfo.backend} (${processingInfo.details})`;
+      if(!this.syncEnabled){
+        return;
+      }
+
+      this.processingInfoNode.textContent = `${processingInfo.backend} · ${processingInfo.details}`;
+      this.statusDotNode.classList.toggle("gpu", processingInfo.backend == "GPU");
+      this.statusDotNode.classList.toggle("cpu", processingInfo.backend != "GPU");
     })
     .catch((error) => {log(error);});
   }
@@ -413,16 +460,73 @@ class WebUI
   }
 
 
+  _startPreview()
+  {
+    RequestUtils.post("/api/preview", JSON.stringify(null))
+    .then((data) => {
+      let remaining = Math.ceil(data.duration);
+      this.previewButton.disabled = true;
+      this.previewButton.classList.add("running");
+
+      let tick = () => {
+        if(remaining <= 0){
+          this.previewButton.disabled = false;
+          this.previewButton.classList.remove("running");
+          this.previewButton.textContent = "Preview";
+          return;
+        }
+
+        this.previewButton.textContent = `Previewing… ${remaining} s`;
+        remaining--;
+        setTimeout(tick, 1000);
+      };
+
+      tick();
+    })
+    .catch((error) => {log(error);});
+  }
+
+
+  _refreshLampColors()
+  {
+    // One request at a time, about 8 times per second
+    RequestUtils.get("/api/currentColors")
+    .then((channelColors) => {
+      for(let channelColor of channelColors){
+        let rgb = ColorUtils.xyBrightnessToRgb(channelColor.r, channelColor.g, channelColor.b);
+        let color = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+        let swatch = this.lampSwatches[channelColor.channelId];
+        if(swatch){
+          let glow = Math.round(4 + 10 * Math.min(1, channelColor.b));
+          swatch.style.background = color;
+          swatch.style.boxShadow = `0 0 ${glow}px ${Math.round(glow / 3)}px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+        }
+
+        this.screenWidget.setRegionColor(channelColor.channelId, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.55)`);
+      }
+    })
+    .catch((error) => {log(error);})
+    .finally(() => {setTimeout(() => {this._refreshLampColors();}, 120);});
+  }
+
+
+  _redrawScreenWidget()
+  {
+    let currentChannel = this.screenWidget.currentChannel;
+    this.screenWidget.showPreview(currentChannel ? currentChannel.channelId : null);
+
+    if(currentChannel && currentChannel.uvs){
+      this.screenWidget.uvCallback(currentChannel.uvs);
+    }
+  }
+
+
   _setSubsampleWidth(subsampleWidth)
   {
     let promise = RequestUtils.put("/api/setSubsampleWidth", JSON.stringify(subsampleWidth));
     promise.then((displayInfo) => {
       this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth);
-
-      let proportion = subsampleWidth / this.screenWidget.width;
-
-      let gradientColor = StyleUtils.greenRedGradient(proportion);
-      this.availableSubsamplesNode.style.color = gradientColor;
     });
     promise.catch((error) => {log(error);});
   }

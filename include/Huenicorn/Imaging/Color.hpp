@@ -1,9 +1,14 @@
 #pragma once
 
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
+#include <optional>
+#include <string>
+#include <string_view>
 
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
@@ -66,6 +71,46 @@ namespace Huenicorn::Imaging
     bool operator!=(const Color& other) const
     {
       return  !(*this == other);
+    }
+
+
+    /**
+     * @brief Parses a color in the #rrggbb notation
+     *
+     * @param hex Color notation
+     * @return std::optional<Color> Color, empty if the notation is invalid
+     */
+    static std::optional<Color> fromHex(
+      std::string_view hex
+    )
+    {
+      if(hex.size() != 7 || hex.front() != '#'){
+        return std::nullopt;
+      }
+
+      std::array<ChannelDepth, 3> channels;
+      for(size_t i = 0; i < channels.size(); i++){
+        const char* begin = hex.data() + 1 + i * 2;
+        const auto [end, error] = std::from_chars(begin, begin + 2, channels[i], 16);
+        if(error != std::errc() || end != begin + 2){
+          return std::nullopt;
+        }
+      }
+
+      return Color{channels[0], channels[1], channels[2]};
+    }
+
+
+    /**
+     * @brief Returns the color in the #rrggbb notation
+     *
+     * @return std::string Color notation
+     */
+    std::string toHex() const
+    {
+      std::array<char, 8> hex;
+      std::snprintf(hex.data(), hex.size(), "#%02x%02x%02x", m_r, m_g, m_b);
+      return hex.data();
     }
 
 

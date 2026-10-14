@@ -176,6 +176,30 @@ namespace Huenicorn::Core
     float brightness() const;
 
 
+    /**
+     * @brief Returns whether the lamps follow the screen and sound, or show the static colors
+     *
+     * @return true Lamps follow the screen and sound
+     */
+    bool syncEnabled() const;
+
+
+    /**
+     * @brief Returns the colors shown while sync is disabled
+     *
+     * @return Config::StaticColors Color by channel ID
+     */
+    Config::StaticColors staticColors() const;
+
+
+    /**
+     * @brief Returns the scenes saved by the user
+     *
+     * @return Config::Scenes Static colors by scene name
+     */
+    Config::Scenes scenes() const;
+
+
     // Setters
     /**
      * @brief Sets the current entertainment configuration
@@ -269,12 +293,65 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Plays the preview sequence on the lamps instead of the screen content
+     *
+     * @return float Duration of the preview [s]
+     */
+    float startPreview();
+
+
+    /**
      * @brief Set the global lamp brightness factor
      *
      * @param brightness Value in percent
      */
     void setBrightness(
       float brightness
+    );
+
+
+    /**
+     * @brief Sets whether the lamps follow the screen and sound, or show the static colors
+     *
+     * @param syncEnabled Lamps follow the screen and sound
+     */
+    void setSyncEnabled(
+      bool syncEnabled
+    );
+
+
+    /**
+     * @brief Sets the colors shown while sync is disabled
+     *
+     * @param staticColors Color by channel ID
+     */
+    void setStaticColors(
+      const Config::StaticColors& staticColors
+    );
+
+
+    /**
+     * @brief Saves a scene, replacing the one with the same name
+     *
+     * @param name Scene name, trimmed
+     * @param staticColors Color by channel ID
+     * @return true The scene was saved
+     * @return false The name is empty or too long
+     */
+    bool saveScene(
+      const std::string& name,
+      const Config::StaticColors& staticColors
+    );
+
+
+    /**
+     * @brief Deletes a saved scene
+     *
+     * @param name Scene name
+     * @return true The scene existed
+     */
+    bool deleteScene(
+      const std::string& name
     );
 
 

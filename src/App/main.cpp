@@ -85,7 +85,7 @@ int main(
     return 0;
   }
 
-  Huenicorn::Core::Logger::log("Starting Huenicorn version ", Huenicorn::Version, " for ", Huenicorn::Platform::adapter.getPlatformName());
+  Huenicorn::Core::Logger::log("Starting ", Huenicorn::AppName, " ", Huenicorn::Version, " for ", Huenicorn::Platform::adapter.getPlatformName());
 
   // Termination signals are handled synchronously by a dedicated thread, so stopping
   // the application doesn't run (non async-signal-safe) code inside a signal handler.
@@ -116,11 +116,11 @@ int main(
   signalThread.join();
 
   if(!succeeded){
-    Huenicorn::Core::Logger::error("Huenicorn terminated because of an error");
+    Huenicorn::Core::Logger::error(Huenicorn::AppName, " terminated because of an error");
     return 1;
   }
 
-  Huenicorn::Core::Logger::log("Huenicorn terminated properly");
+  Huenicorn::Core::Logger::log(Huenicorn::AppName, " terminated properly");
 
   return 0;
 }

@@ -1,5 +1,5 @@
 [Unit]
-Description=Huenicorn - Philips Hue screen synchronizer
+Description=Philip's Hue Desktop Sync
 Documentation=file://%h/git/huenicorn/README.md
 # Needs the Wayland session, Pipewire and the screencast portal
 PartOf=graphical-session.target
@@ -8,8 +8,8 @@ Wants=xdg-desktop-portal.service
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/huenicorn
-# SIGTERM lets Huenicorn close the DTLS session and stop streaming on the bridge
+ExecStart=%h/.local/bin/hue-desktop-sync
+# SIGTERM lets it close the DTLS session and stop streaming on the bridge
 KillSignal=SIGTERM
 TimeoutStopSec=15
 Restart=on-failure

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -14,6 +15,7 @@
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
 #include <Huenicorn/Serialization/JsonSerializer.hpp>
 #include <Huenicorn/Serialization/Credentials.hpp>
+#include <Huenicorn/Core/PreviewSequence.hpp>
 #include <Huenicorn/Core/Runtime.hpp>
 #include <Huenicorn/Network/Http/Server/SetupBackend.hpp>
 
@@ -229,9 +231,34 @@ namespace Huenicorn::Core
   }
 
 
+  bool CoreService::syncEnabled() const
+  {
+    return m_config.syncEnabled();
+  }
+
+
+  Config::StaticColors CoreService::staticColors() const
+  {
+    return m_config.staticColors();
+  }
+
+
+  Config::Scenes CoreService::scenes() const
+  {
+    return m_config.scenes();
+  }
+
+
   float CoreService::highlightBoost() const
   {
     return m_config.highlightBoost() * 100.f;
+  }
+
+
+  float CoreService::startPreview()
+  {
+    m_runtime.m_previewStart = std::chrono::steady_clock::now().time_since_epoch().count();
+    return PreviewSequence::Duration;
   }
 
 
@@ -335,6 +362,52 @@ namespace Huenicorn::Core
     if(std::isfinite(brightness)){
       m_config.setBrightness(brightness / 100.f);
     }
+  }
+
+
+  void CoreService::setSyncEnabled(
+    bool syncEnabled
+  )
+  {
+    m_config.setSyncEnabled(syncEnabled);
+  }
+
+
+  void CoreService::setStaticColors(
+    const Config::StaticColors& staticColors
+  )
+  {
+    m_config.setStaticColors(staticColors);
+  }
+
+
+  bool CoreService::saveScene(
+    const std::string& name,
+    const Config::StaticColors& staticColors
+  )
+  {
+    static constexpr size_t MaxNameLength = 40;
+
+    const auto first = name.find_first_not_of(" \t");
+    if(first == std::string::npos){
+      return false;
+    }
+
+    const std::string trimmedName = name.substr(first, name.find_last_not_of(" \t") - first + 1);
+    if(trimmedName.size() > MaxNameLength){
+      return false;
+    }
+
+    m_config.saveScene(trimmedName, staticColors);
+    return true;
+  }
+
+
+  bool CoreService::deleteScene(
+    const std::string& name
+  )
+  {
+    return m_config.deleteScene(name);
   }
 
 
