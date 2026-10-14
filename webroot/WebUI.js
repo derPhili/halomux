@@ -27,9 +27,6 @@ class WebUI
     this.entertainmentConfigurationsSelectNode = document.getElementById("entertainmentConfigurationsSelect");
     this.entertainmentConfigurationsSelectNode.addEventListener("change", (event) => {this._setEntertainmentConfiguration(event.target.value);});
 
-    this.advancedSettingsCheckbox = document.getElementById("advancedSettingsCheckbox");
-    this.advancedSettingsCheckbox.addEventListener("click", (e) => {this._toggleAdvancedDisplay(e.target.checked);});
-    this.advancedSettingsNode = document.getElementById("advancedSettings");
     this.availableSubsamplesNode = document.getElementById("availableSubsampleWidths");
     this.availableSubsamplesNode.addEventListener("change", (event) => {this._setSubsampleWidth(parseInt(event.target.value));});
     this.refreshRateInputNode = document.getElementById("refreshRate");
@@ -161,25 +158,6 @@ class WebUI
       this.screenWidget.currentChannel.gammaFactor = Utils.truncate(gammaFactor, 2);
     });
     promise.catch((error) => {log(error);});
-  }
-
-
-  _initAdvancedSettings()
-  {
-    let showAdvancedSettings = false;
-    this.advancedSettingsCheckbox.checked = showAdvancedSettings;
-    this._toggleAdvancedDisplay(showAdvancedSettings);
-  }
-
-
-  _toggleAdvancedDisplay(checked)
-  {
-    if(checked){
-      this.advancedSettingsNode.style.display = "block";
-    }
-    else{
-      this.advancedSettingsNode.style.display = "none";
-    }
   }
 
 
@@ -328,7 +306,6 @@ class WebUI
     let gradientColor = StyleUtils.greenRedGradient(proportion);
     this.availableSubsamplesNode.style.color = gradientColor;
 
-    this._initAdvancedSettings();
     this.availableSubsamplesNode.value = subsampleWidth.toString();
   }
 
