@@ -166,6 +166,7 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
 * **restServerPort**: (Unsigned) Port, auf dem die Weboberfläche antwortet
 * **subsampleWidth**: (Unsigned) Breite des verarbeiteten, verkleinerten Bildes
 * **brightness**: (Float) Globale Helligkeit aller Lampen, zwischen 0 und 1 (in der Weboberfläche 0–100 %). Wirkt nach Gamma und Glättung wie ein Dimmer
+* **highlightBoost**: (Float) Stärke der Lichtblitze bei plötzlich heller werdenden Bildbereichen (Explosionen, Blitze, Schnitte in helle Szenen), zwischen 0 (aus) und 1 (in der Weboberfläche 0–100 %). Steigt die ungeglättete Helligkeit im Bereich einer Lampe von einem Bild zum nächsten um mehr als 5 %, geht die Lampe sofort einen Teil des Weges zur vollen Helligkeit (bei einem Sprung ab 30 % genau um den eingestellten Anteil) und klingt mit einer Zeitkonstante von 250 ms ab. Verdunkeln und reine Farbwechsel lösen nichts aus. Wirkt pro Lampe und nach der Glättung
 * **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97. In der Weboberfläche gibt es neben dem Slider die Voreinstellungen „Gaming“ (10 %, Lampen folgen fast sofort) und „Movie“ (60 %, glättet harte Schnitte und Blitze)
 
 Ein Beispiel:

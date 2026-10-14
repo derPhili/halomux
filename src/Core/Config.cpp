@@ -78,6 +78,13 @@ namespace Huenicorn::Core
   }
 
 
+  float Config::highlightBoost() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().highlightBoost.value();
+  }
+
+
   float Config::brightness() const
   {
     std::lock_guard lock(m_mutex);
@@ -173,6 +180,16 @@ namespace Huenicorn::Core
   }
 
 
+  void Config::setHighlightBoost(
+    float highlightBoost
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().highlightBoost = std::clamp(highlightBoost, 0.f, 1.0f);
+    _save();
+  }
+
+
   void Config::setBrightness(
     float brightness
   )
@@ -204,6 +221,7 @@ namespace Huenicorn::Core
       .refreshRate = 0,
       .subsampleWidth = 0,
       .transitionSmoothing = 0.f,
+      .highlightBoost = 0.f,
       .brightness = 1.f,
       .restoreToken = std::nullopt
     };

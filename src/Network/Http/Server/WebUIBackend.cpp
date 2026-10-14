@@ -128,6 +128,7 @@ namespace Huenicorn::Network::Http::Server
         {"displayRefreshRate", m_coreService->displayRefreshRate()},
         {"bridgeMaxRefreshRate", Stream::MaxStreamingRate},
         {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()},
+        {"selectedHighlightBoost", m_coreService->highlightBoost()},
         {"selectedBrightness", m_coreService->brightness()}
       };
 
@@ -284,6 +285,14 @@ namespace Huenicorn::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"brightness", m_coreService->brightness()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setHighlightBoost", [this](const Request& req, Response& res){
+      m_coreService->setHighlightBoost(Json::parse(req.body).get<float>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"highlightBoost", m_coreService->highlightBoost()}}.dump();
     });
 
 

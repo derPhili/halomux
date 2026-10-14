@@ -153,6 +153,14 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns the strength of the brightness flash on sudden brightening
+     *
+     * @return float Value in percent
+     */
+    float highlightBoost() const;
+
+
+    /**
      * @brief Returns the global lamp brightness factor
      *
      * @return float Value in percent
@@ -229,6 +237,16 @@ namespace Huenicorn::Core
      */
     void setTransitionSmoothing(
       float transitionSmoothing
+    );
+
+
+    /**
+     * @brief Set the strength of the brightness flash on sudden brightening
+     *
+     * @param highlightBoost Value in percent
+     */
+    void setHighlightBoost(
+      float highlightBoost
     );
 
 

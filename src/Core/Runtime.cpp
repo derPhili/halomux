@@ -1,6 +1,7 @@
 #include <Huenicorn/Core/Runtime.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <future>
 
@@ -346,6 +347,8 @@ namespace Huenicorn::Core
         channelStream.g = 0;
         channelStream.b = 0;
         channel.hasPreviousXyb = false;
+        channel.hasPreviousMeasuredBrightness = false;
+        channel.highlightBoost = 0.f;
         channel.acknowledgeShutdown();
       }
       else{
@@ -372,6 +375,14 @@ namespace Huenicorn::Core
 
         // Global dimmer, applied last so it scales what the lamp would otherwise show
         xybColor.z *= m_config.brightness();
+
+        // Flash on sudden brightening, after smoothing so it isn't eased away: the boost takes
+        // the lamp part of the way to full brightness and fades with a fixed time constant
+        static constexpr float BoostTimeConstant = 0.25f; // [s]
+        const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
+        const float decay = std::exp(-tickDuration / BoostTimeConstant);
+        const float boost = channel.updateHighlightBoost(color.brightness(), m_config.highlightBoost(), decay);
+        xybColor.z += boost * (1.f - xybColor.z);
 
         correctedColor = xybColor;
         //*/

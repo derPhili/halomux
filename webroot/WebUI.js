@@ -38,6 +38,11 @@ class WebUI
     this.transitionSmoothingInputNode = document.getElementById("transitionSmoothing");
     this.processingInfoNode = document.getElementById("processingInfo");
 
+    this.highlightBoostInputNode = document.getElementById("highlightBoost");
+    this.highlightBoostLabelNode = document.getElementById("highlightBoostLabel");
+    this.highlightBoostInputNode.addEventListener("input", (event) => {this.highlightBoostLabelNode.textContent = event.target.value;});
+    this.highlightBoostInputNode.addEventListener("change", (event) => {this._setHighlightBoost(event.target.valueAsNumber);});
+
     this.brightnessInputNode = document.getElementById("brightness");
     this.brightnessLabelNode = document.getElementById("brightnessLabel");
     this.brightnessInputNode.addEventListener("input", (event) => {this.brightnessLabelNode.textContent = event.target.value;});
@@ -297,6 +302,9 @@ class WebUI
     this.transitionSmoothingLabelNode.textContent = Math.round(displayInfo.selectedTransitionSmoothing);
     this._highlightSmoothingPreset(displayInfo.selectedTransitionSmoothing);
 
+    this.highlightBoostInputNode.value = displayInfo.selectedHighlightBoost;
+    this.highlightBoostLabelNode.textContent = Math.round(displayInfo.selectedHighlightBoost);
+
     this.brightnessInputNode.value = displayInfo.selectedBrightness;
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
@@ -450,6 +458,17 @@ class WebUI
     .then((data) => {
       this.brightnessInputNode.value = data.brightness;
       this.brightnessLabelNode.textContent = Math.round(data.brightness);
+    })
+    .catch((error) => {log(error);});
+  }
+
+
+  _setHighlightBoost(highlightBoost)
+  {
+    RequestUtils.put("/api/setHighlightBoost", JSON.stringify(highlightBoost))
+    .then((data) => {
+      this.highlightBoostInputNode.value = data.highlightBoost;
+      this.highlightBoostLabelNode.textContent = Math.round(data.highlightBoost);
     })
     .catch((error) => {log(error);});
   }

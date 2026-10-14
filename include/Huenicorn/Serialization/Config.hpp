@@ -31,6 +31,10 @@ namespace Huenicorn::Serialization
         jsonConfigData["transitionSmoothing"] = *configData.transitionSmoothing;
       }
 
+      if(configData.highlightBoost.has_value()){
+        jsonConfigData["highlightBoost"] = *configData.highlightBoost;
+      }
+
       if(configData.brightness.has_value()){
         jsonConfigData["brightness"] = *configData.brightness;
       }
@@ -92,6 +96,10 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("transitionSmoothing")){
         configData.transitionSmoothing = jsonConfigData.at("transitionSmoothing");
+      }
+
+      if(jsonConfigData.contains("highlightBoost")){
+        configData.highlightBoost = jsonConfigData.at("highlightBoost");
       }
 
       if(jsonConfigData.contains("brightness")){

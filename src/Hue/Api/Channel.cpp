@@ -76,4 +76,23 @@ namespace Huenicorn::Hue::Api
   {
     state = State::Inactive;
   }
+
+
+  float Channel::updateHighlightBoost(
+    float measuredBrightness,
+    float strength,
+    float decay
+  )
+  {
+    const float rise = hasPreviousMeasuredBrightness ? measuredBrightness - previousMeasuredBrightness : 0.f;
+    previousMeasuredBrightness = measuredBrightness;
+    hasPreviousMeasuredBrightness = true;
+
+    const float trigger = glm::clamp((rise - BoostThreshold) / (BoostFullJump - BoostThreshold), 0.f, 1.f);
+
+    // Instant attack, exponential release
+    highlightBoost = glm::max(highlightBoost * decay, glm::clamp(strength, 0.f, 1.f) * trigger);
+
+    return highlightBoost;
+  }
 }

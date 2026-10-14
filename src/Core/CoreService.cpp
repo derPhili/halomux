@@ -229,6 +229,12 @@ namespace Huenicorn::Core
   }
 
 
+  float CoreService::highlightBoost() const
+  {
+    return m_config.highlightBoost() * 100.f;
+  }
+
+
   bool CoreService::setEntertainmentConfiguration(
     const std::string& entertainmentConfigurationId
   )
@@ -314,6 +320,16 @@ namespace Huenicorn::Core
   {
     if(std::isfinite(brightness)){
       m_config.setBrightness(brightness / 100.f);
+    }
+  }
+
+
+  void CoreService::setHighlightBoost(
+    float highlightBoost
+  )
+  {
+    if(std::isfinite(highlightBoost)){
+      m_config.setHighlightBoost(highlightBoost / 100.f);
     }
   }
 
