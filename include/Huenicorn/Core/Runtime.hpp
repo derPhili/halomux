@@ -186,6 +186,8 @@ namespace Huenicorn::Core
     //  Image Processing
     Grabber::IGrabber* m_grabber;
     Grabber::IGrabber::ChannelRegions m_channelRegions;
+    // Capture is paused while sync is disabled (streaming thread)
+    bool m_capturePaused{false};
 
     // Sound transients, only while Config::audioReactive() is enabled (streaming thread)
     std::unique_ptr<Audio::AudioAnalyzer> m_audioAnalyzer;

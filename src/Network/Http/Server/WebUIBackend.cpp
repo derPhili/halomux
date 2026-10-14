@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <Huenicorn/Core/CoreService.hpp>
+#include <Huenicorn/Serialization/Config.hpp>
 #include <Huenicorn/Serialization/Json.hpp>
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
 #include <Huenicorn/Stream/Streamer.hpp>
@@ -136,6 +137,18 @@ namespace Huenicorn::Network::Http::Server
       std::string response = jsonDisplayInfo.dump();
       res.contentType = "application/json";
       res.body = response;
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Get, "/api/lightMode", [this](const Request& /*req*/, Response& res){
+      Json jsonLightMode = {
+        {"syncEnabled", m_coreService->syncEnabled()},
+        {"staticColors", m_coreService->staticColors()},
+        {"scenes", m_coreService->scenes()}
+      };
+
+      res.contentType = "application/json";
+      res.body = jsonLightMode.dump();
     });
 
 
@@ -302,6 +315,48 @@ namespace Huenicorn::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"audioReactive", m_coreService->audioReactive()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setSyncEnabled", [this](const Request& req, Response& res){
+      m_coreService->setSyncEnabled(Json::parse(req.body).get<bool>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"syncEnabled", m_coreService->syncEnabled()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setStaticColors", [this](const Request& req, Response& res){
+      m_coreService->setStaticColors(Json::parse(req.body).get<Core::Config::StaticColors>());
+
+      res.contentType = "application/json";
+      res.body = Json{{"staticColors", m_coreService->staticColors()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/saveScene", [this](const Request& req, Response& res){
+      const Json jsonScene = Json::parse(req.body);
+      const bool saved = m_coreService->saveScene(jsonScene.at("name"), jsonScene.at("colors").get<Core::Config::StaticColors>());
+
+      if(!saved){
+        res.status = 400;
+      }
+
+      res.contentType = "application/json";
+      res.body = Json{{"succeeded", saved}, {"scenes", m_coreService->scenes()}}.dump();
+    });
+
+
+    // DELETE METHODS
+    m_httpServer.addRoute(HttpMethod::Delete, "/api/scene", [this](const Request& req, Response& res){
+      const bool deleted = m_coreService->deleteScene(Json::parse(req.body).at("name"));
+
+      if(!deleted){
+        res.status = 404;
+      }
+
+      res.contentType = "application/json";
+      res.body = Json{{"succeeded", deleted}, {"scenes", m_coreService->scenes()}}.dump();
     });
 
 

@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
+#include <map>
 #include <mutex>
 #include <optional>
 
 #include <Huenicorn/Hue/Auth/Credentials.hpp>
+#include <Huenicorn/Imaging/Color.hpp>
 
 
 namespace Huenicorn::Core
@@ -16,6 +19,12 @@ namespace Huenicorn::Core
   class Config
   {
   public:
+    // Color of each channel while the lamps don't follow the screen
+    using StaticColors = std::map<uint8_t, Imaging::Color>;
+
+    // Static colors saved by the user, by name
+    using Scenes = std::map<std::string, StaticColors>;
+
     struct Data
     {
       std::optional<unsigned> restServerPort;
@@ -31,6 +40,9 @@ namespace Huenicorn::Core
       std::optional<float> highlightBoost{0.f};
       std::optional<bool> audioReactive{false};
       std::optional<float> brightness{1.f};
+      std::optional<bool> syncEnabled{true};
+      std::optional<StaticColors> staticColors{StaticColors{}};
+      std::optional<Scenes> scenes{Scenes{}};
       std::optional<std::string> restoreToken;
     };
 
@@ -153,6 +165,30 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns whether the lamps follow the screen and sound, or show the static colors
+     *
+     * @return true Lamps follow the screen and sound
+    */
+    bool syncEnabled() const;
+
+
+    /**
+     * @brief Returns the colors shown while sync is disabled
+     *
+     * @return StaticColors Color by channel ID, channels without one are left to the caller
+    */
+    StaticColors staticColors() const;
+
+
+    /**
+     * @brief Returns the scenes saved by the user
+     *
+     * @return Scenes Static colors by scene name
+    */
+    Scenes scenes() const;
+
+
+    /**
      * @brief Returns the registered restoration token for screen selection portal
      * 
      * @return Optional restore token string
@@ -248,6 +284,50 @@ namespace Huenicorn::Core
     */
     void setBrightness(
       float brightness
+    );
+
+
+    /**
+     * @brief Registers whether the lamps follow the screen and sound, or show the static colors
+     *
+     * @param syncEnabled Lamps follow the screen and sound
+    */
+    void setSyncEnabled(
+      bool syncEnabled
+    );
+
+
+    /**
+     * @brief Registers the colors shown while sync is disabled
+     *
+     * @param staticColors Color by channel ID, replacing the previous ones
+    */
+    void setStaticColors(
+      const StaticColors& staticColors
+    );
+
+
+    /**
+     * @brief Saves a scene, replacing the one with the same name
+     *
+     * @param name Scene name
+     * @param staticColors Color by channel ID
+    */
+    void saveScene(
+      const std::string& name,
+      const StaticColors& staticColors
+    );
+
+
+    /**
+     * @brief Deletes a saved scene
+     *
+     * @param name Scene name
+     * @return true The scene existed
+     * @return false No scene has that name
+    */
+    bool deleteScene(
+      const std::string& name
     );
 
 

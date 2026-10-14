@@ -150,3 +150,26 @@ target_link_libraries(TestPreviewSequence PUBLIC
 )
 
 add_test(NAME PreviewSequence COMMAND TestPreviewSequence)
+
+
+# TestStaticColors: color notation and serialization of the static scenes
+add_executable(TestStaticColors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestStaticColors.cpp
+)
+
+set_target_properties(TestStaticColors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestStaticColors PUBLIC
+  include
+)
+
+target_link_libraries(TestStaticColors PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+add_test(NAME StaticColors COMMAND TestStaticColors)
