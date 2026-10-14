@@ -24,7 +24,7 @@ namespace Huenicorn::App::CommandLine
     {
       {"-v", "--version"},
       showVersion,
-      "Displays current huenicorn version",
+      "Displays the current version",
     }
   };
 
@@ -54,7 +54,7 @@ namespace Huenicorn::App::CommandLine
     Params& params
   )
   {
-    Huenicorn::Core::Logger::log("Huenicorn ", Huenicorn::Version);
+    Huenicorn::Core::Logger::log(Huenicorn::AppName, " ", Huenicorn::Version);
     params.shouldStop = true;
   }
 
@@ -81,7 +81,7 @@ namespace Huenicorn::App::CommandLine
     for(int i = 1; i < argc && !params.shouldStop; i++){
       auto* option = findOption(argv[i]);
       if(!option){
-        Huenicorn::Core::Logger::log("huenicorn: Invalid parameter '", argv[i], "'");
+        Huenicorn::Core::Logger::log(Huenicorn::AppId, ": Invalid parameter '", argv[i], "'");
         showHelp(params);
         return;
       }

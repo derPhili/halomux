@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <Huenicorn/Core/Logger.hpp>
+#include <Huenicorn/Version.hpp>
 
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
@@ -22,7 +23,17 @@ namespace Huenicorn::Platform
       throw std::runtime_error("Failed to get the current user name");
     }
 
-    return std::filesystem::path(homeDir) / ".config/huenicorn";
+    const std::filesystem::path configRoot = std::filesystem::path(homeDir) / ".config";
+    const std::filesystem::path configPath = configRoot / AppId;
+
+    // Take over the configuration of the application's former name once, keeping the original
+    const std::filesystem::path legacyConfigPath = configRoot / "huenicorn";
+    if(!std::filesystem::exists(configPath) && std::filesystem::is_directory(legacyConfigPath)){
+      std::filesystem::copy(legacyConfigPath, configPath, std::filesystem::copy_options::recursive);
+      Core::Logger::log("Took over the configuration from ", legacyConfigPath.string());
+    }
+
+    return configPath;
   }
 
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(Huenicorn VERSION 1.2.0)
+project(HueDesktopSync VERSION 1.2.0)
 
 set(BUILD_TESTS FALSE CACHE BOOL "Build tests")
 
@@ -138,7 +138,7 @@ set(TIMING_SOURCE
 
 
 # Declare executable
-add_executable(huenicorn
+add_executable(hue-desktop-sync
   ${APP_SOURCE}
   ${AUDIO_SOURCE}
   ${CORE_SOURCE}
@@ -153,10 +153,10 @@ add_executable(huenicorn
   ${EMBEDDED_WEBROOT_HEADER}
 )
 
-add_dependencies(huenicorn generate_version_header generate_webroot_header)
+add_dependencies(hue-desktop-sync generate_version_header generate_webroot_header)
 
 # Adapter
-target_sources(huenicorn PRIVATE
+target_sources(hue-desktop-sync PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Adapters/GnuLinux/GnuLinuxAdapter.cpp
 )
 
@@ -169,36 +169,36 @@ pkg_check_modules(LIBGLIB REQUIRED glib-2.0 gio-2.0)
 # GPU downscaling of DMA-BUF frames
 pkg_check_modules(GPU REQUIRED egl glesv2 libdrm)
 
-target_sources(huenicorn PRIVATE
+target_sources(hue-desktop-sync PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
 )
 
-target_include_directories(huenicorn PUBLIC
+target_include_directories(hue-desktop-sync PUBLIC
   ${LIB_PIPEWIRE_INCLUDE_DIRS}
   ${GIO_INCLUDE_DIRS}
   ${GLIB_INCLUDE_DIRS}
   ${GPU_INCLUDE_DIRS}
 )
 
-target_link_libraries(huenicorn PUBLIC
+target_link_libraries(hue-desktop-sync PUBLIC
   GIO::GIO
   ${LIB_PIPEWIRE_LIBRARIES}
   ${LIBGLIB_LIBRARIES}
   ${GPU_LIBRARIES}
 )
 
-set_target_properties(huenicorn PROPERTIES CXX_STANDARD 20)
+set_target_properties(hue-desktop-sync PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(huenicorn PUBLIC
+target_include_directories(hue-desktop-sync PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR} # For adapters and grabbers
   ${OpenCV_INCLUDE_DIRS}
   include
   ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
-target_link_libraries(huenicorn PUBLIC
+target_link_libraries(hue-desktop-sync PUBLIC
   ${OpenCV_LIBS}
   ${CURL_LIBRARIES}
   ${MBEDTLS_LIBS}
@@ -210,7 +210,7 @@ target_link_libraries(huenicorn PUBLIC
 )
 
 
-target_compile_options(huenicorn PRIVATE
+target_compile_options(hue-desktop-sync PRIVATE
   -Werror
   -Wall
   -Wextra

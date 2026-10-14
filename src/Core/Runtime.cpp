@@ -67,7 +67,7 @@ namespace Huenicorn::Core
       Logger::error("Could not load suitable entertainment configuration.");
       return;
 
-      // TODO : Add tool to create entertainment configurations inside Huenicorn
+      // TODO : Add tool to create entertainment configurations inside the application
       // so the official application would no longer be a requirement
     }
 
