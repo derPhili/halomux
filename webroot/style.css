@@ -114,8 +114,8 @@ a
   align-items: center;
   gap: 12px;
   padding: 14px 28px;
-  background: rgba(14, 16, 20, 0.85);
-  backdrop-filter: blur(8px);
+  /* Opaque: a backdrop blur would be recomputed whenever the live colors under it change */
+  background: var(--background);
   border-bottom: 1px solid var(--border);
 }
 
@@ -866,7 +866,6 @@ input[type=color]::-webkit-color-swatch
   height: 14px;
   border-radius: 50%;
   background: var(--textFaint);
-  transition: background 0.1s, box-shadow 0.1s;
 }
 
 
@@ -929,7 +928,6 @@ input[type=color]::-webkit-color-swatch
 {
   stroke: var(--regionStroke);
   stroke-width: 1px;
-  transition: fill 0.1s;
 }
 
 
@@ -967,8 +965,7 @@ input[type=color]::-webkit-color-swatch
   align-items: center;
   gap: 10px;
   padding: 12px 28px;
-  background: rgba(14, 16, 20, 0.9);
-  backdrop-filter: blur(8px);
+  background: var(--background);
   border-top: 1px solid var(--border);
 }
 
