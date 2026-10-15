@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(HueDesktopSync VERSION 1.2.0)
+project(Lightspill VERSION 1.2.0)
 
 # Without a build type, nothing is optimized
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -146,7 +146,7 @@ set(TIMING_SOURCE
 
 
 # Declare executable
-add_executable(hue-desktop-sync
+add_executable(lightspill
   ${APP_SOURCE}
   ${AUDIO_SOURCE}
   ${CORE_SOURCE}
@@ -161,10 +161,10 @@ add_executable(hue-desktop-sync
   ${EMBEDDED_WEBROOT_HEADER}
 )
 
-add_dependencies(hue-desktop-sync generate_version_header generate_webroot_header)
+add_dependencies(lightspill generate_version_header generate_webroot_header)
 
 # Adapter
-target_sources(hue-desktop-sync PRIVATE
+target_sources(lightspill PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Adapters/GnuLinux/GnuLinuxAdapter.cpp
 )
 
@@ -177,36 +177,36 @@ pkg_check_modules(LIBGLIB REQUIRED glib-2.0 gio-2.0)
 # GPU downscaling of DMA-BUF frames
 pkg_check_modules(GPU REQUIRED egl glesv2 libdrm)
 
-target_sources(hue-desktop-sync PRIVATE
+target_sources(lightspill PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
 )
 
-target_include_directories(hue-desktop-sync PUBLIC
+target_include_directories(lightspill PUBLIC
   ${LIB_PIPEWIRE_INCLUDE_DIRS}
   ${GIO_INCLUDE_DIRS}
   ${GLIB_INCLUDE_DIRS}
   ${GPU_INCLUDE_DIRS}
 )
 
-target_link_libraries(hue-desktop-sync PUBLIC
+target_link_libraries(lightspill PUBLIC
   GIO::GIO
   ${LIB_PIPEWIRE_LIBRARIES}
   ${LIBGLIB_LIBRARIES}
   ${GPU_LIBRARIES}
 )
 
-set_target_properties(hue-desktop-sync PROPERTIES CXX_STANDARD 20)
+set_target_properties(lightspill PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(hue-desktop-sync PUBLIC
+target_include_directories(lightspill PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR} # For adapters and grabbers
   ${OpenCV_INCLUDE_DIRS}
   include
   ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
-target_link_libraries(hue-desktop-sync PUBLIC
+target_link_libraries(lightspill PUBLIC
   ${OpenCV_LIBS}
   ${CURL_LIBRARIES}
   ${MBEDTLS_LIBS}
@@ -218,7 +218,7 @@ target_link_libraries(hue-desktop-sync PUBLIC
 )
 
 
-target_compile_options(hue-desktop-sync PRIVATE
+target_compile_options(lightspill PRIVATE
   -Werror
   -Wall
   -Wextra
@@ -232,56 +232,56 @@ target_compile_options(hue-desktop-sync PRIVATE
 if(${BUILD_GUI})
   find_package(Qt6 REQUIRED COMPONENTS Widgets Network WebEngineWidgets)
 
-  add_executable(hue-desktop-sync-gui
+  add_executable(lightspill-gui
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/DesktopApp.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/MainWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/resources.qrc
   )
 
-  add_dependencies(hue-desktop-sync-gui generate_version_header)
+  add_dependencies(lightspill-gui generate_version_header)
 
-  set_target_properties(hue-desktop-sync-gui PROPERTIES
+  set_target_properties(lightspill-gui PROPERTIES
     CXX_STANDARD 20
     AUTOMOC ON
     AUTORCC ON
   )
 
-  target_include_directories(hue-desktop-sync-gui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/include)
+  target_include_directories(lightspill-gui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-  target_link_libraries(hue-desktop-sync-gui PRIVATE
+  target_link_libraries(lightspill-gui PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::WebEngineWidgets
   )
 
-  target_compile_options(hue-desktop-sync-gui PRIVATE
+  target_compile_options(lightspill-gui PRIVATE
     -Werror
     -Wall
     -Wextra
     -pedantic
   )
 
-  install(TARGETS hue-desktop-sync-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-  install(FILES dist/hue-desktop-sync.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-  install(FILES dist/hue-desktop-sync-tray.desktop DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart)
+  install(TARGETS lightspill-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(FILES dist/lightspill.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+  install(FILES dist/lightspill-tray.desktop DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart)
 endif()
 
 
 # Installation
-set(HUE_DESKTOP_SYNC_DOCDIR ${CMAKE_INSTALL_DATADIR}/doc/hue-desktop-sync)
-set(HUE_DESKTOP_SYNC_FULL_DOCDIR ${CMAKE_INSTALL_FULL_DATADIR}/doc/hue-desktop-sync)
+set(LIGHTSPILL_DOCDIR ${CMAKE_INSTALL_DATADIR}/doc/lightspill)
+set(LIGHTSPILL_FULL_DOCDIR ${CMAKE_INSTALL_FULL_DATADIR}/doc/lightspill)
 
 configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/dist/systemd/hue-desktop-sync.service.in
-  ${CMAKE_CURRENT_BINARY_DIR}/hue-desktop-sync.service
+  ${CMAKE_CURRENT_SOURCE_DIR}/dist/systemd/lightspill.service.in
+  ${CMAKE_CURRENT_BINARY_DIR}/lightspill.service
   @ONLY
 )
 
-install(TARGETS hue-desktop-sync RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hue-desktop-sync.service DESTINATION lib/systemd/user)
-install(FILES assets/logo.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps RENAME hue-desktop-sync.svg)
-install(FILES README.md DESTINATION ${HUE_DESKTOP_SYNC_DOCDIR})
+install(TARGETS lightspill RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lightspill.service DESTINATION lib/systemd/user)
+install(FILES assets/logo.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps RENAME lightspill.svg)
+install(FILES README.md DESTINATION ${LIGHTSPILL_DOCDIR})
 
 
 if(${BUILD_TESTS})

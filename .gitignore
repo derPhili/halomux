@@ -3,7 +3,6 @@ build/
 
 *.json
 # makepkg
-dist/arch/src/
-dist/arch/pkg/
-dist/arch/hue-desktop-sync/
+# Directories makepkg creates: sources, build, package
+dist/arch/*/
 dist/arch/*.pkg.tar.*
