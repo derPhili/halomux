@@ -3,6 +3,7 @@
 #include <Huenicorn/Core/Logger.hpp>
 #include <Huenicorn/Version.hpp>
 #include <Huenicorn/Hue/Api/BridgeAddress.hpp>
+#include <Huenicorn/Hue/Api/BridgeDiscovery.hpp>
 #include <Huenicorn/Hue/Api/BridgeTls.hpp>
 #include <Huenicorn/Hue/Auth/Credentials.hpp>
 #include <Huenicorn/Network/Http/Client/Client.hpp>
@@ -195,6 +196,17 @@ namespace Huenicorn::Hue::Api
 
   Serialization::Json ApiTools::autodetectedBridge()
   {
+    // In the local network first, as Philips recommends: no internet access needed
+    const auto localBridges = discoverBridges(std::chrono::milliseconds(1500));
+    if(!localBridges.empty()){
+      Serialization::Json jsonBridges = Serialization::Json::array();
+      for(const auto& bridge : localBridges){
+        jsonBridges.push_back({{"id", bridge.id}, {"internalipaddress", bridge.address}});
+      }
+
+      return {{"succeeded", true}, {"bridges", jsonBridges}};
+    }
+
     auto detectedBridgeResponse = Network::Http::Client::sendRequest("https://discovery.meethue.com/", "GET");
 
     if(!detectedBridgeResponse.has_value()){
