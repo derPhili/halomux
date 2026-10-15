@@ -1,50 +1,71 @@
-# Philip's Hue Desktop Sync
+# Lightspill
 
-Ein freier Bildschirm-Synchronisierer für Philips Hue™ unter GNU/Linux
+Screen and sound sync for Philips Hue lamps on Linux
 
 <p align="center">
-  <img src="assets/logo.svg" alt="Logo" width="256" height="256">
+  <img src="assets/logo.svg" alt="Lightspill logo" width="192" height="192">
 </p>
 
-## Beschreibung
+[Deutsche Version](README.de.md)
 
-Philip's Hue Desktop Sync ist ein Ambilight-Treiber für GNU/Linux.
-Er überträgt die farbige Atmosphäre deines Computerbildschirms in Echtzeit auf deine Hue-Lampen.
-Über eine einfache Weboberfläche weist du einzelnen Lampen bestimmte Bildschirmbereiche zu und speicherst die Einstellungen für spätere Sitzungen.
+Lightspill lets your Philips Hue lamps follow your screen in real time, like the official Hue Sync app does on Windows and macOS. Lamps flash with bright scenes and, optionally, with the sound of your computer. When you don't want them to follow the screen, they show static colors and scenes instead.
 
-### Screenshot
+It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel. See [Origin and changes](#origin-and-changes).
 
 | ![Screenshot](screenshots/WebUI.png) |
 |:--:|
-| *Bildunterschrift: Weboberfläche von Philip's Hue Desktop Sync* |
+| *The light manager* |
 
-## Projektstatus
+> Lightspill is an independent project. It is not affiliated with, endorsed or sponsored by Signify or Philips. Philips Hue and Hue Sync are trademarks of Signify Holding.
 
-Privater Fork von [Huenicorn](http://huenicorn.org) 1.2.0 (OpenJowel), zugeschnitten auf genau ein System:
+## Features
 
-* CachyOS (Arch-basiert)
-* KDE Plasma unter Wayland (KWin, xdg-desktop-portal-kde)
-* Bildschirmaufnahme über Pipewire
-* NVIDIA GeForce GTX 1080 (proprietärer Treiber), Verkleinern der Bilder auf der GPU
-* Philips Hue Bridge mit Entertainment-Bereich
+* **Screen sync**: each lamp follows the screen region you assign to it, at up to 60 Hz through the Hue Entertainment API
+* **GPU capture**: frames stay in video memory (DMA-BUF) and the lamp colors are computed on the GPU, with an automatic CPU fallback
+* **Highlight boost**: lamps flash brighter on sudden bright moments (explosions, lightning), optionally on loud moments of the computer's sound too
+* **Static scenes**: one color for all lamps, a color per lamp, built-in scenes or your own saved ones, switched with one click
+* **Preview**: a 12 second test sequence to tune smoothing, brightness and highlight boost
+* **Desktop application**: a window and a tray icon instead of a browser tab, with a setup wizard that pairs with the bridge
+* **English and German**, following the system language
 
-Andere Plattformen, X11, Gamescope und NixOS werden nicht unterstützt.
+## Requirements
 
-## Erste Schritte
+* Linux with a **Wayland** session and Pipewire. X11 is not supported
+* An xdg-desktop-portal with screen casting: KDE Plasma, GNOME, Hyprland, Sway and other wlroots compositors provide one
+* A Philips Hue bridge (v2 or Pro) with an **entertainment area**, set up in the Hue app
+* For the desktop application: Qt 6 with Qt WebEngine. The tray icon needs a desktop with a system tray
 
-Bevor du Hue Desktop Sync verwendest, musst du über die offizielle App von Philips einen Entertainment-Bereich auf deiner Hue Bridge anlegen.
+### Tested on
 
-### Abhängigkeiten
+Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU. Reports about other setups are welcome.
+
+## Installation
+
+### Arch Linux and derivatives (CachyOS, EndeavourOS, Manjaro…)
+
+`dist/arch/PKGBUILD` builds and installs a package:
 
 ```bash
-sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm mesa qt6-base qt6-svg qt6-webengine
+cd dist/arch
+makepkg -si
+systemctl --user enable --now lightspill.service
 ```
 
-`libglvnd` liefert EGL und GLES (die Implementierung kommt vom NVIDIA-Treiber), `mesa` nur `libgbm` für den GPU-Test. Qt 6 braucht nur die Desktop-Anwendung (`-DBUILD_GUI=OFF` baut ohne).
+The package contains:
 
-Benötigt wird Mbed TLS 4.x.
+* `lightspill`: the service driving the lamps, with its systemd user unit
+* `lightspill-gui`: the desktop application, in the application menu as "Lightspill"
+* an autostart entry starting the tray icon at login
 
-[cpp-httplib](https://github.com/yhirose/cpp-httplib) (0.46 oder neuer) ist auf diesem System von Hand nach `/usr/local` installiert:
+### Building from source
+
+Dependencies on Arch based distributions:
+
+```bash
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm qt6-base qt6-svg qt6-webengine
+```
+
+Lightspill needs **Mbed TLS 4.x** and **[cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.46 or newer**. If your distribution ships older versions, build them from source. For cpp-httplib:
 
 ```bash
 git clone --branch v0.46.0 https://github.com/yhirose/cpp-httplib.git
@@ -52,314 +73,134 @@ cmake -S cpp-httplib -B cpp-httplib/build
 sudo cmake --install cpp-httplib/build
 ```
 
-### Hue Desktop Sync bauen
+Then build Lightspill:
 
 ```bash
-git clone http://192.168.0.250:3000/philip/huenicorn.git
-cd huenicorn
-cmake -S . -B build
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build -j
+sudo cmake --install build
 ```
 
-Das Ergebnis ist die eigenständige ausführbare Datei `build/hue-desktop-sync` (die Weboberfläche ist eingebettet).
+Options:
 
-Tests (optional; `TestGpuDownscale` schickt ein bekanntes Bild als DMA-BUF durch die GPU und vergleicht es mit dem exakten CPU-Mittelwert):
+* `-DBUILD_GUI=OFF` builds without the desktop application (no Qt needed). The light manager is then used in a browser at [127.0.0.1:8215](http://127.0.0.1:8215)
+* `-DBUILD_TESTS=ON` builds the tests, run with `ctest --test-dir build`. `TestGpuDownscale` sends a known image through the GPU as a DMA-BUF and compares it with the exact CPU average; it needs `mesa` for `libgbm`
+
+## Usage
+
+### First start
+
+Start "Lightspill" from the application menu. As long as no bridge is paired, a setup wizard guides you through:
+
+1. **Finding the bridge**: it is searched automatically (through the Philips discovery service, which needs internet access), or you enter its IP address
+2. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
+3. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
+4. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
+
+Then, in the light manager, drag your lamps from "Available" to "Active", select a lamp to adjust the screen region it follows, and save the profile.
+
+### Desktop application and service
+
+The lamps are driven by a service (systemd user unit `lightspill.service`). The desktop application shows its user interface:
+
+* Left click on the tray icon: open or close the window
+* Right click: sync on/off, static scenes, preview, start the service if it isn't running
+
+Closing the window keeps the tray icon. Closing the tray icon keeps the lamps running: only the service drives them. Starting the application again brings the running window to the front.
+
+Logs of the service:
 
 ```bash
-cmake -S . -B build -DBUILD_TESTS=ON
-cmake --build build -j
-ctest --test-dir build
+journalctl --user -u lightspill.service -f
 ```
 
-### Als Paket installieren (CachyOS/Arch)
+### Light manager
 
-`dist/arch/PKGBUILD` baut den committeten Stand des Branches `master` dieses Repositorys und installiert ihn als Paket:
+* **Screen regions**: the part of the screen each active lamp follows, with a gamma correction per lamp
+* **Sync** (header): switches between following the screen and showing the static scene. Without sync, screen capture and sound analysis pause
+* **Static scene**: one color for all lamps, a color per lamp, built-in scenes whose colors are spread over the lamps from left to right, and your own saved scenes. Picking one turns sync off
+* **Settings**: brightness, transition smoothing (presets "Gaming" and "Movie"), highlight boost (presets from "Subtle" to "Intense"), reacting to sound, capture resolution and refresh rate
+* **Preview**: plays color cuts, flashes left, right and on both sides, a slow fade and a cut from black to white through the current settings
 
-```bash
-cd dist/arch
-makepkg -si
-systemctl --user enable --now hue-desktop-sync.service
-```
+Every control explains itself in a tooltip.
 
-Das Paket enthält:
+### GPU processing
 
-* `/usr/bin/hue-desktop-sync`: den Dienst, der die Lampen steuert
-* `/usr/lib/systemd/user/hue-desktop-sync.service`: die systemd-User-Unit dazu
-* `/usr/bin/hue-desktop-sync-gui`: die Desktop-Anwendung, im Startmenü als „Philip's Hue Desktop Sync“
-* `/etc/xdg/autostart/hue-desktop-sync-tray.desktop`: startet beim Login das Tray-Icon
-
-Für ein Update erst committen und nach `master` mergen, dann erneut `makepkg -si` und den Dienst neu starten. Eine Unit unter `~/.config/systemd/user/` hat Vorrang vor der aus dem Paket; eine früher von Hand installierte gehört deshalb entfernt (siehe unten).
-
-### Desktop-Anwendung
-
-Die Anwendung zeigt die Weboberfläche in einem eigenen Fenster (Qt WebEngine), ganz ohne Browser, und legt ein Tray-Icon in die Plasma-Leiste:
-
-* Linksklick: Fenster öffnen oder schließen
-* Rechtsklick: Sync an/aus, statische Szenen (eingebaute und eigene), Preview, Dienst starten (wenn er nicht läuft)
-
-Oberfläche und Tray gibt es auf Deutsch und Englisch. Standard ist die Systemsprache, sonst Englisch; unten rechts in der Oberfläche lässt sich die Sprache fest einstellen, das Tray übernimmt sie.
-
-Das Fenster zu schließen beendet nur das Fenster, das Tray-Icon bleibt. „Close tray icon“ beendet die Anwendung; die Lampen laufen trotzdem weiter, denn sie steuert allein der Dienst. Ein erneuter Start holt das Fenster der laufenden Instanz nach vorn. Läuft der Dienst beim Start der Anwendung nicht, startet sie ihn.
-
-### Programm ausführen
-
-* Starte die Datei „hue-desktop-sync“ auf die Art, die dir am liebsten ist (im Terminal, wenn du Textausgaben sehen möchtest), oder als systemd-Dienst.
-* Öffne die Desktop-Anwendung oder deinen Browser unter [127.0.0.1:8215](http://127.0.0.1:8215).
-  Bei der Ersteinrichtung und solange noch kein Lampenprofil gespeichert ist, öffnet sich der Browser automatisch.
-  (Der Port lässt sich in der Konfiguration ändern. Standard ist 8215.)
-
-#### Bildverarbeitung auf der GPU
-
-KWin liefert die Bilder als DMA-BUF direkt im Grafikspeicher. Hue Desktop Sync importiert sie ohne Kopie per EGL und rechnet die Lampenfarben vollständig auf der GPU aus:
-
-1. Ein GLES-Shader mittelt jeden Bildblock exakt auf die eingestellte Subsample-Auflösung (z. B. 160×90).
-2. Zwei weitere Durchläufe mitteln den Bereich jeder Lampe: erst pro Zeile, dann über die Zeilen. So läuft keine lange Schleife in einem einzelnen GPU-Thread, auf die der Treiber aktiv warten müsste.
-3. Zurückgelesen wird nur ein Pixel pro Lampe.
-
-Die Lampenbereiche werden auf CPU und GPU identisch in Pixel umgerechnet (`ImageProcessing::subImageRect`), beide Pfade liefern dieselben Farben. Im Log steht der aktive Pfad:
+The compositor delivers frames as DMA-BUF in video memory. Lightspill imports them through EGL without copying and computes the lamp colors on the GPU: a shader averages the frame down to the subsample resolution, two more passes average each lamp's region, and only one pixel per lamp is read back. The log shows the active path:
 
 ```
 [gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)
 Capture path: GPU (DMA-BUF, modifier 0x0)
 ```
 
-Klappt der Import nicht, wechselt Hue Desktop Sync automatisch auf Shared Memory und verkleinert auf der CPU (`Capture path: CPU (shared memory)`). Mit `HUE_DESKTOP_SYNC_DISABLE_GPU=1` lässt sich der CPU-Pfad erzwingen, z. B. zum Vergleichen.
+If the import fails, Lightspill falls back to shared memory and the CPU (`Capture path: CPU (shared memory)`). `LIGHTSPILL_DISABLE_GPU=1` forces the CPU path, for example to compare.
 
-#### Als systemd-Dienst
+## Configuration
 
-Hue Desktop Sync startet als systemd-User-Dienst mit der grafischen Sitzung. Das Paket installiert die Unit (`dist/systemd/hue-desktop-sync.service.in`, mit dem Installationspfad gefüllt). Die Ersteinrichtung und die erste Bildschirmauswahl unter Wayland sollten vorher einmal erledigt sein.
+The configuration lives in `~/.config/lightspill/`. A configuration of Huenicorn or of a former name of Lightspill is taken over on the first start.
 
-Von einer früheren Installation von Hand (Unit unter `~/.config/systemd/user/`) auf das Paket wechseln:
+* `config.json`: bridge, credentials and settings
+* `profile.json`: the lamps' screen regions for an entertainment area
 
-```bash
-systemctl --user disable --now hue-desktop-sync.service
-rm ~/.config/systemd/user/hue-desktop-sync.service ~/.local/bin/hue-desktop-sync
-systemctl --user daemon-reload
-systemctl --user enable --now hue-desktop-sync.service
-```
+### config.json
 
-Ausgaben ansehen:
+Most values are changed from the light manager. All of them can be edited by hand while Lightspill isn't running.
 
-```bash
-journalctl --user -u hue-desktop-sync.service -f
-```
+* **boundBackendIP**: (string) address the light manager listens on. Default `127.0.0.1` (local access only). With `0.0.0.0` it's reachable from other devices, without any authentication
+* **bridgeAddress**: (string) address of the Hue bridge
+* **credentials**: **username** and **clientkey** (strings) created when pairing
+* **profileName**: (string) name of the lamp profile
+* **refreshRate**: (unsigned) capture and streaming rate. At most 60 Hz: the bridge forwards colors to the lamps at about 25 Hz and Philips recommends streaming at 50–60 Hz
+* **restoreToken**: (string) remembers the screen selection
+* **restServerPort**: (unsigned) port of the light manager, 8215 by default
+* **subsampleWidth**: (unsigned) width of the downscaled frame the regions are averaged on
+* **brightness**: (float) brightness of all lamps, from 0 to 1
+* **transitionSmoothing**: (float) how softly lamps move to a new color, from 0 (instant) to 0.97
+* **highlightBoost**: (float) strength of the flashes on sudden brightening, from 0 (off) to 1. A rise of the unsmoothed brightness of a lamp's region above 5% from one frame to the next triggers it, fully from 30%; it fades with a time constant of 250 ms
+* **audioReactive**: (boolean) whether loud moments of the computer's sound trigger the highlight boost too. Lightspill listens to the monitor of the default output through Pipewire (no microphone). A buffer more than 6 dB above the average of the last 0.5 s triggers, fully from 12 dB; sound below −50 dBFS never does. The left and right channels are spread over the lamps by their position
+* **syncEnabled**: (boolean) whether the lamps follow the screen or show the static colors
+* **staticColors**: (object) static color per channel ID, as `#rrggbb`
+* **scenes**: (object) saved scenes: name → colors as in `staticColors`
+* **language**: (string) `auto` (system language, English if it's neither German nor English), `en` or `de`
 
-#### Ersteinrichtung
+### profile.json
 
-Solange keine Bridge gekoppelt ist, zeigt Hue Desktop Sync einen Einrichtungsassistenten (in der Desktop-Anwendung, ohne sie im Browser). Er führt in fünf Schritten durch:
+* **entertainmentConfigurationId**: (string) UUID of the entertainment area
+* **channels**: (array) the lamps of the area, each with **channelId**, **active**, **devices**, **gammaFactor** and **uvs** (top left **uvA** and bottom right **uvB** corner of its screen region, from 0 to 1)
 
-1. **Willkommen**: Was gebraucht wird
-2. **Bridge finden**: Die Suche startet automatisch (über den Discovery-Dienst von Philips, braucht Internet); alternativ die IP-Adresse eingeben
-3. **Koppeln**: Den runden Knopf auf der Bridge drücken. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist (bis zu 90 Sekunden). Vorhandene Zugangsdaten lassen sich stattdessen eingeben
-4. **Entertainment-Bereich**: Prüft, ob in der Hue-App einer eingerichtet ist, mit Anleitung, falls nicht. Ohne Bereich kann nicht gestreamt werden
-5. **Fertig**: Danach fragt der Desktop, welchen Bildschirm die App aufnehmen darf; anschließend öffnet sich die Lichtsteuerung von selbst
+## Troubleshooting
 
-Der Assistent spricht Deutsch und Englisch wie der Rest der Oberfläche.
+### No entertainment area is shown
 
-Lade die Webseite anschließend neu, um zur Weboberfläche zu gelangen.
+The credentials may have become invalid. Stop Lightspill, delete `~/.config/lightspill/config.json` and start it again: the setup wizard pairs with the bridge again.
 
-#### Normaler Ablauf
+### Choosing another screen
 
-Beim ersten Start fordert KDE über das Bildschirmfreigabe-Portal auf, eine Quelle auszuwählen. Wähle den gewünschten Bildschirm und bestätige mit „Teilen“. Die Auswahl wird als `restoreToken` gespeichert, spätere Starts kommen ohne Dialog aus.
+Stop Lightspill, remove the `restoreToken` line from `~/.config/lightspill/config.json` and start it again: the desktop asks for the screen again.
 
-Beim Start sucht Hue Desktop Sync nach einem gespeicherten Profil und beginnt mit dem Streamen der Farben.
+### The lamps don't react
 
-Um Lampen bestimmten Bildschirmbereichen zuzuweisen, öffne die Weboberfläche und ziehe die Lampen unter „Lamps“ per Drag-and-Drop von „Available“ nach „Active“. Jede aktive Lampe zeigt dort und in ihrem Bildschirmbereich live ihre aktuelle Farbe; die Kopfzeile zeigt, ob GPU oder CPU rechnet.
+* Another application may be streaming to the entertainment area (the Hue app or Hue Sync on another computer): the bridge accepts one stream at a time. Lightspill retries every 5 seconds
+* Check the log with `journalctl --user -u lightspill.service`
 
-Ist eine synchronisierte Lampe in der Liste ausgewählt, kannst du ihren Bildschirmbereich im Abschnitt zur Bildschirmaufteilung anpassen.
+## Origin and changes
 
-Um die Einstellungen auszuprobieren, startet der Knopf „Preview“ (Karte „Settings“) eine 12-sekündige Testsequenz auf den Lampen statt des Bildschirminhalts: harte Farbschnitte (Glättung), eine dunkle Szene mit weißen Blitzen links, rechts und beidseitig (Highlight boost pro Lampe), einen langsamen Farbverlauf und einen Schnitt von Schwarz auf Weiß (Helligkeit). Sie durchläuft dieselbe Verarbeitung wie echte Bilder; danach geht es automatisch mit dem Bildschirm weiter.
+Lightspill is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) 1.2.0 by OpenJowel and its contributors, whose history it keeps. The main changes since the fork:
 
-Der Schalter „Sync“ in der Kopfzeile wechselt zwischen Bildschirm/Sound und statischen Farben. Ohne Sync zeigen die Lampen die Szene aus der Karte „Static scene“; Bildschirmaufnahme und Sound-Analyse pausieren dann. Dort gibt es:
+* Frames are processed on the GPU from DMA-BUFs, with the CPU as fallback; the CPU load dropped from about 45% to about 3% of a core
+* Highlight boost from the picture and the sound, brightness, smoothing presets, static colors and scenes, preview sequence
+* Desktop application with tray icon, setup wizard, new user interface, German translation
+* Streaming capped to what the bridge processes, connection handled in the background, many fixes
+* Support for X11, other platforms and the CPU interpolation modes was removed to keep the code focused
 
-* **Full color**: eine Farbe für alle Lampen, aus Schnellfarben oder einem Farbwähler
-* **Per lamp**: eine eigene Farbe für jede aktive Lampe
-* **Presets**: eingebaute Szenen wie Sunset, Ocean oder Neon. Ihre beiden Farben werden von links nach rechts über die Lampen verteilt, nach der Position ihrer Bildschirmbereiche
-* **My scenes**: die aktuellen Farben unter einem Namen speichern und wieder löschen
+## License
 
-Eine Farbe oder Szene auszuwählen schaltet Sync automatisch aus. Szenenwechsel blenden in etwa einer Sekunde über und lösen keinen Highlight boost aus; die Helligkeit gilt weiterhin. Die Lampen bleiben dabei im Entertainment-Modus, die Hue-App kann sie also solange nicht steuern.
+Lightspill is free software under the GNU General Public License version 3, like Huenicorn. See [LICENSE.txt](LICENSE.txt). You may use, study, share and modify it; modified versions you distribute must be under the same license, with their source code.
 
-Bist du mit der Aufteilung zufrieden, speichere sie als Profil. Es wird bei späteren Starts automatisch geladen.
+## Acknowledgments
 
-Solange kein Profil gespeichert ist, öffnet sich die Lampenverwaltung beim Start automatisch.
-
-### Konfigurationsdateien
-
-Die Konfigurationsdateien liegen in deinem Home-Verzeichnis unter ~/.config/hue-desktop-sync/.
-config.json enthält die Konfiguration rund um die Bridge.
-profile.json enthält die gespeicherte Kanalaufteilung für eine Entertainment-Konfiguration.
-
-Beide Dateien sind im JSON-Format.
-
-#### config.json
-
-Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert werden können.
-
-* **boundBackendIP**: (String) IP-Adresse, an die der Dienst gebunden wird. Standard ist `127.0.0.1` (nur lokaler Zugriff). Mit `0.0.0.0` ist die Weboberfläche auch von anderen Geräten erreichbar – bedenke dabei, dass sie keine Authentifizierung hat
-* **bridgeAddress**: (String) Adresse der Philips Hue Bridge
-* **credentials**:
-  * **clientkey**: (String) Schlüssel aus 32 Hexadezimalzeichen, erzeugt bei der Ersteinrichtung
-  * **username**: (String) Benutzername (Base64 oder UUID), erzeugt bei der Ersteinrichtung
-* **profileName**: (String) Name des aktuellen, benutzerdefinierten Lampenprofils
-* **refreshRate**: (Unsigned) Frequenz von Bildschirmaufnahme und Lampenaktualisierung. Höchstens 60 Hz: Die Bridge gibt Farben mit etwa 25 Hz an die Lampen weiter, Philips empfiehlt 50–60 Hz Streamingrate. Höhere Werte werden beim Start und in der Weboberfläche auf 60 Hz begrenzt
-* **restoreToken**: (String) Token, um die Einstellungen der letzten Sitzung zu merken (nur Wayland)
-* **restServerPort**: (Unsigned) Port, auf dem die Weboberfläche antwortet
-* **subsampleWidth**: (Unsigned) Breite des verarbeiteten, verkleinerten Bildes
-* **brightness**: (Float) Globale Helligkeit aller Lampen, zwischen 0 und 1 (in der Weboberfläche 0–100 %). Wirkt nach Gamma und Glättung wie ein Dimmer
-* **audioReactive**: (Boolean) Ob zusätzlich der PC-Sound Lichtblitze auslöst (Schalter „React to sound“). Hue Desktop Sync hört dafür über Pipewire den Monitor des Standard-Ausgabegeräts mit (kein Mikrofon) und erkennt Transienten: Liegt die Energie eines Audiopuffers mehr als 6 dB über dem Mittel der letzten ~0,5 s, löst das aus, ab 12 dB voll. Gleichmäßig laute Musik löst daher nicht ständig aus, Leises unter −50 dBFS nie. Linker und rechter Kanal werden nach der horizontalen Position des Lampenbereichs verteilt. Bild und Sound wirken zusammen, der stärkere Auslöser gewinnt; die Stärke kommt von `highlightBoost`
-* **highlightBoost**: (Float) Stärke der Lichtblitze bei plötzlich heller werdenden Bildbereichen (Explosionen, Blitze, Schnitte in helle Szenen), zwischen 0 (aus) und 1 (in der Weboberfläche 0–100 %). Steigt die ungeglättete Helligkeit im Bereich einer Lampe von einem Bild zum nächsten um mehr als 5 %, geht die Lampe sofort einen Teil des Weges zur vollen Helligkeit (bei einem Sprung ab 30 % genau um den eingestellten Anteil) und klingt mit einer Zeitkonstante von 250 ms ab. Verdunkeln und reine Farbwechsel lösen nichts aus. Wirkt pro Lampe und nach der Glättung. Voreinstellungen in der Weboberfläche: Subtle (20 %), Moderate (40 %), High (60 %), Intense (85 %)
-* **language**: (String) Sprache von Weboberfläche und Desktop-Anwendung: `auto` (Systemsprache; Englisch, wenn sie weder Deutsch noch Englisch ist), `de` oder `en`. Umschaltbar unten rechts in der Oberfläche
-* **syncEnabled**: (Boolean) Ob die Lampen Bildschirm und Sound folgen (`true`) oder die statischen Farben zeigen (Schalter „Sync“)
-* **staticColors**: (Objekt) Statische Farbe je Kanal-ID im Format `#rrggbb`, z. B. `{"0": "#ff5e3a", "1": "#ffaa3c"}`. Kanäle ohne Eintrag leuchten warmweiß
-* **scenes**: (Objekt) Gespeicherte Szenen: Name → Farben im Format von `staticColors`
-* **transitionSmoothing**: (Float) Stärke der weichen Farbübergänge, zwischen 0 (aus) und 0,97. In der Weboberfläche gibt es neben dem Slider die Voreinstellungen „Gaming“ (10 %, Lampen folgen fast sofort) und „Movie“ (60 %, glättet harte Schnitte und Blitze)
-
-Ein Beispiel:
-
-```json
-{
-  "boundBackendIP": "127.0.0.1",
-  "bridgeAddress": "192.168.0.10",
-  "credentials": {
-    "clientkey": "01234567890ABCDEF0123456789ABCDE",
-    "username": "AbCdEfGhIjKlMnOpQrStUvWxYz-0123456789012"
-  },
-  "profileName": "profile",
-  "refreshRate": 60,
-  "restoreToken": "aBcDeFgH_iJkLmNoPqRsT1",
-  "restServerPort": 8215,
-  "subsampleWidth": 32,
-  "transitionSmoothing": 0.0
-}
-```
-
-#### profile.json
-
-Diese Datei enthält die Liste der Kanäle einer Entertainment-Konfiguration.
-
-* **channels**: (Array) Liste der Kanäle der Entertainment-Konfiguration
-  * **active**: (Boolean) Ob der Kanal aktiv ist
-  * **channelId**: (Unsigned) Index des Kanals in der Entertainment-Konfiguration
-  * **devices**: (Array) Liste der Geräte des Kanals
-    * **id**: (String) UUID des Geräts
-    * **name**: (String) Vom Benutzer vergebener Name des Geräts
-  * **gammaFactor**: (Float) Helligkeitskorrektur der Lampe
-  * **uvs**: (Object) Koordinatenpaar des verarbeiteten Bildausschnitts
-    * **uvA**: (Object) Koordinate der oberen linken Ecke
-      * **x**: (Float) x-Koordinate
-      * **y**: (Float) y-Koordinate
-    * **uvB**: (Object) Koordinate der unteren rechten Ecke
-      * **x**: (Float) x-Koordinate
-      * **y**: (Float) y-Koordinate
-* **entertainmentConfigurationId**: (String) UUID der zugehörigen Entertainment-Konfiguration
-
-#### Beenden
-
-Hue Desktop Sync lässt sich über die Weboberfläche oder durch ein Beenden-Signal (z. B. Strg+C oder SIGTERM) beenden.
-
-## Fehlerbehebung
-
-### In der Weboberfläche sehe ich keine Entertainment-Bereiche bzw. kann keinen auswählen
-
-Das passiert, wenn die Zugangsdaten aus irgendeinem Grund ungültig geworden sind. Meist hilft Folgendes:
-
-* Hue Desktop Sync beenden, falls es läuft
-* Die Datei ```~/.config/hue-desktop-sync/config.json``` löschen (oder umbenennen)
-* Hue Desktop Sync neu starten
-* Den Einrichtungsassistenten erneut durchlaufen und beim Koppeln den Knopf auf der Bridge drücken
-
-Danach sollte Hue Desktop Sync die Entertainment-Bereiche wieder anzeigen und Farben streamen.
-
-### Das Portal zur Bildschirmauswahl erscheint nicht mehr, ich möchte die Auswahl aber ändern
-
-1. Hue Desktop Sync beenden, falls es läuft
-2. Die Datei `~/.config/hue-desktop-sync/config.json` öffnen und die Zeile mit `restoreToken` entfernen
-3. Hue Desktop Sync starten
-4. Das Portal zur Bildschirmauswahl erscheint wieder
-
-### Absturz nach der Bildschirmauswahl
-
-Es gibt einen bekannten Fehler, der je nach Build-Parametern auftritt. Seit 1.0.9 ist er „halb gelöst“, kann unter bestimmten Umständen aber weiterhin auftreten.
-
-Dann kann es helfen, Hue Desktop Sync mit anderen Optimierungsoptionen neu zu bauen.
-
-Lösche dazu das Verzeichnis ```build``` (falls vorhanden).
-
-Konfiguriere das Projekt mit einem expliziten Build-Typ neu:
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=<CMakeBuildType>
-cmake --build build -j
-```
-
-```<CMakeBuildType>``` muss durch einen dieser Werte ersetzt werden:
-
-* Release
-* MinSizeRel
-* Debug
-* RelWithDebInfo
-
-Starte Hue Desktop Sync dann erneut und prüfe, ob es nun über die Bildschirmauswahl hinauskommt.
-
-### Hue Desktop Sync stürzt weiterhin sofort ab
-
-Prüfe in der Datei ```~/.config/hue-desktop-sync/config.json``` folgende Werte:
-
-* ```subsampleWidth```: Muss größer als 0 und ein Teiler deiner Bildschirmauflösung sein.
-* ```refreshRate```: Muss zwischen 1 und 60 bzw. der Bildwiederholrate deines Bildschirms liegen (der kleinere Wert gilt).
-
-## Website
-
-Weitere Informationen und Neuigkeiten zum ursprünglichen Projekt gibt es auf [Huenicorn.org](http://huenicorn.org), der offiziellen Website.
-
-## Versionsgeschichte (Huenicorn)
-
-* 1.2.0 (aktuell)
-  * Unterstützung für Gamescope, weiche Farbübergänge, Unterstützung für MbedTLS 4.0
-* 1.1.0
-  * Bessere Helligkeit/Sättigung der Farben, Unterstützung der Bridge Pro, automatische Bildschirmauswahl unter Wayland
-* 1.0.12
-  * Umfassendes Refactoring für weniger Abhängigkeiten und einen klareren Ablauf
-* 1.0.11
-  * Webroot in die ausführbare Datei eingebettet, mehrere Bridges bei der Einrichtung
-* 1.0.10
-  * Standardport geändert, Farbberechnung korrigiert, kleinere Fehler behoben
-* 1.0.9
-  * Kleiner Schritt zur Behebung des Absturzes unter Wayland
-* 1.0.8
-  * Umfassende Umstrukturierung des Codes und Einbindung des Logos
-* 1.0.7
-  * Fehlerbehebungen für Wayland-Sitzungen
-* 1.0.6
-  * Bibliotheken ersetzt und bessere Compiler-Unterstützung
-* 1.0.5
-  * Auswahl der Subsampling-Interpolation in den erweiterten Einstellungen der Weboberfläche
-* 1.0.4
-  * Unterstützung für Wayland-Sitzungen
-* 1.0.3
-  * Umstieg auf Mbed-TLS 3.4
-* 1.0.2
-  * Leistungsverbesserung
-* 1.0.1
-  * Höhere Zuverlässigkeit und bessere Dokumentation
-* 1.0.0
-  * Erste stabile Version
-* 0.0.0 (Legacy)
-  * Erste (langsame) Implementierung über die HTTP-API von Hue
-
-## Autoren
-
-OpenJowel (ursprünglicher Autor)
-
-Philip's Hue Desktop Sync ist ein privater Fork von Huenicorn und wird auf einer lokalen Forgejo-Instanz gepflegt.
-
-## Lizenz
-
-Philip's Hue Desktop Sync steht wie Huenicorn unter der GNU GPLv3. Details findest du in der Datei [LICENSE.txt](LICENSE.txt).
-
-## Danksagungen
-
-* [XDG portal screencast](https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c)
-* [Pipewire-Dokumentation](https://docs.pipewire.org/page_tutorial5.html)
-* [RGB-D65-Umrechnung](https://gist.github.com/popcorn245/30afa0f98eea1c2fd34d)
+* [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel and its contributors
+* [XDG portal screencast example](https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c)
+* [Pipewire documentation](https://docs.pipewire.org/page_tutorial5.html)
+* [RGB to xy (D65) conversion](https://gist.github.com/popcorn245/30afa0f98eea1c2fd34d)
 * [Huestacean](https://github.com/BradyBrenot/huestacean)
