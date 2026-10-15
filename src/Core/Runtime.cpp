@@ -254,7 +254,7 @@ namespace Huenicorn::Core
 
     const auto& credentials = m_config.credentials().value();
 
-    // The DTLS handshake can take seconds: perform it before taking the lock the streaming loop waits on
+    // The streamer connects in the background: replacing it doesn't hold the streaming loop
     auto streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
     streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
 
