@@ -1,5 +1,6 @@
 #include <Huenicorn/Network/Http/Client/Client.hpp>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -48,61 +49,136 @@ namespace Huenicorn::Network::Http::Client
   }
 
 
-  std::optional<Response> sendRequest(
-    const std::string& url,
-    const std::string& method,
-    const std::string& body,
-    const Headers& headers
-  )
+  namespace
   {
-    auto handle = std::unique_ptr<CURL, CurlDeleter>(curl_easy_init());
-    if(!handle){
-      Core::Logger::error("Failed to initialize CURL handle");
-      throw std::runtime_error("CURL initialization failed");
-    }
-
-    Serialization::Json jsonBody = Serialization::Json::object();
-
-    curl_easy_setopt(handle.get(), CURLOPT_URL, url.c_str());
-    curl_easy_setopt(handle.get(), CURLOPT_CUSTOMREQUEST, method.c_str());
-    curl_easy_setopt(handle.get(), CURLOPT_TIMEOUT, 1);
-
+    /**
+     * @brief Splits an URL around its host
+     *
+     * @param url URL such as "https://192.168.0.42/api/0/config"
+     * @return std::array<std::string, 3> Scheme with "://", host, and the rest (port and path)
+     */
+    std::array<std::string, 3> splitHost(
+      const std::string& url
+    )
     {
-      // Requirement for self-signed Hue bridge
-      curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYPEER, false);
-      curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYHOST, false);
+      const size_t hostStart = url.find("://");
+      if(hostStart == std::string::npos){
+        return {"", url, ""};
+      }
+
+      const size_t hostEnd = url.find_first_of(":/", hostStart + 3);
+      const size_t hostLength = hostEnd == std::string::npos ? std::string::npos : hostEnd - hostStart - 3;
+
+      return {
+        url.substr(0, hostStart + 3),
+        url.substr(hostStart + 3, hostLength),
+        hostEnd == std::string::npos ? "" : url.substr(hostEnd)
+      };
     }
 
-    if(body.size() > 0){
-      curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDS, body.c_str());
-      curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDSIZE, body.length());
-    }
 
-    UniqueCurlSlist concatenatedHeaders{nullptr};
-    if(!headers.empty()){
-      // Disable ssl checks for the sake of getting data without trouble
+    /**
+     * @brief Performs a request
+     *
+     * @param tls Certificate check, the system's if empty
+     * @param verify Whether the certificate is checked at all
+     * @param responseString Receives the response body
+     * @return CURLcode Result
+     */
+    CURLcode perform(
+      const std::string& url,
+      const std::string& method,
+      const std::string& body,
+      const Headers& headers,
+      const std::optional<TlsPolicy>& tls,
+      bool verify,
+      std::string& responseString
+    )
+    {
+      auto handle = std::unique_ptr<CURL, CurlDeleter>(curl_easy_init());
+      if(!handle){
+        Core::Logger::error("Failed to initialize CURL handle");
+        throw std::runtime_error("CURL initialization failed");
+      }
 
+      std::string requestUrl = url;
+      UniqueCurlSlist connectTo{nullptr};
+
+      if(!verify){
+        curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYHOST, 0L);
+      }
+      else if(tls.has_value()){
+        if(!tls->caPem.empty()){
+          curl_blob caBlob{const_cast<char*>(tls->caPem.data()), tls->caPem.size(), CURL_BLOB_COPY};
+          curl_easy_setopt(handle.get(), CURLOPT_CAINFO_BLOB, &caBlob);
+        }
+
+        if(tls->expectedName.empty()){
+          curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYHOST, 0L);
+        }
+        else{
+          // Address the server by the expected name, so it's the name checked, and connect to the
+          // URL's host instead of resolving the name
+          const auto [scheme, host, rest] = splitHost(url);
+          requestUrl = scheme + tls->expectedName + rest;
+          const std::string mapping = tls->expectedName + "::" + host + ":";
+          connectTo.reset(curl_slist_append(nullptr, mapping.c_str()));
+          curl_easy_setopt(handle.get(), CURLOPT_CONNECT_TO, connectTo.get());
+        }
+      }
+
+      curl_easy_setopt(handle.get(), CURLOPT_URL, requestUrl.c_str());
+      curl_easy_setopt(handle.get(), CURLOPT_CUSTOMREQUEST, method.c_str());
+      curl_easy_setopt(handle.get(), CURLOPT_TIMEOUT, 1L);
+
+      if(body.size() > 0){
+        curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDS, body.c_str());
+        curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDSIZE, static_cast<long>(body.length()));
+      }
+
+      UniqueCurlSlist concatenatedHeaders{nullptr};
       for(const auto& header : headers){
         std::string concat = header.first + ": " + header.second;
         concatenatedHeaders.reset(curl_slist_append(concatenatedHeaders.release(), concat.c_str()));
       }
 
-      curl_easy_setopt(handle.get(), CURLOPT_HTTPHEADER, concatenatedHeaders.get());
+      if(concatenatedHeaders){
+        curl_easy_setopt(handle.get(), CURLOPT_HTTPHEADER, concatenatedHeaders.get());
+      }
+
+      curl_easy_setopt(handle.get(), CURLOPT_WRITEFUNCTION, writeCallback);
+      curl_easy_setopt(handle.get(), CURLOPT_WRITEDATA, &responseString);
+
+      return curl_easy_perform(handle.get());
     }
+  }
 
+
+  std::optional<Response> sendRequest(
+    const std::string& url,
+    const std::string& method,
+    const std::string& body,
+    const Headers& headers,
+    const std::optional<TlsPolicy>& tls
+  )
+  {
     std::string responseString;
-    curl_easy_setopt(handle.get(), CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(handle.get(), CURLOPT_WRITEDATA, &responseString);
+    CURLcode code = perform(url, method, body, headers, tls, true, responseString);
+    bool verified = true;
 
-    CURLcode code = curl_easy_perform(handle.get());
-
-    curl_easy_setopt(handle.get(), CURLOPT_HTTPHEADER, nullptr);
+    if(code == CURLE_PEER_FAILED_VERIFICATION && tls.has_value() && tls->allowUnverified){
+      // The certificate failed the check before anything was sent: retry without checking it
+      responseString.clear();
+      code = perform(url, method, body, headers, tls, false, responseString);
+      verified = false;
+    }
 
     if(code != CURLE_OK){
       Core::Logger::error("HTTP request failed: " + std::string(curl_easy_strerror(code)));
       return std::nullopt;
     }
 
-    return Response(responseString);
+    return Response(responseString, verified);
   }
 }

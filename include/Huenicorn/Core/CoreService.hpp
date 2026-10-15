@@ -503,6 +503,20 @@ namespace Huenicorn::Core
     std::optional<Serialization::Json> getProfile();
 
   private:
+    /**
+     * @brief Identifies the bridge for the certificate checks, learning its id if needed
+     *
+     */
+    void _identifyBridge();
+
+
+    /**
+     * @brief Registers the bridge's identity for the certificate checks of the requests to it
+     *
+     */
+    void _registerBridge();
+
+
     Runtime& m_runtime;
     Config& m_config;
 
