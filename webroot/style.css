@@ -136,8 +136,10 @@ a
   padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  color: var(--textMuted);
-  font-size: 12px;
+  /* Small muted text looks blurry with grayscale antialiasing: keep it bright and at body size */
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 
@@ -594,8 +596,9 @@ input[type=range]::-moz-range-thumb
   padding: 5px 12px 5px 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  color: var(--textMuted);
-  font-size: 13px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 
