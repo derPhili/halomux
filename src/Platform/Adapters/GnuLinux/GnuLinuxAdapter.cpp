@@ -55,6 +55,15 @@ namespace Huenicorn::Platform
     const std::string& url
   ) const
   {
+    // The desktop application shows the web UI in its own window. It's started as its own
+    // systemd unit, so it doesn't belong to the service's control group and survives it
+    const std::string desktopApplication = std::string(AppId) + "-gui";
+    if(system(("command -v " + desktopApplication + " >/dev/null 2>&1").c_str()) == 0){
+      if(system(("systemd-run --user --quiet --collect " + desktopApplication + " >/dev/null 2>&1").c_str()) == 0){
+        return;
+      }
+    }
+
     if(system(std::string("xdg-open " + url).c_str()) != 0){
       Core::Logger::error("Failed to open browser");
     }
