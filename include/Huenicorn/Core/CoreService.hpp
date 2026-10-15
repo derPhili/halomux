@@ -398,6 +398,13 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Records that the user accepted the notice of the setup, with the current time
+     *
+     */
+    void acceptNotice();
+
+
+    /**
      * @brief Shows a scene on the lamps: its colors replace those of the lamps it covers, and sync is disabled
      *
      * Built-in scenes are spread over the active lamps, from left to right.

@@ -44,6 +44,8 @@ namespace Huenicorn::Core
       std::optional<StaticColors> staticColors{StaticColors{}};
       std::optional<Scenes> scenes{Scenes{}};
       std::optional<std::string> language{"auto"};
+      // When the user accepted the notice of the setup (AI assistance, no warranty), UTC ISO 8601
+      std::optional<std::string> noticeAccepted;
       std::optional<std::string> restoreToken;
     };
 
@@ -347,6 +349,16 @@ namespace Huenicorn::Core
     */
     void setLanguage(
       const std::string& language
+    );
+
+
+    /**
+     * @brief Registers that the user accepted the notice of the setup
+     *
+     * @param acceptedAt Time of the acceptance, UTC ISO 8601
+    */
+    void setNoticeAccepted(
+      const std::string& acceptedAt
     );
 
 

@@ -25,6 +25,12 @@ class SetupWizard
       });
     }
 
+    // Welcome: the notice must be accepted before going on
+    this.noticeAcceptedNode = document.getElementById("noticeAccepted");
+    this.getStartedButton = document.getElementById("getStartedButton");
+    this.noticeAcceptedNode.addEventListener("change", (event) => {this.getStartedButton.disabled = !event.target.checked;});
+    this.getStartedButton.addEventListener("click", () => {this._acceptNotice();});
+
     // Bridge
     this.bridgeAddressNode = document.getElementById("bridgeAddress");
     this.bridgeAddressNode.addEventListener("keydown", (event) => {if(event.key == "Enter"){this._validateAddress();}});
@@ -105,6 +111,21 @@ class SetupWizard
     clearTimeout(this.areaTimer);
     this.pairingTimer = null;
     this.areaTimer = null;
+  }
+
+
+  // Welcome
+
+  // Records the acceptance with its time in the configuration, then goes on
+  _acceptNotice()
+  {
+    if(!this.noticeAcceptedNode.checked){
+      return;
+    }
+
+    RequestUtils.put("/api/acceptNotice", JSON.stringify(null))
+    .then(() => {this._showStep("bridge");})
+    .catch((error) => {log(error);});
   }
 
 

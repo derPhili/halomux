@@ -99,10 +99,11 @@ Optionen:
 
 Starte „Lightspill“ aus dem Startmenü. Solange keine Bridge gekoppelt ist, führt ein Einrichtungsassistent durch:
 
-1. **Bridge finden**: Sie wird automatisch gesucht (über den Discovery-Dienst von Philips, braucht Internet), oder du gibst ihre IP-Adresse ein
-2. **Koppeln**: Drücke den runden Knopf oben auf der Bridge. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist
-3. **Entertainment-Bereich**: Der Assistent prüft, ob einer existiert, und erklärt sonst, wie du ihn in der Hue-App anlegst
-4. **Bildschirmauswahl**: Der Desktop fragt, welchen Bildschirm Lightspill aufnehmen darf. Erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
+1. **Hinweis**: bestätigen, dass du den Hinweis zu KI-Unterstützung und fehlender Gewährleistung gelesen hast
+2. **Bridge finden**: Sie wird automatisch gesucht (über den Discovery-Dienst von Philips, braucht Internet), oder du gibst ihre IP-Adresse ein
+3. **Koppeln**: Drücke den runden Knopf oben auf der Bridge. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist
+4. **Entertainment-Bereich**: Der Assistent prüft, ob einer existiert, und erklärt sonst, wie du ihn in der Hue-App anlegst
+5. **Bildschirmauswahl**: Der Desktop fragt, welchen Bildschirm Lightspill aufnehmen darf. Erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
 
 Danach in der Lichtsteuerung die Lampen von „Verfügbar“ nach „Aktiv“ ziehen, eine Lampe auswählen und den Bildschirmbereich anpassen, dem sie folgt, und das Profil speichern.
 
@@ -171,6 +172,7 @@ Die meisten Werte änderst du in der Lichtsteuerung. Von Hand lassen sich alle b
 * **staticColors**: (Objekt) statische Farbe je Kanal-ID, als `#rrggbb`
 * **scenes**: (Objekt) gespeicherte Szenen: Name → Farben wie in `staticColors`
 * **language**: (String) `auto` (Systemsprache, Englisch, wenn sie weder Deutsch noch Englisch ist), `en` oder `de`
+* **noticeAccepted**: (String) wann der Hinweis zu KI-Unterstützung und fehlender Gewährleistung in der Einrichtung bestätigt wurde, in UTC
 
 ### profile.json
 

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <fstream>
 #include <iomanip>
 #include <optional>
@@ -461,6 +462,13 @@ namespace Huenicorn::Core
 
     m_config.setLanguage(language);
     return true;
+  }
+
+
+  void CoreService::acceptNotice()
+  {
+    const auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+    m_config.setNoticeAccepted(std::format("{:%FT%TZ}", now));
   }
 
 

@@ -99,10 +99,11 @@ Options:
 
 Start "Lightspill" from the application menu. As long as no bridge is paired, a setup wizard guides you through:
 
-1. **Finding the bridge**: it is searched automatically (through the Philips discovery service, which needs internet access), or you enter its IP address
-2. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
-3. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
-4. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
+1. **Notice**: confirm that you read the notice about AI assistance and the missing warranty
+2. **Finding the bridge**: it is searched automatically (through the Philips discovery service, which needs internet access), or you enter its IP address
+3. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
+4. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
+5. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
 
 Then, in the light manager, drag your lamps from "Available" to "Active", select a lamp to adjust the screen region it follows, and save the profile.
 
@@ -171,6 +172,7 @@ Most values are changed from the light manager. All of them can be edited by han
 * **staticColors**: (object) static color per channel ID, as `#rrggbb`
 * **scenes**: (object) saved scenes: name → colors as in `staticColors`
 * **language**: (string) `auto` (system language, English if it's neither German nor English), `en` or `de`
+* **noticeAccepted**: (string) when the notice about AI assistance and the missing warranty was accepted in the setup, in UTC
 
 ### profile.json
 
