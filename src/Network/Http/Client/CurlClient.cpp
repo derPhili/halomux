@@ -54,7 +54,7 @@ namespace Huenicorn::Network::Http::Client
     /**
      * @brief Splits an URL around its host
      *
-     * @param url URL such as "https://192.168.0.42/api/0/config"
+     * @param url URL such as "https://192.168.0.42/api/0/config" or "https://[fe80::1]/api"
      * @return std::array<std::string, 3> Scheme with "://", host, and the rest (port and path)
      */
     std::array<std::string, 3> splitHost(
@@ -66,7 +66,9 @@ namespace Huenicorn::Network::Http::Client
         return {"", url, ""};
       }
 
-      const size_t hostEnd = url.find_first_of(":/", hostStart + 3);
+      // IPv6 addresses are bracketed and contain colons
+      const size_t searchFrom = url.compare(hostStart + 3, 1, "[") == 0 ? url.find(']', hostStart) : hostStart + 3;
+      const size_t hostEnd = searchFrom == std::string::npos ? std::string::npos : url.find_first_of(":/", searchFrom);
       const size_t hostLength = hostEnd == std::string::npos ? std::string::npos : hostEnd - hostStart - 3;
 
       return {
@@ -112,6 +114,9 @@ namespace Huenicorn::Network::Http::Client
         if(!tls->caPem.empty()){
           curl_blob caBlob{const_cast<char*>(tls->caPem.data()), tls->caPem.size(), CURL_BLOB_COPY};
           curl_easy_setopt(handle.get(), CURLOPT_CAINFO_BLOB, &caBlob);
+          // Only this CA: some curl builds also trust a default directory of system certificates
+          curl_easy_setopt(handle.get(), CURLOPT_CAINFO, nullptr);
+          curl_easy_setopt(handle.get(), CURLOPT_CAPATH, nullptr);
         }
 
         if(tls->expectedName.empty()){
