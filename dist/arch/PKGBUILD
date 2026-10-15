@@ -1,5 +1,7 @@
-# Builds the committed state of the local repository's master branch:
+# Builds the master branch from GitHub:
 #   cd dist/arch && makepkg -si
+# To build a local clone instead, e.g. to try changes before publishing them:
+#   LIGHTSPILL_SOURCE="git+file://$HOME/git/lightspill#branch=master" makepkg -si
 # Needs cpp-httplib 0.46 or newer, installed from source (see README), so it isn't listed
 
 pkgname=lightspill
@@ -28,7 +30,7 @@ install=lightspill.install
 provides=('hue-desktop-sync')
 conflicts=('hue-desktop-sync')
 replaces=('hue-desktop-sync')
-source=("$pkgname::git+file://${startdir%/dist/arch}#branch=master")
+source=("$pkgname::${LIGHTSPILL_SOURCE:-git+https://github.com/derPhili/lightspill.git#branch=master}")
 sha256sums=('SKIP')
 
 pkgver() {

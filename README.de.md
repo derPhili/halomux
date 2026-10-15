@@ -46,7 +46,8 @@ Lightspill wird unter CachyOS mit KDE Plasma (Wayland) und einer NVIDIA-Grafikka
 `dist/arch/PKGBUILD` baut ein Paket und installiert es:
 
 ```bash
-cd dist/arch
+git clone https://github.com/derPhili/lightspill.git
+cd lightspill/dist/arch
 makepkg -si
 systemctl --user enable --now lightspill.service
 ```
@@ -76,6 +77,8 @@ sudo cmake --install cpp-httplib/build
 Dann Lightspill bauen:
 
 ```bash
+git clone https://github.com/derPhili/lightspill.git
+cd lightspill
 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build -j
 sudo cmake --install build
