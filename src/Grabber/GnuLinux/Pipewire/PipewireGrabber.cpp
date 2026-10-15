@@ -582,10 +582,10 @@ namespace Huenicorn::Grabber
     pw->renegotiateEvent = pw_loop_add_event(pw_main_loop_get_loop(pw->loop), _onRenegotiate, pw);
 
     // The GL context lives in this thread, like every Pipewire callback using it
-    if(const char* disableGpu = std::getenv("HUE_DESKTOP_SYNC_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
-      Core::Logger::log("[gpu] Disabled by HUE_DESKTOP_SYNC_DISABLE_GPU");
+    if(const char* disableGpu = std::getenv("LIGHTSPILL_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
+      Core::Logger::log("[gpu] Disabled by LIGHTSPILL_DISABLE_GPU");
       auto lock = std::lock_guard(pw->processingInfoMutex);
-      pw->cpuReason = "GPU disabled by HUE_DESKTOP_SYNC_DISABLE_GPU, shared memory";
+      pw->cpuReason = "GPU disabled by LIGHTSPILL_DISABLE_GPU, shared memory";
     }
     else{
       pw->gpu = std::make_unique<EglDownscaler>();
@@ -639,7 +639,7 @@ namespace Huenicorn::Grabber
       NULL
     );
 
-    std::string streamName = "HueDesktopSyncVideo";
+    std::string streamName = "LightspillVideo";
 
     pw->stream = pw_stream_new_simple(
       pw_main_loop_get_loop(pw->loop),

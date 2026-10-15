@@ -166,7 +166,7 @@ namespace Huenicorn::Grabber
 
       StringPair pathAndToken;
       std::ostringstream oss;
-      oss << "huedesktopsync";
+      oss << "lightspill";
       oss << ++count[static_cast<int>(createPathTokenType)];
       pathAndToken.second = oss.str();
       pathAndToken.first = std::string(ObjectPath) + '/' + type + '/' + getSenderName() + '/' + pathAndToken.second;

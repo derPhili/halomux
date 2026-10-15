@@ -1,13 +1,13 @@
 # Builds the committed state of the local repository's master branch:
 #   cd dist/arch && makepkg -si
-# cpp-httplib comes from /usr/local (installed from source), so it isn't listed
+# Needs cpp-httplib 0.46 or newer, installed from source (see README), so it isn't listed
 
-pkgname=hue-desktop-sync
+pkgname=lightspill
 pkgver=1.2.0
 pkgrel=1
-pkgdesc="Philip's Hue Desktop Sync: Philips Hue lamps following the screen and sound on KDE Plasma (Wayland)"
+pkgdesc="Screen and sound sync for Philips Hue lamps on Linux (Wayland)"
 arch=('x86_64')
-license=('GPL-3.0-or-later')
+license=('GPL-3.0-only')
 depends=(
   'brotli'
   'curl'
@@ -23,14 +23,18 @@ depends=(
   'xdg-desktop-portal'
 )
 makedepends=('cmake' 'git' 'glm' 'nlohmann-json')
-install=hue-desktop-sync.install
+install=lightspill.install
+# Former name of the package
+provides=('hue-desktop-sync')
+conflicts=('hue-desktop-sync')
+replaces=('hue-desktop-sync')
 source=("$pkgname::git+file://${startdir%/dist/arch}#branch=master")
 sha256sums=('SKIP')
 
 pkgver() {
   cd "$pkgname"
   local version
-  version=$(sed -n 's/^project(HueDesktopSync VERSION \([0-9.]*\))$/\1/p' CMakeLists.txt)
+  version=$(sed -n 's/^project(Lightspill VERSION \([0-9.]*\))$/\1/p' CMakeLists.txt)
   printf "%s.r%s.g%s" "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 

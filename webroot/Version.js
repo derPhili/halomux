@@ -6,7 +6,7 @@ function getVersion()
   versionPromise.then((data) => {
     let versionSection = document.getElementById("versionSection");
     let text = `Version ${data.version}`;
-    log("Philip's Hue Desktop Sync", text);
+    log("Lightspill", text);
     versionSection.innerHTML = text;
   });
   versionPromise.catch((error) => {log(error);});

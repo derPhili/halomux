@@ -33,7 +33,7 @@ add_test(NAME ImageProcessing COMMAND TestImageProcessing)
 
 # TestGrabber (manual: needs a graphical session)
 # Reuses every application source but the entry point
-get_target_property(APP_SOURCES hue-desktop-sync SOURCES)
+get_target_property(APP_SOURCES lightspill SOURCES)
 list(FILTER APP_SOURCES EXCLUDE REGEX "/src/App/")
 
 add_executable(TestGrabber
@@ -45,9 +45,9 @@ add_dependencies(TestGrabber generate_version_header generate_webroot_header)
 
 set_target_properties(TestGrabber PROPERTIES CXX_STANDARD 20)
 
-get_target_property(APP_INCLUDE_DIRECTORIES hue-desktop-sync INCLUDE_DIRECTORIES)
-get_target_property(APP_COMPILE_DEFINITIONS hue-desktop-sync COMPILE_DEFINITIONS)
-get_target_property(APP_LINK_LIBRARIES hue-desktop-sync LINK_LIBRARIES)
+get_target_property(APP_INCLUDE_DIRECTORIES lightspill INCLUDE_DIRECTORIES)
+get_target_property(APP_COMPILE_DEFINITIONS lightspill COMPILE_DEFINITIONS)
+get_target_property(APP_LINK_LIBRARIES lightspill LINK_LIBRARIES)
 
 target_include_directories(TestGrabber PUBLIC ${APP_INCLUDE_DIRECTORIES})
 if(APP_COMPILE_DEFINITIONS)
