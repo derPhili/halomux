@@ -87,7 +87,10 @@ class WebUI
     }
 
     this.previewButton = document.getElementById("previewButton");
-    this.previewButton.addEventListener("click", () => {this._startPreview();});
+    this.previewButtonTitle = this.previewButton.title;
+    this.previewEnd = null;
+    this.previewTimer = null;
+    this.previewButton.addEventListener("click", () => {this._togglePreview();});
 
     this.saveProfileButton = document.getElementById("saveProfileButton");
     this.saveProfileButton.addEventListener("click", () => {this._saveProfile();});
@@ -464,30 +467,47 @@ class WebUI
   }
 
 
-  _startPreview()
+  // Starts the preview, or stops the running one
+  _togglePreview()
   {
+    if(this.previewEnd){
+      RequestUtils.delete("/api/preview", JSON.stringify(null))
+      .then((data) => {this.showPreviewRunning(data.remaining);})
+      .catch((error) => {log(error);});
+      return;
+    }
+
     RequestUtils.post("/api/preview", JSON.stringify(null))
-    .then((data) => {
-      let remaining = Math.ceil(data.duration);
-      this.previewButton.disabled = true;
-      this.previewButton.classList.add("running");
-
-      let tick = () => {
-        if(remaining <= 0){
-          this.previewButton.disabled = false;
-          this.previewButton.classList.remove("running");
-          this.previewButton.textContent = "Preview";
-          return;
-        }
-
-        this.previewButton.textContent = `Previewing… ${remaining} s`;
-        remaining--;
-        setTimeout(tick, 1000);
-      };
-
-      tick();
-    })
+    .then((data) => {this.showPreviewRunning(data.duration);})
     .catch((error) => {log(error);});
+  }
+
+
+  /**
+   * Counts down on the preview button while a preview runs
+   */
+  showPreviewRunning(remaining)
+  {
+    clearTimeout(this.previewTimer);
+    this.previewEnd = remaining > 0 ? Date.now() + remaining * 1000 : null;
+
+    let tick = () => {
+      let left = this.previewEnd ? Math.ceil((this.previewEnd - Date.now()) / 1000) : 0;
+      let running = left > 0;
+
+      this.previewButton.classList.toggle("running", running);
+      this.previewButton.textContent = running ? `Stop preview · ${left} s` : "Preview";
+      this.previewButton.title = running ? "Stops the preview: the lamps go back to the screen or the static scene" : this.previewButtonTitle;
+
+      if(!running){
+        this.previewEnd = null;
+        return;
+      }
+
+      this.previewTimer = setTimeout(tick, 250);
+    };
+
+    tick();
   }
 
 

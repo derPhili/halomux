@@ -155,7 +155,8 @@ namespace Huenicorn::Network::Http::Server
         {"syncEnabled", m_coreService->syncEnabled()},
         {"staticColors", m_coreService->staticColors()},
         {"scenes", m_coreService->scenes()},
-        {"builtinScenes", jsonBuiltinScenes}
+        {"builtinScenes", jsonBuiltinScenes},
+        {"previewRemaining", m_coreService->previewRemaining()}
       };
 
       res.contentType = "application/json";
@@ -376,6 +377,14 @@ namespace Huenicorn::Network::Http::Server
 
 
     // DELETE METHODS
+    m_httpServer.addRoute(HttpMethod::Delete, "/api/preview", [this](const Request& /*req*/, Response& res){
+      m_coreService->stopPreview();
+
+      res.contentType = "application/json";
+      res.body = Json{{"remaining", m_coreService->previewRemaining()}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Delete, "/api/scene", [this](const Request& req, Response& res){
       const bool deleted = m_coreService->deleteScene(Json::parse(req.body).at("name"));
 

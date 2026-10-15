@@ -263,6 +263,24 @@ namespace Huenicorn::Core
   }
 
 
+  void CoreService::stopPreview()
+  {
+    m_runtime.m_previewStart = 0;
+  }
+
+
+  float CoreService::previewRemaining() const
+  {
+    const int64_t previewStart = m_runtime.m_previewStart;
+    if(previewStart == 0){
+      return 0.f;
+    }
+
+    const auto elapsed = std::chrono::steady_clock::now().time_since_epoch() - std::chrono::steady_clock::duration(previewStart);
+    return std::max(0.f, PreviewSequence::Duration - std::chrono::duration<float>(elapsed).count());
+  }
+
+
   bool CoreService::audioReactive() const
   {
     return m_config.audioReactive();

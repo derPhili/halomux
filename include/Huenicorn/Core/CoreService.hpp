@@ -301,6 +301,21 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Stops the running preview: the lamps follow the screen or show the static scene again
+     *
+     */
+    void stopPreview();
+
+
+    /**
+     * @brief Returns the remaining time of the running preview
+     *
+     * @return float Remaining time [s], 0 if no preview runs
+     */
+    float previewRemaining() const;
+
+
+    /**
      * @brief Set the global lamp brightness factor
      *
      * @param brightness Value in percent

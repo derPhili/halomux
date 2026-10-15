@@ -101,6 +101,7 @@ namespace Huenicorn::Gui
     QAction* m_syncAction{nullptr};
     QMenu* m_scenesMenu{nullptr};
     QAction* m_previewAction{nullptr};
+    bool m_previewRunning{false};
     QAction* m_startServiceAction{nullptr};
     QTimer m_refreshTimer;
 

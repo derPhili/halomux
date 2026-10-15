@@ -147,7 +147,9 @@ namespace Huenicorn::Gui
 
     m_previewAction = m_menu.addAction(QIcon::fromTheme("media-playback-start"), "Preview settings");
     connect(m_previewAction, &QAction::triggered, this, [this](){
-      _request("POST", "/api/preview", "null");
+      // Stops a running preview, starts one otherwise
+      const QByteArray method = m_previewRunning ? "DELETE" : "POST";
+      _request(method, "/api/preview", "null", [this](const QJsonObject&){_refresh();});
     });
 
     m_startServiceAction = m_menu.addAction(QIcon::fromTheme("system-run"), "Start service");
@@ -172,6 +174,10 @@ namespace Huenicorn::Gui
 
   void DesktopApp::_updateLightMode(const QJsonObject& lightMode)
   {
+    m_previewRunning = lightMode.value("previewRemaining").toDouble() > 0.;
+    m_previewAction->setText(m_previewRunning ? "Stop preview" : "Preview settings");
+    m_previewAction->setIcon(QIcon::fromTheme(m_previewRunning ? "media-playback-stop" : "media-playback-start"));
+
     const bool syncEnabled = lightMode.value("syncEnabled").toBool();
     m_syncAction->setChecked(syncEnabled);
     m_tray.setToolTip(QString("%1\n%2").arg(AppName, syncEnabled ? "Sync on" : "Static scene"));
