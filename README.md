@@ -2,6 +2,10 @@
 
 Screen and sound sync for Philips Hue lamps on Linux
 
+> [!WARNING]
+> **AI-assisted project, no warranty, no liability.**
+> Lightspill is developed with the help of AI: the changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) under the maintainer's direction, and reviewed and tested only on the setup described below. Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes. See also sections 15 and 16 of the [GPLv3](LICENSE.txt).
+
 <p align="center">
   <img src="assets/logo.svg" alt="Lightspill logo" width="192" height="192">
 </p>

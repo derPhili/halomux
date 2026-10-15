@@ -252,6 +252,7 @@ I18n.Translations = {
     "A Hue bridge in the same network as this computer" : "Eine Hue Bridge im selben Netzwerk wie dieser Computer",
     "Access to the bridge, to press its button" : "Zugang zur Bridge, um ihren Knopf zu drücken",
     "The Hue app, to set up an entertainment area with your lamps" : "Die Hue-App, um einen Entertainment-Bereich mit deinen Lampen einzurichten",
+    "Lightspill is free software developed with the help of AI. It comes without any warranty, use it at your own risk." : "Lightspill ist freie Software, die mit Hilfe von KI entwickelt wird. Sie kommt ohne jede Gewährleistung, die Nutzung erfolgt auf eigenes Risiko.",
     "Get started" : "Los geht's",
     "Cancel setup" : "Einrichtung abbrechen",
     "Step {step} of {count}" : "Schritt {step} von {count}",

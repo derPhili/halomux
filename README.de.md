@@ -2,6 +2,10 @@
 
 Bildschirm- und Sound-Sync für Philips-Hue-Lampen unter Linux
 
+> [!WARNING]
+> **KI-gestütztes Projekt, keine Gewähr, keine Haftung.**
+> Lightspill wird mit Hilfe von KI entwickelt: Die Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) nach den Vorgaben des Maintainers geschrieben; geprüft und getestet sind sie nur auf dem unten beschriebenen System. Die Nutzung erfolgt auf eigenes Risiko. Die Software wird ohne jede Gewährleistung bereitgestellt, und soweit gesetzlich zulässig übernimmt der Maintainer keine Haftung für Schäden oder sonstige Folgen ihrer Nutzung. Es besteht keine Pflicht zu Support, Wartung, Updates oder Fehlerbehebungen. Siehe auch die Abschnitte 15 und 16 der [GPLv3](LICENSE.txt).
+
 <p align="center">
   <img src="assets/logo.svg" alt="Lightspill-Logo" width="192" height="192">
 </p>
