@@ -200,6 +200,14 @@ namespace Huenicorn::Core
     Config::Scenes scenes() const;
 
 
+    /**
+     * @brief Returns the language of the user interfaces
+     *
+     * @return std::string "auto" (system language), "en" or "de"
+     */
+    std::string language() const;
+
+
     // Setters
     /**
      * @brief Sets the current entertainment configuration
@@ -367,6 +375,17 @@ namespace Huenicorn::Core
      */
     bool deleteScene(
       const std::string& name
+    );
+
+
+    /**
+     * @brief Sets the language of the user interfaces
+     *
+     * @param language "auto" (system language), "en" or "de"
+     * @return true The language is supported
+     */
+    bool setLanguage(
+      const std::string& language
     );
 
 

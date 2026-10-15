@@ -9,6 +9,8 @@
 
 #include <Huenicorn/Version.hpp>
 
+#include "Texts.hpp"
+
 
 namespace Huenicorn::Gui
 {
@@ -131,38 +133,50 @@ namespace Huenicorn::Gui
 
   void DesktopApp::_buildMenu()
   {
-    QAction* openAction = m_menu.addAction(QIcon::fromTheme("window-new"), "Open");
-    connect(openAction, &QAction::triggered, this, &DesktopApp::showWindow);
-    m_menu.setDefaultAction(openAction);
+    m_openAction = m_menu.addAction(QIcon::fromTheme("window-new"), QString());
+    connect(m_openAction, &QAction::triggered, this, &DesktopApp::showWindow);
+    m_menu.setDefaultAction(m_openAction);
 
     m_menu.addSeparator();
 
-    m_syncAction = m_menu.addAction("Sync with screen and sound");
+    m_syncAction = m_menu.addAction(QString());
     m_syncAction->setCheckable(true);
     connect(m_syncAction, &QAction::triggered, this, [this](bool checked){
       _request("PUT", "/api/setSyncEnabled", checked ? "true" : "false", [this](const QJsonObject&){_refresh();});
     });
 
-    m_scenesMenu = m_menu.addMenu(QIcon::fromTheme("color-management"), "Static scene");
+    m_scenesMenu = m_menu.addMenu(QIcon::fromTheme("color-management"), QString());
 
-    m_previewAction = m_menu.addAction(QIcon::fromTheme("media-playback-start"), "Preview settings");
+    m_previewAction = m_menu.addAction(QIcon::fromTheme("media-playback-start"), QString());
     connect(m_previewAction, &QAction::triggered, this, [this](){
       // Stops a running preview, starts one otherwise
       const QByteArray method = m_previewRunning ? "DELETE" : "POST";
       _request(method, "/api/preview", "null", [this](const QJsonObject&){_refresh();});
     });
 
-    m_startServiceAction = m_menu.addAction(QIcon::fromTheme("system-run"), "Start service");
+    m_startServiceAction = m_menu.addAction(QIcon::fromTheme("system-run"), QString());
     m_startServiceAction->setVisible(false);
     connect(m_startServiceAction, &QAction::triggered, this, &DesktopApp::_startService);
 
     m_menu.addSeparator();
 
-    QAction* quitAction = m_menu.addAction(QIcon::fromTheme("application-exit"), "Close tray icon");
-    quitAction->setToolTip("The lamps keep running: the service is independent from this application");
-    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    m_quitAction = m_menu.addAction(QIcon::fromTheme("application-exit"), QString());
+    connect(m_quitAction, &QAction::triggered, qApp, &QApplication::quit);
 
     connect(&m_menu, &QMenu::aboutToShow, this, &DesktopApp::_refresh);
+
+    _retranslate();
+  }
+
+
+  void DesktopApp::_retranslate()
+  {
+    m_openAction->setText(Texts::tr("Open"));
+    m_syncAction->setText(Texts::tr("Sync with screen and sound"));
+    m_scenesMenu->setTitle(Texts::tr("Static scene"));
+    m_previewAction->setText(Texts::tr(m_previewRunning ? "Stop preview" : "Preview settings"));
+    m_startServiceAction->setText(Texts::tr("Start service"));
+    m_quitAction->setText(Texts::tr("Close tray icon"));
   }
 
 
@@ -174,18 +188,24 @@ namespace Huenicorn::Gui
 
   void DesktopApp::_updateLightMode(const QJsonObject& lightMode)
   {
+    // The language is shared with the web UI, which can change it
+    if(Texts::setLanguage(lightMode.value("language").toString())){
+      _retranslate();
+    }
+
     m_previewRunning = lightMode.value("previewRemaining").toDouble() > 0.;
-    m_previewAction->setText(m_previewRunning ? "Stop preview" : "Preview settings");
+    m_previewAction->setText(Texts::tr(m_previewRunning ? "Stop preview" : "Preview settings"));
     m_previewAction->setIcon(QIcon::fromTheme(m_previewRunning ? "media-playback-stop" : "media-playback-start"));
 
     const bool syncEnabled = lightMode.value("syncEnabled").toBool();
     m_syncAction->setChecked(syncEnabled);
-    m_tray.setToolTip(QString("%1\n%2").arg(AppName, syncEnabled ? "Sync on" : "Static scene"));
+    m_tray.setToolTip(QString("%1\n%2").arg(AppName, Texts::tr(syncEnabled ? "Sync on" : "Static scene")));
 
     m_scenesMenu->clear();
 
     auto addScene = [this](const QString& name, bool builtin){
-      QAction* action = m_scenesMenu->addAction(name);
+      // Built-in scene names are translated, saved ones are the user's
+      QAction* action = m_scenesMenu->addAction(builtin ? Texts::tr(name) : name);
       connect(action, &QAction::triggered, this, [this, name, builtin](){
         const QJsonObject scene{{"name", name}, {"builtin", builtin}};
         _request("PUT", "/api/applyScene", QJsonDocument(scene).toJson(QJsonDocument::Compact), [this](const QJsonObject&){_refresh();});
@@ -198,7 +218,7 @@ namespace Huenicorn::Gui
 
     const QJsonObject savedScenes = lightMode.value("scenes").toObject();
     if(!savedScenes.isEmpty()){
-      m_scenesMenu->addSection("My scenes");
+      m_scenesMenu->addSection(Texts::tr("My scenes"));
       for(const QString& name : savedScenes.keys()){
         addScene(name, false);
       }
@@ -214,7 +234,7 @@ namespace Huenicorn::Gui
     m_startServiceAction->setVisible(!reachable);
 
     if(!reachable){
-      m_tray.setToolTip(QString("%1\nService not running").arg(AppName));
+      m_tray.setToolTip(QString("%1\n%2").arg(AppName, Texts::tr("Service not running")));
     }
   }
 

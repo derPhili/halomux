@@ -90,6 +90,10 @@ namespace Huenicorn::Serialization
         jsonConfigData["scenes"] = *configData.scenes;
       }
 
+      if(configData.language.has_value()){
+        jsonConfigData["language"] = *configData.language;
+      }
+
       if(configData.boundBackendIP.has_value()){
         jsonConfigData["boundBackendIP"] = *configData.boundBackendIP;
       }
@@ -171,6 +175,10 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("scenes")){
         configData.scenes = jsonConfigData.at("scenes").get<Huenicorn::Core::Config::Scenes>();
+      }
+
+      if(jsonConfigData.contains("language")){
+        configData.language = jsonConfigData.at("language");
       }
 
       if(jsonConfigData.contains("restoreToken")){

@@ -97,6 +97,8 @@ Die Anwendung zeigt die Weboberfläche in einem eigenen Fenster (Qt WebEngine), 
 * Linksklick: Fenster öffnen oder schließen
 * Rechtsklick: Sync an/aus, statische Szenen (eingebaute und eigene), Preview, Dienst starten (wenn er nicht läuft)
 
+Oberfläche und Tray gibt es auf Deutsch und Englisch. Standard ist die Systemsprache, sonst Englisch; unten rechts in der Oberfläche lässt sich die Sprache fest einstellen, das Tray übernimmt sie.
+
 Das Fenster zu schließen beendet nur das Fenster, das Tray-Icon bleibt. „Close tray icon“ beendet die Anwendung; die Lampen laufen trotzdem weiter, denn sie steuert allein der Dienst. Ein erneuter Start holt das Fenster der laufenden Instanz nach vorn. Läuft der Dienst beim Start der Anwendung nicht, startet sie ihn.
 
 ### Programm ausführen
@@ -200,6 +202,7 @@ Diese Datei enthält Parameter, die nach der Ersteinrichtung von Hand geändert 
 * **brightness**: (Float) Globale Helligkeit aller Lampen, zwischen 0 und 1 (in der Weboberfläche 0–100 %). Wirkt nach Gamma und Glättung wie ein Dimmer
 * **audioReactive**: (Boolean) Ob zusätzlich der PC-Sound Lichtblitze auslöst (Schalter „React to sound“). Hue Desktop Sync hört dafür über Pipewire den Monitor des Standard-Ausgabegeräts mit (kein Mikrofon) und erkennt Transienten: Liegt die Energie eines Audiopuffers mehr als 6 dB über dem Mittel der letzten ~0,5 s, löst das aus, ab 12 dB voll. Gleichmäßig laute Musik löst daher nicht ständig aus, Leises unter −50 dBFS nie. Linker und rechter Kanal werden nach der horizontalen Position des Lampenbereichs verteilt. Bild und Sound wirken zusammen, der stärkere Auslöser gewinnt; die Stärke kommt von `highlightBoost`
 * **highlightBoost**: (Float) Stärke der Lichtblitze bei plötzlich heller werdenden Bildbereichen (Explosionen, Blitze, Schnitte in helle Szenen), zwischen 0 (aus) und 1 (in der Weboberfläche 0–100 %). Steigt die ungeglättete Helligkeit im Bereich einer Lampe von einem Bild zum nächsten um mehr als 5 %, geht die Lampe sofort einen Teil des Weges zur vollen Helligkeit (bei einem Sprung ab 30 % genau um den eingestellten Anteil) und klingt mit einer Zeitkonstante von 250 ms ab. Verdunkeln und reine Farbwechsel lösen nichts aus. Wirkt pro Lampe und nach der Glättung. Voreinstellungen in der Weboberfläche: Subtle (20 %), Moderate (40 %), High (60 %), Intense (85 %)
+* **language**: (String) Sprache von Weboberfläche und Desktop-Anwendung: `auto` (Systemsprache; Englisch, wenn sie weder Deutsch noch Englisch ist), `de` oder `en`. Umschaltbar unten rechts in der Oberfläche
 * **syncEnabled**: (Boolean) Ob die Lampen Bildschirm und Sound folgen (`true`) oder die statischen Farben zeigen (Schalter „Sync“)
 * **staticColors**: (Objekt) Statische Farbe je Kanal-ID im Format `#rrggbb`, z. B. `{"0": "#ff5e3a", "1": "#ffaa3c"}`. Kanäle ohne Eintrag leuchten warmweiß
 * **scenes**: (Objekt) Gespeicherte Szenen: Name → Farben im Format von `staticColors`

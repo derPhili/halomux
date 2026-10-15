@@ -163,9 +163,9 @@ class ScreenWidget
 {
   static Legends = {
     none : "",
-    noChannel : "There are currently no available channels. Please register them through official application.",
-    pleaseDrag : "Drag and and drop channel from 'inactive' to 'active' box to manage it.",
-    pleaseSelect : "Select an active channel to manage"
+    noChannel : "There are no lamps in this entertainment area. Add them in the Hue app.",
+    pleaseDrag : "Drag a lamp from Available to Active to drive it.",
+    pleaseSelect : "Select an active lamp to edit its region"
   };
 
 
@@ -229,7 +229,7 @@ class ScreenWidget
 
 
   setLegend(legendFlag){
-    this.legendText.innerHTML = legendFlag;
+    this.legendText.textContent = legendFlag ? t(legendFlag) : "";
   }
 
 
@@ -332,7 +332,7 @@ class ScreenWidget
       rectNode.classList.add("previewRegion");
 
       let titleNode = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      titleNode.textContent = `${activeChannel.formatMembers()}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it`;
+      titleNode.textContent = t("{lamp}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it", {lamp : activeChannel.formatMembers()});
       rectNode.appendChild(titleNode);
       rectNode.style.fill = this.regionColors[activeChannelId] || ScreenWidget.IdleRegionFill;
       this.previewRegions[activeChannelId] = rectNode;

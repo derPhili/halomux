@@ -722,7 +722,7 @@ input[type=color]::-webkit-color-swatch
 
 .sceneGrid:empty::before
 {
-  content: "No saved scene yet";
+  content: attr(data-empty);
   grid-column: 1 / -1;
   color: var(--textFaint);
   font-size: 12px;
@@ -973,9 +973,30 @@ input[type=color]::-webkit-color-swatch
 }
 
 
-#versionSection
+/* Hidden until the texts are translated, so the page doesn't flash in English */
+body.i18nPending
+{
+  visibility: hidden;
+}
+
+
+.languageField
 {
   margin-left: auto;
+}
+
+
+.languageField select
+{
+  width: auto;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+
+#versionSection
+{
   color: var(--textFaint);
   font-size: 12px;
 }

@@ -9,6 +9,7 @@
 #include <Huenicorn/Version.hpp>
 
 #include "DesktopApp.hpp"
+#include "Texts.hpp"
 
 using namespace Huenicorn;
 
@@ -16,18 +17,33 @@ using namespace Huenicorn;
 namespace
 {
   /**
-   * @brief Returns the address of the service's web UI, from its configuration file
+   * @brief Returns the configuration of the service
    *
+   * @return QJsonObject Content of its configuration file, empty if it can't be read
+   */
+  QJsonObject serviceConfig()
+  {
+    QFile configFile(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + AppId + "/config.json");
+    if(!configFile.open(QIODevice::ReadOnly)){
+      return {};
+    }
+
+    return QJsonDocument::fromJson(configFile.readAll()).object();
+  }
+
+
+  /**
+   * @brief Returns the address of the service's web UI
+   *
+   * @param config Configuration of the service
    * @return QUrl Web UI address
    */
-  QUrl serviceUrl()
+  QUrl serviceUrl(const QJsonObject& config)
   {
     QString address = "127.0.0.1";
     int port = 8215;
 
-    QFile configFile(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + AppId + "/config.json");
-    if(configFile.open(QIODevice::ReadOnly)){
-      const QJsonObject config = QJsonDocument::fromJson(configFile.readAll()).object();
+    if(!config.isEmpty()){
       port = config.value("restServerPort").toInt(port);
 
       // A service bound to every interface also answers locally
@@ -70,7 +86,10 @@ int main(int argc, char* argv[])
 
   const bool showWindow = !parser.isSet(trayOption);
 
-  Gui::DesktopApp desktopApp(serviceUrl());
+  const QJsonObject config = serviceConfig();
+  Gui::Texts::setLanguage(config.value("language").toString("auto"));
+
+  Gui::DesktopApp desktopApp(serviceUrl(config));
   if(!desktopApp.claimInstance(showWindow)){
     // The running instance shows its window
     return 0;

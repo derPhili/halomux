@@ -6,6 +6,8 @@
 
 #include <Huenicorn/Version.hpp>
 
+#include "Texts.hpp"
+
 
 namespace Huenicorn::Gui
 {
@@ -14,13 +16,14 @@ namespace Huenicorn::Gui
     // Interval between connection attempts while the service doesn't answer [ms]
     constexpr int RetryInterval = 3000;
 
+    // %1: title, %2: explanation
     const char* UnreachableNotice = R"(<!DOCTYPE html>
 <html>
   <body style="margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
                background: #0e1014; color: #9097a4; font: 14px system-ui, sans-serif; text-align: center;">
     <div>
-      <p style="color: #e7e9ee; font-size: 16px; margin-bottom: 8px;">The service isn't running</p>
-      <p>Start it from the tray menu. This window connects as soon as it answers.</p>
+      <p style="color: #e7e9ee; font-size: 16px; margin-bottom: 8px;">%1</p>
+      <p>%2</p>
     </div>
   </body>
 </html>)";
@@ -69,6 +72,9 @@ namespace Huenicorn::Gui
   void MainWindow::_showUnreachable()
   {
     m_showingNotice = true;
-    setHtml(UnreachableNotice);
+    setHtml(QString(UnreachableNotice).arg(
+      Texts::tr("The service isn't running").toHtmlEscaped(),
+      Texts::tr("Start it from the tray menu. This window connects as soon as it answers.").toHtmlEscaped()
+    ));
   }
 }

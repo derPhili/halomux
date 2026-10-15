@@ -105,6 +105,10 @@ class WebUI
     
     this.cancelStopButton = document.getElementById("cancelStopButton");
     this.cancelStopButton.addEventListener("click", () => {this.overlay.style.display = "none";});
+
+    this.languageSelectNode = document.getElementById("languageSelect");
+    this.languageSelectNode.value = I18n.setting;
+    this.languageSelectNode.addEventListener("change", (event) => {I18n.setLanguage(event.target.value);});
   }
 
 
@@ -286,8 +290,8 @@ class WebUI
     entryNode.replaceChildren(swatch, name, id);
 
     entryNode.title = channel.node
-      ? `${channel.formatMembers()}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it`
-      : `${channel.formatMembers()}: not driven. Drag to Active to have it follow the screen`;
+      ? t("{lamp}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it", {lamp : channel.formatMembers()})
+      : t("{lamp}: not driven. Drag to Active to have it follow the screen", {lamp : channel.formatMembers()});
   }
 
 
@@ -338,8 +342,13 @@ class WebUI
     this.refreshRateInputNode.value = displayInfo.selectedRefreshRate;
     this.refreshRateInputNode.max = displayInfo.maxRefreshRate;
 
-    let limitedBy = (displayInfo.maxRefreshRate < displayInfo.displayRefreshRate) ? "Hue bridge limit" : "display refresh rate";
-    this.refreshRateLimitNode.textContent = `(max ${displayInfo.maxRefreshRate} Hz: ${limitedBy}. Display: ${displayInfo.displayRefreshRate} Hz, bridge: ${displayInfo.bridgeMaxRefreshRate} Hz)`;
+    let limitedBy = t((displayInfo.maxRefreshRate < displayInfo.displayRefreshRate) ? "Hue bridge limit" : "display refresh rate");
+    this.refreshRateLimitNode.textContent = t("(max {max} Hz: {limitedBy}. Display: {display} Hz, bridge: {bridge} Hz)", {
+      max : displayInfo.maxRefreshRate,
+      limitedBy : limitedBy,
+      display : displayInfo.displayRefreshRate,
+      bridge : displayInfo.bridgeMaxRefreshRate
+    });
     this.transitionSmoothingInputNode.value = displayInfo.selectedTransitionSmoothing;
     this.transitionSmoothingLabelNode.textContent = Math.round(displayInfo.selectedTransitionSmoothing);
     this._highlightSmoothingPreset(displayInfo.selectedTransitionSmoothing);
@@ -375,7 +384,7 @@ class WebUI
   _refreshProcessingInfo()
   {
     if(!this.syncEnabled){
-      this.processingInfoNode.textContent = "Capture paused · static scene";
+      this.processingInfoNode.textContent = t("Capture paused · static scene");
       this.statusDotNode.classList.remove("gpu", "cpu");
       return;
     }
@@ -451,7 +460,7 @@ class WebUI
 
   _setEntertainmentConfiguration(entertainmentConfigurationId)
   {
-    this._showLoading(true, "Switching configuration...");
+    this._showLoading(true, t("Switching configuration..."));
     let promise = RequestUtils.put("/api/setEntertainmentConfiguration", JSON.stringify(entertainmentConfigurationId));
 
     promise.then((entertainmentConfigurationData) => {
@@ -496,8 +505,8 @@ class WebUI
       let running = left > 0;
 
       this.previewButton.classList.toggle("running", running);
-      this.previewButton.textContent = running ? `Stop preview · ${left} s` : "Preview";
-      this.previewButton.title = running ? "Stops the preview: the lamps go back to the screen or the static scene" : this.previewButtonTitle;
+      this.previewButton.textContent = running ? t("Stop preview · {left} s", {left : left}) : t("Preview");
+      this.previewButton.title = running ? t("Stops the preview: the lamps go back to the screen or the static scene") : this.previewButtonTitle;
 
       if(!running){
         this.previewEnd = null;
@@ -662,7 +671,7 @@ class WebUI
       this.overlay.style.display = "block";
       loadingInfoSectionNode.style.display = "block";
       if(loadingText !== null){
-        document.getElementById("loadingTextInfo").innerHTML = loadingText;
+        document.getElementById("loadingTextInfo").textContent = loadingText;
       }
     }
     else{
