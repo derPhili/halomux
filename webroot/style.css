@@ -288,7 +288,8 @@ button:focus-visible, select:focus-visible, input:focus-visible
 
 button:disabled
 {
-  cursor: default;
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 
@@ -1043,6 +1044,40 @@ body.i18nPending
 }
 
 
+/* The notice to accept is longer than the other dialogs */
+#overlay.notice .overlayContent
+{
+  width: min(560px, calc(100vw - 32px));
+  text-align: left;
+}
+
+
+#noticeSection
+{
+  flex-direction: column;
+}
+
+
+#notice
+{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+
+#noticeSection #notice
+{
+  margin-bottom: 18px;
+}
+
+
+#noticeSection #notice p
+{
+  margin-bottom: 0;
+}
+
+
 /* Setup */
 
 .setupPage
@@ -1159,6 +1194,45 @@ body.i18nPending
 }
 
 
+/* Notice to accept before the setup */
+
+.noticeBox
+{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(240, 180, 90, 0.45);
+  border-radius: var(--radiusSmall);
+  background: rgba(240, 180, 90, 0.08);
+}
+
+
+.noticeBox strong
+{
+  color: var(--warning);
+}
+
+
+.noticeAcceptance
+{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+
+.noticeAcceptance input
+{
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+
 /* Searching for bridges */
 
 .bridgeSearch
@@ -1221,9 +1295,12 @@ body.i18nPending
 }
 
 
+/* Found entertainment areas are shown as selected, not as unavailable */
 .choice:disabled
 {
   color: var(--text);
+  opacity: 1;
+  cursor: default;
 }
 
 

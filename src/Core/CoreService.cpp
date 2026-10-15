@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <format>
 #include <fstream>
 #include <iomanip>
 #include <optional>
@@ -15,6 +16,7 @@
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
 #include <Huenicorn/Serialization/JsonSerializer.hpp>
 #include <Huenicorn/Serialization/Credentials.hpp>
+#include <Huenicorn/Core/Notice.hpp>
 #include <Huenicorn/Core/PreviewSequence.hpp>
 #include <Huenicorn/Core/Scenes.hpp>
 #include <Huenicorn/Core/Runtime.hpp>
@@ -461,6 +463,20 @@ namespace Huenicorn::Core
 
     m_config.setLanguage(language);
     return true;
+  }
+
+
+  void CoreService::acceptNotice()
+  {
+    const auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+    m_config.setNoticeAccepted({.version = NoticeVersion, .at = std::format("{:%FT%TZ}", now)});
+  }
+
+
+  bool CoreService::noticeAccepted() const
+  {
+    const auto acceptance = m_config.noticeAccepted();
+    return acceptance.has_value() && acceptance->version >= NoticeVersion;
   }
 
 

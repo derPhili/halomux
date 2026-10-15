@@ -28,8 +28,11 @@
             <li>Access to the bridge, to press its button</li>
             <li>The Hue app, to set up an entertainment area with your lamps</li>
           </ul>
+
+          <div id="notice"></div>
+
           <div class="buttonRow">
-            <button class="primary" data-action="next">Get started</button>
+            <button class="primary" id="getStartedButton" disabled title="Confirm that you read the notice first">Get started</button>
             <button data-action="abort">Cancel setup</button>
           </div>
         </div>
@@ -163,6 +166,7 @@
     <script src="Utils.js"></script>
     <script src="I18n.js"></script>
     <script src="Version.js"></script>
+    <script src="Notice.js"></script>
     <script src="Setup.js"></script>
   </body>
 </html>

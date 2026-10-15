@@ -25,6 +25,14 @@ namespace Huenicorn::Core
     // Static colors saved by the user, by name
     using Scenes = std::map<std::string, StaticColors>;
 
+    // Acceptance of the notice about AI assistance and the missing warranty (see Notice.hpp)
+    struct NoticeAcceptance
+    {
+      unsigned version{0};
+      // Time of the acceptance, UTC ISO 8601
+      std::string at;
+    };
+
     struct Data
     {
       std::optional<unsigned> restServerPort;
@@ -44,6 +52,7 @@ namespace Huenicorn::Core
       std::optional<StaticColors> staticColors{StaticColors{}};
       std::optional<Scenes> scenes{Scenes{}};
       std::optional<std::string> language{"auto"};
+      std::optional<NoticeAcceptance> noticeAccepted;
       std::optional<std::string> restoreToken;
     };
 
@@ -347,6 +356,24 @@ namespace Huenicorn::Core
     */
     void setLanguage(
       const std::string& language
+    );
+
+
+    /**
+     * @brief Returns the last acceptance of the notice
+     *
+     * @return std::optional<NoticeAcceptance> Acceptance, empty if the notice was never accepted
+    */
+    std::optional<NoticeAcceptance> noticeAccepted() const;
+
+
+    /**
+     * @brief Registers that the user accepted a version of the notice
+     *
+     * @param acceptance Version of the notice and time of the acceptance
+    */
+    void setNoticeAccepted(
+      const NoticeAcceptance& acceptance
     );
 
 

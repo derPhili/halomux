@@ -122,6 +122,8 @@ class WebUI
 
   initUI()
   {
+    this._checkNotice();
+
     let channelsPromise = RequestUtils.get("/api/channels");
     channelsPromise.then((data) => {this._refreshChannelsLists(data);});
     channelsPromise.catch((error) => {log(error);});
@@ -662,6 +664,43 @@ class WebUI
   _saveProfile()
   {
     RequestUtils.post("/api/saveProfile", JSON.stringify(null), (data) => {log("Saved profile");});
+  }
+
+
+  // Until the current version of the notice is accepted, it covers the light manager
+  _checkNotice()
+  {
+    RequestUtils.get("/api/notice")
+    .then((data) => {
+      if(!data.accepted){
+        this._showNotice();
+      }
+    })
+    .catch((error) => {log(error);});
+  }
+
+
+  _showNotice()
+  {
+    let section = document.getElementById("noticeSection");
+    let acceptButton = document.getElementById("acceptNoticeButton");
+
+    Notice.render(document.getElementById("notice"), (confirmed) => {acceptButton.disabled = !confirmed;});
+    acceptButton.onclick = () => {
+      RequestUtils.put("/api/acceptNotice", JSON.stringify(null))
+      .then((data) => {
+        if(data.accepted){
+          section.style.display = "none";
+          this.overlay.classList.remove("notice");
+          this.overlay.style.display = "none";
+        }
+      })
+      .catch((error) => {log(error);});
+    };
+
+    this.overlay.classList.add("notice");
+    this.overlay.style.display = "block";
+    section.style.display = "block";
   }
 
 

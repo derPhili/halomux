@@ -94,6 +94,13 @@ namespace Huenicorn::Serialization
         jsonConfigData["language"] = *configData.language;
       }
 
+      if(configData.noticeAccepted.has_value()){
+        jsonConfigData["noticeAccepted"] = {
+          {"version", configData.noticeAccepted->version},
+          {"at", configData.noticeAccepted->at}
+        };
+      }
+
       if(configData.boundBackendIP.has_value()){
         jsonConfigData["boundBackendIP"] = *configData.boundBackendIP;
       }
@@ -179,6 +186,14 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("language")){
         configData.language = jsonConfigData.at("language");
+      }
+
+      if(jsonConfigData.contains("noticeAccepted")){
+        const Json& jsonAcceptance = jsonConfigData.at("noticeAccepted");
+        configData.noticeAccepted = Huenicorn::Core::Config::NoticeAcceptance{
+          .version = jsonAcceptance.value("version", 0u),
+          .at = jsonAcceptance.value("at", std::string{})
+        };
       }
 
       if(jsonConfigData.contains("restoreToken")){

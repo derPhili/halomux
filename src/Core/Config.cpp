@@ -286,6 +286,23 @@ namespace Huenicorn::Core
   }
 
 
+  std::optional<Config::NoticeAcceptance> Config::noticeAccepted() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().noticeAccepted;
+  }
+
+
+  void Config::setNoticeAccepted(
+    const NoticeAcceptance& acceptance
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().noticeAccepted = acceptance;
+    _save();
+  }
+
+
   bool Config::deleteScene(
     const std::string& name
   )
@@ -328,6 +345,7 @@ namespace Huenicorn::Core
       .staticColors = StaticColors{},
       .scenes = Scenes{},
       .language = "auto",
+      .noticeAccepted = std::nullopt,
       .restoreToken = std::nullopt
     };
 

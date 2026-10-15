@@ -2,6 +2,10 @@
 
 Bildschirm- und Sound-Sync für Philips-Hue-Lampen unter Linux
 
+> [!WARNING]
+> **KI-gestütztes Projekt, keine Gewähr, keine Haftung.**
+> Lightspill wird mit Hilfe von KI entwickelt: Die Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) nach den Vorgaben des Maintainers geschrieben; geprüft und getestet sind sie nur auf dem unten beschriebenen System. Der Maintainer ist nicht verantwortlich für den Code, seine Richtigkeit oder Sicherheit und nicht für die Folgen seiner Nutzung. Die Nutzung erfolgt auf eigenes Risiko. Die Software wird ohne jede Gewährleistung bereitgestellt, und soweit gesetzlich zulässig übernimmt der Maintainer keine Haftung für Schäden oder sonstige Folgen ihrer Nutzung. Es besteht keine Pflicht zu Support, Wartung, Updates oder Fehlerbehebungen. Siehe auch die Abschnitte 15 und 16 der [GPLv3](LICENSE.txt).
+
 <p align="center">
   <img src="assets/logo.svg" alt="Lightspill-Logo" width="192" height="192">
 </p>
@@ -37,7 +41,7 @@ Es ist ein Fork von [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) von
 
 ### Getestet auf
 
-Lightspill wird unter CachyOS mit KDE Plasma (Wayland) und einer NVIDIA-Grafikkarte (proprietärer Treiber) entwickelt und getestet. Der GPU-Pfad nutzt nur herstellerneutrale EGL-Erweiterungen und sollte mit AMD- und Intel-Grafik (Mesa) funktionieren, das ist aber noch nicht getestet. Ohne nutzbare GPU werden die Bilder auf der CPU verarbeitet. Rückmeldungen zu anderen Systemen sind willkommen.
+Lightspill wird unter CachyOS mit KDE Plasma (Wayland) und einer NVIDIA-Grafikkarte (proprietärer Treiber) entwickelt und getestet. Der GPU-Pfad nutzt nur herstellerneutrale EGL-Erweiterungen und sollte mit AMD- und Intel-Grafik (Mesa) funktionieren, das ist aber noch nicht getestet. Ohne nutzbare GPU werden die Bilder auf der CPU verarbeitet: Dieser Weg ist getestet, indem er mit `LIGHTSPILL_DISABLE_GPU=1` erzwungen wird, und braucht etwa 8 % eines Kerns statt etwa 3 %. Rückmeldungen zu anderen Systemen sind willkommen.
 
 ## Installation
 
@@ -95,10 +99,11 @@ Optionen:
 
 Starte „Lightspill“ aus dem Startmenü. Solange keine Bridge gekoppelt ist, führt ein Einrichtungsassistent durch:
 
-1. **Bridge finden**: Sie wird automatisch gesucht (über den Discovery-Dienst von Philips, braucht Internet), oder du gibst ihre IP-Adresse ein
-2. **Koppeln**: Drücke den runden Knopf oben auf der Bridge. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist
-3. **Entertainment-Bereich**: Der Assistent prüft, ob einer existiert, und erklärt sonst, wie du ihn in der Hue-App anlegst
-4. **Bildschirmauswahl**: Der Desktop fragt, welchen Bildschirm Lightspill aufnehmen darf. Erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
+1. **Hinweis**: bestätigen, dass du den Hinweis zu KI-Unterstützung und fehlender Gewährleistung gelesen hast
+2. **Bridge finden**: Sie wird automatisch gesucht (über den Discovery-Dienst von Philips, braucht Internet), oder du gibst ihre IP-Adresse ein
+3. **Koppeln**: Drücke den runden Knopf oben auf der Bridge. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist
+4. **Entertainment-Bereich**: Der Assistent prüft, ob einer existiert, und erklärt sonst, wie du ihn in der Hue-App anlegst
+5. **Bildschirmauswahl**: Der Desktop fragt, welchen Bildschirm Lightspill aufnehmen darf. Erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
 
 Danach in der Lichtsteuerung die Lampen von „Verfügbar“ nach „Aktiv“ ziehen, eine Lampe auswählen und den Bildschirmbereich anpassen, dem sie folgt, und das Profil speichern.
 
@@ -110,6 +115,8 @@ Die Lampen steuert ein Dienst (systemd-User-Unit `lightspill.service`). Die Desk
 * Rechtsklick: Sync an/aus, statische Szenen, Vorschau, Dienst starten (wenn er nicht läuft)
 
 Das Fenster zu schließen lässt das Tray-Icon stehen. Das Tray-Icon zu schließen lässt die Lampen weiterlaufen: Sie steuert allein der Dienst. Ein erneuter Start holt das laufende Fenster nach vorn.
+
+Auf Desktops ohne Systemabschnitt (Tray), etwa GNOME ohne eine Erweiterung wie AppIndicator, beendet das Schließen des Fensters die Anwendung, und das beim Login gestartete Tray gibt nach 30 Sekunden auf. Die Lampen laufen in beiden Fällen weiter.
 
 Ausgaben des Dienstes:
 
@@ -165,6 +172,7 @@ Die meisten Werte änderst du in der Lichtsteuerung. Von Hand lassen sich alle b
 * **staticColors**: (Objekt) statische Farbe je Kanal-ID, als `#rrggbb`
 * **scenes**: (Objekt) gespeicherte Szenen: Name → Farben wie in `staticColors`
 * **language**: (String) `auto` (Systemsprache, Englisch, wenn sie weder Deutsch noch Englisch ist), `en` oder `de`
+* **noticeAccepted**: (Objekt) welche Fassung (**version**) des Hinweises zu KI-Unterstützung und fehlender Gewährleistung bestätigt wurde und wann (**at**, UTC). Ändert sich der Hinweis, steigt seine Version, und die Lichtsteuerung bittet erneut um Zustimmung
 
 ### profile.json
 

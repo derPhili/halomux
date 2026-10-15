@@ -109,6 +109,14 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Put, "/api/acceptNotice", [this](const Request& /*req*/, Response& res){
+      m_coreService->acceptNotice();
+
+      res.contentType = "application/json";
+      res.body = Serialization::Json{{"succeeded", true}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Put, "/api/validateBridgeAddress", [this](const Request& req, Response& res){
       const std::string& data = req.body;
       Serialization::Json jsonBridgeAddressData = Serialization::Json::parse(data);

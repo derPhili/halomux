@@ -2,6 +2,10 @@
 
 Screen and sound sync for Philips Hue lamps on Linux
 
+> [!WARNING]
+> **AI-assisted project, no warranty, no liability.**
+> Lightspill is developed with the help of AI: the changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) under the maintainer's direction, and reviewed and tested only on the setup described below. The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use. Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes. See also sections 15 and 16 of the [GPLv3](LICENSE.txt).
+
 <p align="center">
   <img src="assets/logo.svg" alt="Lightspill logo" width="192" height="192">
 </p>
@@ -37,7 +41,7 @@ It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by Open
 
 ### Tested on
 
-Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU. Reports about other setups are welcome.
+Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU: this path is tested by forcing it with `LIGHTSPILL_DISABLE_GPU=1`, and takes about 8% of a core instead of about 3%. Reports about other setups are welcome.
 
 ## Installation
 
@@ -95,10 +99,11 @@ Options:
 
 Start "Lightspill" from the application menu. As long as no bridge is paired, a setup wizard guides you through:
 
-1. **Finding the bridge**: it is searched automatically (through the Philips discovery service, which needs internet access), or you enter its IP address
-2. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
-3. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
-4. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
+1. **Notice**: confirm that you read the notice about AI assistance and the missing warranty
+2. **Finding the bridge**: it is searched automatically (through the Philips discovery service, which needs internet access), or you enter its IP address
+3. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
+4. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
+5. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
 
 Then, in the light manager, drag your lamps from "Available" to "Active", select a lamp to adjust the screen region it follows, and save the profile.
 
@@ -110,6 +115,8 @@ The lamps are driven by a service (systemd user unit `lightspill.service`). The 
 * Right click: sync on/off, static scenes, preview, start the service if it isn't running
 
 Closing the window keeps the tray icon. Closing the tray icon keeps the lamps running: only the service drives them. Starting the application again brings the running window to the front.
+
+On desktops without a system tray (GNOME needs an extension such as AppIndicator), closing the window quits the application, and the tray started at login gives up after 30 seconds. The lamps keep running in both cases.
 
 Logs of the service:
 
@@ -165,6 +172,7 @@ Most values are changed from the light manager. All of them can be edited by han
 * **staticColors**: (object) static color per channel ID, as `#rrggbb`
 * **scenes**: (object) saved scenes: name → colors as in `staticColors`
 * **language**: (string) `auto` (system language, English if it's neither German nor English), `en` or `de`
+* **noticeAccepted**: (object) which **version** of the notice about AI assistance and the missing warranty was accepted, and when (**at**, UTC). When the notice changes, its version increases and the light manager asks to accept it again
 
 ### profile.json
 
