@@ -52,6 +52,18 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Get, "/api/language", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Serialization::Json{{"language", m_coreService->language()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Get, "/api/entertainmentAreas", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Serialization::Json{{"areas", m_coreService->bridgeEntertainmentAreas()}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Get, "/api/configFilePath", [this](const Request& /*req*/, Response& res){
       Serialization::Json jsonResponse = {{"configFilePath", m_coreService->configFilePath()}};
       std::string response = jsonResponse.dump();
@@ -86,6 +98,16 @@ namespace Huenicorn::Network::Http::Server
 
 
     // PUT METHODS
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setLanguage", [this](const Request& req, Response& res){
+      if(!m_coreService->setLanguage(Serialization::Json::parse(req.body).get<std::string>())){
+        res.status = 400;
+      }
+
+      res.contentType = "application/json";
+      res.body = Serialization::Json{{"language", m_coreService->language()}}.dump();
+    });
+
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/validateBridgeAddress", [this](const Request& req, Response& res){
       const std::string& data = req.body;

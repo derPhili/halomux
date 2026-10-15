@@ -8,101 +8,161 @@
     <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
   </head>
 
-  <body>
+  <body class="i18nPending">
     <header class="appHeader">
       <img src="logo.svg" class="appLogo" alt="">
       <h1>Philip's Hue Desktop Sync</h1>
-      <span class="hint" style="margin-left: auto;">Setup</span>
+      <span class="setupProgressLabel" id="progressLabel"></span>
     </header>
 
     <main class="setupPage">
-      <section class="card" id="setupSection">
-        <div class="step">
+      <div class="setupProgress"><div class="setupProgressBar" id="progressBar"></div></div>
+
+      <section class="card setupCard">
+        <!-- 1. Welcome -->
+        <div class="step" data-step="welcome">
           <h2>Welcome</h2>
-          <p>Philip's Hue Desktop Sync needs a quick initial setup to connect to your Hue bridge.</p>
+          <p>Philip's Hue Desktop Sync makes your Philips Hue lamps follow your screen. The setup takes about two minutes. You need:</p>
+          <ul class="checklist">
+            <li>A Hue bridge in the same network as this computer</li>
+            <li>Access to the bridge, to press its button</li>
+            <li>The Hue app, to set up an entertainment area with your lamps</li>
+          </ul>
           <div class="buttonRow">
-            <button class="primary" onclick="setupUI.incStep()">Get started</button>
-            <button onclick="setupUI.abort()">Abort</button>
+            <button class="primary" data-action="next">Get started</button>
+            <button data-action="abort">Cancel setup</button>
           </div>
         </div>
 
-        <div class="step">
-          <h2>Hue bridge</h2>
-          <p>Enter the address of your Hue bridge, or detect it automatically.</p>
+        <!-- 2. Bridge -->
+        <div class="step" data-step="bridge">
+          <h2>Find your bridge</h2>
+          <p>Pick your Hue bridge. If it isn't found, enter its IP address: the Hue app shows it under Settings → My Hue system → Bridge.</p>
+
+          <div class="bridgeSearch" id="bridgeSearch">
+            <span class="spinner"></span>
+            <span>Searching for bridges…</span>
+          </div>
+          <div class="choiceList" id="bridgeCandidates"></div>
+
           <div class="field">
             <label for="bridgeAddress">Bridge address</label>
-            <input type="text" id="bridgeAddress" placeholder="192.168.0.42"/>
+            <input type="text" id="bridgeAddress" placeholder="192.168.0.42" autocomplete="off"/>
           </div>
-          <p id="bridgeAddressErrorMessage" class="errorMessage"></p>
-
-          <div id="multipleBridgeSection" class="field" style="display: none">
-            <label for="bridgeCandidates">Several bridges were found, pick one (or enter it above)</label>
-            <select id="bridgeCandidates"></select>
-          </div>
+          <p id="bridgeAddressError" class="errorMessage"></p>
 
           <div class="buttonRow">
-            <button class="primary" onclick="setupUI.validateAddress()">Continue</button>
-            <button onclick="setupUI.autodetectBridge()">Auto-detect</button>
-            <button onclick="setupUI.abort()">Abort</button>
+            <button class="primary" id="validateAddressButton">Continue</button>
+            <button id="searchAgainButton">Search again</button>
+            <button data-action="back">Back</button>
           </div>
         </div>
 
-        <div class="step">
-          <h2>Credentials</h2>
-          <p>Managing the bridge requires credentials. If you already have some, enter them below.</p>
-          <div class="field">
-            <label for="username">Username</label>
-            <input type="text" id="username"/>
-          </div>
-          <div class="field">
-            <label for="clientkey">Client key</label>
-            <input type="text" id="clientkey"/>
-          </div>
-          <p id="credentialsErrorMessage" class="errorMessage"></p>
+        <!-- 3. Pairing -->
+        <div class="step" data-step="pairing">
+          <h2>Pair with the bridge</h2>
 
-          <div class="buttonRow">
-            <button class="primary" onclick="setupUI.validateCredentials()">Continue</button>
-            <button onclick="setupUI.incStep()">I don't have credentials yet</button>
-            <button onclick="setupUI.abort()">Abort</button>
-          </div>
-        </div>
+          <div class="pairing">
+            <svg class="bridgeIllustration" viewBox="0 0 120 120" aria-hidden="true">
+              <rect x="10" y="10" width="100" height="100" rx="26" class="bridgeBody"/>
+              <circle cx="60" cy="60" r="22" class="bridgeButtonRing"/>
+              <circle cx="60" cy="60" r="15" class="bridgeButton"/>
+              <circle cx="60" cy="60" r="15" class="bridgePulse"/>
+            </svg>
 
-        <div class="step">
-          <h2>Register a new user</h2>
-          <p>Press the central button on your Hue bridge. You then have one minute to register below.</p>
-          <p id="newUserErrorMessage" class="errorMessage"></p>
-
-          <div class="buttonRow">
-            <button class="primary" onclick="setupUI.registerNewUser()">Register new user</button>
-            <button onclick="setupUI.abort()">Abort</button>
-          </div>
-        </div>
-
-        <div id="finishSection" style="display: none;">
-          <h2>Ready</h2>
-          <p>The configuration file can be edited manually at<br/><a id="configFilePath"></a></p>
-          <p class="hint">The light manager is served at this page's address, you may want to bookmark it.</p>
-
-          <div id="refreshSection" style="display: none">
-            <div class="buttonRow">
-              <button class="primary" onclick="window.location.reload()">Open the light manager</button>
+            <div class="pairingText">
+              <p><strong>Press the round button on top of your Hue bridge now.</strong></p>
+              <p class="hint">The app pairs as soon as the button is pressed, you don't need to click anything here.</p>
+              <p class="pairingStatus" id="pairingStatus"></p>
             </div>
           </div>
+          <p id="pairingError" class="errorMessage"></p>
+
+          <details class="credentials">
+            <summary>I already have credentials for this bridge</summary>
+            <div class="field">
+              <label for="username">Username</label>
+              <input type="text" id="username" autocomplete="off"/>
+            </div>
+            <div class="field">
+              <label for="clientkey">Client key</label>
+              <input type="text" id="clientkey" autocomplete="off"/>
+            </div>
+            <p id="credentialsError" class="errorMessage"></p>
+            <div class="buttonRow">
+              <button id="validateCredentialsButton">Use these credentials</button>
+            </div>
+          </details>
+
+          <div class="buttonRow">
+            <button class="primary" id="retryPairingButton" style="display: none;">Try again</button>
+            <button data-action="back">Back</button>
+          </div>
         </div>
 
-        <div id="abortSection" style="display: none;">
-          <h2>Setup aborted</h2>
-          <p>You can restart the application at any time to run it again.</p>
+        <!-- 4. Entertainment area -->
+        <div class="step" data-step="area">
+          <h2>Entertainment area</h2>
+          <p>The lamps are driven through an entertainment area of the bridge, which you set up in the Hue app.</p>
+
+          <div class="choiceList" id="areaList"></div>
+
+          <div id="noAreaSection" style="display: none;">
+            <p class="errorMessage visible">No entertainment area was found yet.</p>
+            <ol class="instructions">
+              <li>Open the Hue app and go to Settings → Entertainment areas.</li>
+              <li>Add an area, for example "PC", and select the lamps around your screen.</li>
+              <li>Place the lamps where they stand relative to the screen.</li>
+            </ol>
+            <p class="hint">This page checks again every few seconds.</p>
+          </div>
+
+          <div class="buttonRow">
+            <button class="primary" id="areaContinueButton" data-action="next" disabled>Continue</button>
+            <button id="checkAreasButton">Check again</button>
+          </div>
+        </div>
+
+        <!-- 5. Ready -->
+        <div class="step" data-step="ready">
+          <h2>Ready</h2>
+          <p>Next, the desktop asks which screen the app may capture. Choose your monitor and allow it to be remembered, so you aren't asked again on every start.</p>
+          <p>Then, in the light manager:</p>
+          <ol class="instructions">
+            <li>Drag your lamps from Available to Active.</li>
+            <li>Select a lamp and adjust the part of the screen it follows.</li>
+            <li>Save the profile.</li>
+          </ol>
+          <p class="hint">Configuration file: <span id="configFilePath"></span></p>
+          <p class="pairingStatus" id="startingStatus"></p>
+
+          <div class="buttonRow">
+            <button class="primary" id="finishButton">Open the light manager</button>
+          </div>
+        </div>
+
+        <!-- Aborted -->
+        <div class="step" data-step="aborted">
+          <h2>Setup cancelled</h2>
+          <p>Start the application again to continue the setup.</p>
         </div>
       </section>
     </main>
 
     <footer class="actions">
+      <label class="languageField" title="Language of the application. System language follows the desktop, English if it's neither German nor English">
+        <select id="languageSelect">
+          <option value="auto">System language</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </label>
       <span id="versionSection"></span>
     </footer>
 
     <script src="Utils.js"></script>
+    <script src="I18n.js"></script>
     <script src="Version.js"></script>
-    <script src="mainSetup.js"></script>
+    <script src="Setup.js"></script>
   </body>
 </html>
