@@ -52,10 +52,11 @@ namespace Huenicorn::Gui
 
 
     /**
-     * @brief Shows the tray icon, and starts the service if it doesn't answer
+     * @brief Starts the service if it doesn't answer, and shows the tray icon if asked
      *
+     * @param withTray Whether to show the tray icon
      */
-    void start();
+    void start(bool withTray);
 
 
   private:

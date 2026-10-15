@@ -111,6 +111,8 @@ The lamps are driven by a service (systemd user unit `lightspill.service`). The 
 
 Closing the window keeps the tray icon. Closing the tray icon keeps the lamps running: only the service drives them. Starting the application again brings the running window to the front.
 
+On desktops without a system tray (GNOME needs an extension such as AppIndicator), closing the window quits the application, and the tray started at login gives up after 30 seconds. The lamps keep running in both cases.
+
 Logs of the service:
 
 ```bash

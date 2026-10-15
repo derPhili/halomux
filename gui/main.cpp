@@ -4,6 +4,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QSystemTrayIcon>
+#include <QTimer>
 #include <QUrl>
 
 #include <Huenicorn/Version.hpp>
@@ -16,6 +18,9 @@ using namespace Huenicorn;
 
 namespace
 {
+  // How long a start for the tray waits for the panel's tray to appear [s]
+  constexpr int TrayWaitSeconds = 30;
+
   /**
    * @brief Returns the configuration of the service
    *
@@ -95,10 +100,33 @@ int main(int argc, char* argv[])
     return 0;
   }
 
-  desktopApp.start();
-
-  if(showWindow){
+  if(QSystemTrayIcon::isSystemTrayAvailable()){
+    desktopApp.start(true);
+    if(showWindow){
+      desktopApp.showWindow();
+    }
+  }
+  else if(showWindow){
+    // Without a tray (e.g. GNOME without an extension), nothing could bring a closed window back
+    QApplication::setQuitOnLastWindowClosed(true);
+    desktopApp.start(false);
     desktopApp.showWindow();
+  }
+  else{
+    // Started at login for the tray: the panel may still be starting, wait for it a little
+    auto* trayWait = new QTimer(&app);
+    QObject::connect(trayWait, &QTimer::timeout, &app, [&desktopApp, trayWait, waitedSeconds = 0]() mutable {
+      if(QSystemTrayIcon::isSystemTrayAvailable()){
+        trayWait->stop();
+        desktopApp.start(true);
+      }
+      else if(++waitedSeconds >= TrayWaitSeconds){
+        // No tray on this desktop: an invisible instance would be useless
+        trayWait->stop();
+        QApplication::quit();
+      }
+    });
+    trayWait->start(1000);
   }
 
   return app.exec();

@@ -52,10 +52,12 @@ namespace Huenicorn::Gui
   }
 
 
-  void DesktopApp::start()
+  void DesktopApp::start(bool withTray)
   {
-    m_tray.show();
-    m_refreshTimer.start(RefreshInterval);
+    if(withTray){
+      m_tray.show();
+      m_refreshTimer.start(RefreshInterval);
+    }
 
     // Started from the desktop while the service is stopped: start it
     QNetworkReply* reply = m_network.get(QNetworkRequest(m_baseUrl.resolved(QUrl("/api/version"))));

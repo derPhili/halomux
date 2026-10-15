@@ -111,6 +111,8 @@ Die Lampen steuert ein Dienst (systemd-User-Unit `lightspill.service`). Die Desk
 
 Das Fenster zu schließen lässt das Tray-Icon stehen. Das Tray-Icon zu schließen lässt die Lampen weiterlaufen: Sie steuert allein der Dienst. Ein erneuter Start holt das laufende Fenster nach vorn.
 
+Auf Desktops ohne Systemabschnitt (Tray), etwa GNOME ohne eine Erweiterung wie AppIndicator, beendet das Schließen des Fensters die Anwendung, und das beim Login gestartete Tray gibt nach 30 Sekunden auf. Die Lampen laufen in beiden Fällen weiter.
+
 Ausgaben des Dienstes:
 
 ```bash
