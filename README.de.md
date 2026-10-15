@@ -140,7 +140,7 @@ Der Compositor liefert die Bilder als DMA-BUF im Grafikspeicher. Lightspill impo
 
 ```
 [gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)
-Capture path: GPU (DMA-BUF, modifier 0x0)
+Capture path: GPU (DMA-BUF, modifier 0x300000000cdb014)
 ```
 
 Scheitert der Import, weicht Lightspill auf Shared Memory und die CPU aus (`Capture path: CPU (shared memory)`). `LIGHTSPILL_DISABLE_GPU=1` erzwingt den CPU-Pfad, z. B. zum Vergleichen.

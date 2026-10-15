@@ -74,7 +74,7 @@ namespace Huenicorn::Grabber
       pw_main_loop* loop{nullptr};
       pw_context* context{nullptr};
       pw_stream* stream{nullptr};
-      spa_video_info format;
+      spa_video_info format{};
       SharedChannels channels;
       std::promise<bool> screenDataReadyPromise;
       bool promiseSetAlready{false};
@@ -91,6 +91,8 @@ namespace Huenicorn::Grabber
       std::vector<DmaBufFormat> dmaBufFormats;
       bool dmaBufFailed{false};
       bool usingDmaBuf{false};
+      // Modifier last logged, once fixated
+      std::optional<uint64_t> loggedModifier;
       spa_source* renegotiateEvent{nullptr};
 
       // Processing path of the last frame, read by the web UI
