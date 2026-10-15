@@ -250,6 +250,12 @@ namespace Huenicorn::Core
   }
 
 
+  std::string CoreService::language() const
+  {
+    return m_config.language();
+  }
+
+
   float CoreService::highlightBoost() const
   {
     return m_config.highlightBoost() * 100.f;
@@ -418,6 +424,19 @@ namespace Huenicorn::Core
     }
 
     m_config.saveScene(trimmedName, staticColors);
+    return true;
+  }
+
+
+  bool CoreService::setLanguage(
+    const std::string& language
+  )
+  {
+    if(language != "auto" && language != "en" && language != "de"){
+      return false;
+    }
+
+    m_config.setLanguage(language);
     return true;
   }
 

@@ -120,6 +120,13 @@ namespace Huenicorn::Core
   }
 
 
+  std::string Config::language() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().language.value();
+  }
+
+
   const std::optional<std::string>& Config::restoreToken() const
   {
     return m_configData->restoreToken;
@@ -269,6 +276,16 @@ namespace Huenicorn::Core
   }
 
 
+  void Config::setLanguage(
+    const std::string& language
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    m_configData.value().language = language;
+    _save();
+  }
+
+
   bool Config::deleteScene(
     const std::string& name
   )
@@ -310,6 +327,7 @@ namespace Huenicorn::Core
       .syncEnabled = true,
       .staticColors = StaticColors{},
       .scenes = Scenes{},
+      .language = "auto",
       .restoreToken = std::nullopt
     };
 

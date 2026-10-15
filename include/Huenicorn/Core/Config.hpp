@@ -43,6 +43,7 @@ namespace Huenicorn::Core
       std::optional<bool> syncEnabled{true};
       std::optional<StaticColors> staticColors{StaticColors{}};
       std::optional<Scenes> scenes{Scenes{}};
+      std::optional<std::string> language{"auto"};
       std::optional<std::string> restoreToken;
     };
 
@@ -189,6 +190,14 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns the language of the user interfaces
+     *
+     * @return std::string "auto" (system language), "en" or "de"
+    */
+    std::string language() const;
+
+
+    /**
      * @brief Returns the registered restoration token for screen selection portal
      * 
      * @return Optional restore token string
@@ -328,6 +337,16 @@ namespace Huenicorn::Core
     */
     bool deleteScene(
       const std::string& name
+    );
+
+
+    /**
+     * @brief Registers the language of the user interfaces
+     *
+     * @param language "auto" (system language), "en" or "de"
+    */
+    void setLanguage(
+      const std::string& language
     );
 
 

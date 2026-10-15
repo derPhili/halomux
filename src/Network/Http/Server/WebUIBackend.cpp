@@ -141,6 +141,12 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Get, "/api/language", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Json{{"language", m_coreService->language()}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Get, "/api/lightMode", [this](const Request& /*req*/, Response& res){
       Json jsonBuiltinScenes = Json::array();
       for(const auto& scene : Core::Scenes::Builtin){
@@ -156,7 +162,8 @@ namespace Huenicorn::Network::Http::Server
         {"staticColors", m_coreService->staticColors()},
         {"scenes", m_coreService->scenes()},
         {"builtinScenes", jsonBuiltinScenes},
-        {"previewRemaining", m_coreService->previewRemaining()}
+        {"previewRemaining", m_coreService->previewRemaining()},
+        {"language", m_coreService->language()}
       };
 
       res.contentType = "application/json";
@@ -356,6 +363,16 @@ namespace Huenicorn::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"succeeded", saved}, {"scenes", m_coreService->scenes()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setLanguage", [this](const Request& req, Response& res){
+      if(!m_coreService->setLanguage(Json::parse(req.body).get<std::string>())){
+        res.status = 400;
+      }
+
+      res.contentType = "application/json";
+      res.body = Json{{"language", m_coreService->language()}}.dump();
     });
 
 
