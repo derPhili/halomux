@@ -38,8 +38,16 @@ class WebUI
     this.processingInfoNode = document.getElementById("processingInfo");
     this.statusDotNode = document.getElementById("statusDot");
 
-    // Live color dot of each active lamp, by channel ID
+    // Live color dot of each active lamp, and the last color shown, by channel ID
     this.lampSwatches = {};
+    this.lampColors = {};
+    this.lampColorsPaused = false;
+    document.addEventListener("visibilitychange", () => {
+      if(!document.hidden && this.lampColorsPaused){
+        this.lampColorsPaused = false;
+        this._refreshLampColors();
+      }
+    });
     window.addEventListener("resize", () => {this._redrawScreenWidget();});
 
     this.audioReactiveNode = document.getElementById("audioReactive");
@@ -251,6 +259,7 @@ class WebUI
   {
     this.activeChannelsNode.innerHTML = "";
     this.lampSwatches = {};
+    this.lampColors = {};
     for(let channelData of channels){
       let newChannelEntryNode = document.createElement("p");
       newChannelEntryNode.draggable = true;
@@ -522,12 +531,24 @@ class WebUI
 
   _refreshLampColors()
   {
-    // One request at a time, about 8 times per second
+    // One request at a time, about 4 times per second
+    // Nothing to show while the page is hidden: resumed by the visibilitychange listener
+    if(document.hidden){
+      this.lampColorsPaused = true;
+      return;
+    }
+
     RequestUtils.get("/api/currentColors")
     .then((channelColors) => {
       for(let channelColor of channelColors){
         let rgb = ColorUtils.xyBrightnessToRgb(channelColor.r, channelColor.g, channelColor.b);
         let color = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+        // Every style change repaints: skip lamps whose color didn't change
+        if(this.lampColors[channelColor.channelId] == color){
+          continue;
+        }
+        this.lampColors[channelColor.channelId] = color;
 
         let swatch = this.lampSwatches[channelColor.channelId];
         if(swatch){
@@ -540,7 +561,7 @@ class WebUI
       }
     })
     .catch((error) => {log(error);})
-    .finally(() => {setTimeout(() => {this._refreshLampColors();}, 120);});
+    .finally(() => {setTimeout(() => {this._refreshLampColors();}, WebUI.LampColorsInterval);});
   }
 
 
@@ -681,6 +702,10 @@ class WebUI
   }
 }
 
+
+// Interval between live lamp color updates [ms]. Each update costs a frame in the web engine:
+// 4 per second keep the dots live at about half the CPU time of 8
+WebUI.LampColorsInterval = 250;
 
 // Transition smoothing presets [%]
 WebUI.GamingSmoothing = 10;
