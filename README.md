@@ -146,9 +146,15 @@ journalctl --user -u hue-desktop-sync.service -f
 
 #### Ersteinrichtung
 
-Beim ersten Start öffnet Hue Desktop Sync die Einrichtungsseite in deinem Browser. Ein Schritt-für-Schritt-Assistent hilft dir, deine Hue Bridge im Netzwerk zu finden und einen Benutzer darauf anzulegen.
+Solange keine Bridge gekoppelt ist, zeigt Hue Desktop Sync einen Einrichtungsassistenten (in der Desktop-Anwendung, ohne sie im Browser). Er führt in fünf Schritten durch:
 
-Nach erfolgreichem Abschluss der Einrichtung setzt Hue Desktop Sync seinen normalen Ablauf fort.
+1. **Willkommen**: Was gebraucht wird
+2. **Bridge finden**: Die Suche startet automatisch (über den Discovery-Dienst von Philips, braucht Internet); alternativ die IP-Adresse eingeben
+3. **Koppeln**: Den runden Knopf auf der Bridge drücken. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist (bis zu 90 Sekunden). Vorhandene Zugangsdaten lassen sich stattdessen eingeben
+4. **Entertainment-Bereich**: Prüft, ob in der Hue-App einer eingerichtet ist, mit Anleitung, falls nicht. Ohne Bereich kann nicht gestreamt werden
+5. **Fertig**: Danach fragt der Desktop, welchen Bildschirm die App aufnehmen darf; anschließend öffnet sich die Lichtsteuerung von selbst
+
+Der Assistent spricht Deutsch und Englisch wie der Rest der Oberfläche.
 
 Lade die Webseite anschließend neu, um zur Weboberfläche zu gelangen.
 
@@ -260,8 +266,7 @@ Das passiert, wenn die Zugangsdaten aus irgendeinem Grund ungültig geworden sin
 * Hue Desktop Sync beenden, falls es läuft
 * Die Datei ```~/.config/hue-desktop-sync/config.json``` löschen (oder umbenennen)
 * Hue Desktop Sync neu starten
-* Die Ersteinrichtung erneut durchlaufen und beim Schritt zu den Zugangsdaten auf die Schaltfläche „I don't have credentials yet“ klicken (die Oberfläche ist englisch)
-* Den Anweisungen folgen (dazu gehört das Drücken der Taste auf der Bridge) und die Einrichtung abschließen
+* Den Einrichtungsassistenten erneut durchlaufen und beim Koppeln den Knopf auf der Bridge drücken
 
 Danach sollte Hue Desktop Sync die Entertainment-Bereiche wieder anzeigen und Farben streamen.
 

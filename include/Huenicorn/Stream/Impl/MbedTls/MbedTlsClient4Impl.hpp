@@ -242,6 +242,10 @@ namespace Huenicorn::Stream
     {
       int result{0};
       for(unsigned attempt = 0; attempt <  dtlsConfig.handshakeAttempts; attempt++){
+        if(dtlsConfig.stopToken.stop_requested()){
+          throw std::runtime_error("Dtls handshake stopped");
+        }
+
         if(attempt > 0){
           // A failed handshake leaves the context in an error state
           int resetResult = mbedtls_ssl_session_reset(ssl.get());

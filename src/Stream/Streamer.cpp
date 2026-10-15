@@ -1,6 +1,7 @@
 #include <Huenicorn/Stream/Streamer.hpp>
 
 #include <algorithm>
+#include <chrono>
 
 #include <Huenicorn/Stream/DtlsClient.hpp>
 #include <Huenicorn/Core/Logger.hpp>
@@ -8,19 +9,30 @@
 
 namespace Huenicorn::Stream
 {
+  namespace
+  {
+    // Interval between connection attempts while the bridge doesn't accept the stream
+    constexpr auto ReconnectionInterval = std::chrono::seconds(5);
+  }
+
+
   Streamer::Streamer(
     const Hue::Auth::Credentials& credentials,
     const std::string& bridgeAddress
   )
   {
+    // Started first: its stop token also stops a running handshake
+    m_connectionThread = std::jthread([this](std::stop_token stopToken){_connectionLoop(stopToken);});
+
     m_dtlsClient = std::make_unique<DtlsClient>(DtlsConfig{
       .credentials = credentials,
       .address = bridgeAddress,
       .port = "2100",
       .hostname = "Hue",
-      .handshakeAttempts = 4
+      .handshakeAttempts = 4,
+      .stopToken = m_connectionThread.get_stop_token()
     });
-    _ensureConnection();
+    _requestConnection();
   }
 
 
@@ -45,35 +57,59 @@ namespace Huenicorn::Stream
   }
 
 
-  bool Streamer::_ensureConnection()
+  void Streamer::_requestConnection()
   {
-    if(m_dtlsClient->isConnected()){
-      return true;
+    {
+      std::lock_guard lock(m_connectionMutex);
+      m_connectionRequestPending = true;
     }
 
-    // Handshakes block for up to a few seconds: don't retry on every frame
-    static constexpr auto ReconnectionInterval = std::chrono::seconds(5);
-    auto now = std::chrono::steady_clock::now();
-    if(m_lastConnectionAttempt != std::chrono::steady_clock::time_point{} && now - m_lastConnectionAttempt < ReconnectionInterval){
-      return false;
-    }
+    m_connectionRequested.notify_one();
+  }
 
-    m_lastConnectionAttempt = now;
 
-    try{
-      m_dtlsClient->init();
-      m_connectionLossReported = false;
-      return true;
-    }
-    catch(const std::exception& e){
-      if(!m_connectionLossReported){
-        Core::Logger::error(e.what());
-        Core::Logger::warn("Streaming connection to the bridge is unavailable. Retrying every ", ReconnectionInterval.count(), " seconds.");
-        m_connectionLossReported = true;
+  void Streamer::_connectionLoop(
+    std::stop_token stopToken
+  )
+  {
+    bool failureReported = false;
+
+    while(!stopToken.stop_requested()){
+      {
+        std::unique_lock lock(m_connectionMutex);
+        if(!m_connectionRequested.wait(lock, stopToken, [this](){return m_connectionRequestPending;})){
+          return;
+        }
+
+        m_connectionRequestPending = false;
+      }
+
+      if(m_connected){
+        continue;
+      }
+
+      try{
+        m_dtlsClient->init();
+        m_connected = true;
+        failureReported = false;
+      }
+      catch(const std::exception& e){
+        if(stopToken.stop_requested()){
+          return;
+        }
+
+        if(!failureReported){
+          Core::Logger::error(e.what());
+          Core::Logger::warn("Streaming connection to the bridge is unavailable. Retrying every ", ReconnectionInterval.count(), " seconds.");
+          failureReported = true;
+        }
+
+        // Wait before the next attempt, unless stopped meanwhile
+        std::unique_lock lock(m_connectionMutex);
+        m_connectionRequested.wait_for(lock, stopToken, ReconnectionInterval, [](){return false;});
+        m_connectionRequestPending = true;
       }
     }
-
-    return false;
   }
 
 
@@ -81,7 +117,8 @@ namespace Huenicorn::Stream
     const Hue::Api::ChannelStreams& channels
   )
   {
-    if(!_ensureConnection()){
+    if(!m_connected){
+      // Dropped: colors are streamed again on the next frames once connected
       return;
     }
 
@@ -100,7 +137,13 @@ namespace Huenicorn::Stream
       requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&payload), reinterpret_cast<std::byte*>(&payload) + sizeof(HuestreamPayload));
     }
 
-    m_dtlsClient->send(requestBuffer);
+    if(!m_dtlsClient->send(requestBuffer)){
+      // The session is lost: hand the client over to the connection thread
+      m_connected = false;
+      _requestConnection();
+      return;
+    }
+
     m_header.sequenceId++;
   }
 }

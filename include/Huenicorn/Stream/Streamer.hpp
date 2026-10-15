@@ -1,7 +1,11 @@
 #pragma once
 
-#include <chrono>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <stop_token>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <Huenicorn/Hue/Api/Channel.hpp>
@@ -59,7 +63,10 @@ namespace Huenicorn::Stream
     // Methods
     /**
      * @brief Submit the channels data to the stream
-     * 
+     *
+     * Never blocks on the connection: while it isn't established, the data is dropped and
+     * the connection thread is asked to (re)connect.
+     *
      * @param channels
      */
     void streamChannels(
@@ -81,19 +88,39 @@ namespace Huenicorn::Stream
 
 
     /**
-     * @brief (Re)establishes the DTLS connection, at most once per reconnection interval
+     * @brief Asks the connection thread to (re)establish the DTLS connection
      *
-     * @return true The client is connected
-     * @return false The client is not connected
      */
-    bool _ensureConnection();
+    void _requestConnection();
+
+
+    /**
+     * @brief Establishes the DTLS connection when requested, retrying at a fixed interval
+     *
+     * Handshakes block for seconds when the bridge doesn't answer (for example while another
+     * application streams to the entertainment area): they run here, not in the streaming loop.
+     *
+     * @param stopToken Stops the thread
+     */
+    void _connectionLoop(
+      std::stop_token stopToken
+    );
 
 
     // Attributes
     std::unique_ptr<Stream::DtlsClient> m_dtlsClient;
     HuestreamHeader m_header;
     std::vector<std::byte> m_requestBuffer;
-    std::chrono::steady_clock::time_point m_lastConnectionAttempt{};
-    bool m_connectionLossReported{false};
+
+    // Set by the connection thread once the handshake succeeded, cleared by the streaming
+    // thread when sending fails. The DTLS client is only used by the thread it designates.
+    std::atomic<bool> m_connected{false};
+
+    std::mutex m_connectionMutex;
+    std::condition_variable_any m_connectionRequested;
+    bool m_connectionRequestPending{false};
+
+    // Declared last: stopped and joined (after a running handshake) before the DTLS client is destroyed
+    std::jthread m_connectionThread;
   };
 }

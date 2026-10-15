@@ -68,7 +68,7 @@ namespace Huenicorn::Platform
 
 
     /**
-     * @brief Method to open default web browser at given URL
+     * @brief Shows the web UI: in the desktop application if installed, else in the default web browser
      * 
      * @param url Page to open in web browser
      */

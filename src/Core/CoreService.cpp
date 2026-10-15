@@ -125,6 +125,29 @@ namespace Huenicorn::Core
 
 
 
+  Serialization::Json CoreService::bridgeEntertainmentAreas() const
+  {
+    Serialization::Json jsonAreas = Serialization::Json::array();
+
+    const auto& bridgeAddress = m_config.bridgeAddress();
+    const auto& credentials = m_config.credentials();
+    if(!bridgeAddress.has_value() || !credentials.has_value()){
+      return jsonAreas;
+    }
+
+    try{
+      for(const auto& [id, area] : Hue::Api::ApiTools::loadEntertainmentConfigurations(credentials->username(), bridgeAddress.value())){
+        jsonAreas.push_back({{"name", area.name}, {"lamps", area.devices.size()}});
+      }
+    }
+    catch(const std::exception& e){
+      Logger::error("Could not list the entertainment areas: ", e.what());
+    }
+
+    return jsonAreas;
+  }
+
+
   const Hue::Api::EntertainmentConfigurations& CoreService::entertainmentConfigurations() const
   {
     return m_runtime.m_selector->entertainmentConfigurations();

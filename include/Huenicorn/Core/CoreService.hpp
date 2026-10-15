@@ -63,6 +63,14 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Lists the entertainment areas of the registered bridge, during the initial setup
+     *
+     * @return Serialization::Json Array of {name, lamps}, empty if there are none or the bridge can't be reached
+     */
+    Serialization::Json bridgeEntertainmentAreas() const;
+
+
+    /**
      * @brief Returns the list of available entertainment configurations
      * 
      * @return const EntertainmentConfigurations& Available entertainment configurations

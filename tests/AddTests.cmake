@@ -173,3 +173,34 @@ target_link_libraries(TestStaticColors PUBLIC
 )
 
 add_test(NAME StaticColors COMMAND TestStaticColors)
+
+
+# TestStreamer: streaming never waits for the connection to the bridge
+add_executable(TestStreamer
+  # Application
+  ${STREAM_SOURCE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestStreamer.cpp
+)
+
+set_target_properties(TestStreamer PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestStreamer PUBLIC
+  include
+  ${CMAKE_CURRENT_BINARY_DIR}/include
+)
+
+add_dependencies(TestStreamer generate_version_header)
+
+target_link_libraries(TestStreamer PUBLIC
+  ${MBEDTLS_LIBS}
+  ${MBEDTLS_X509}
+  ${MBEDTLS_CRYPTO}
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+add_test(NAME Streamer COMMAND TestStreamer)
