@@ -141,6 +141,12 @@ namespace Huenicorn::Network::Http::Server
     });
 
 
+    m_httpServer.addRoute(HttpMethod::Get, "/api/notice", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Json{{"accepted", m_coreService->noticeAccepted()}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Get, "/api/language", [this](const Request& /*req*/, Response& res){
       res.contentType = "application/json";
       res.body = Json{{"language", m_coreService->language()}}.dump();
@@ -363,6 +369,14 @@ namespace Huenicorn::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"succeeded", saved}, {"scenes", m_coreService->scenes()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/acceptNotice", [this](const Request& /*req*/, Response& res){
+      m_coreService->acceptNotice();
+
+      res.contentType = "application/json";
+      res.body = Json{{"accepted", m_coreService->noticeAccepted()}}.dump();
     });
 
 

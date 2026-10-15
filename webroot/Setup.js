@@ -26,9 +26,12 @@ class SetupWizard
     }
 
     // Welcome: the notice must be accepted before going on
-    this.noticeAcceptedNode = document.getElementById("noticeAccepted");
+    this.noticeConfirmed = false;
     this.getStartedButton = document.getElementById("getStartedButton");
-    this.noticeAcceptedNode.addEventListener("change", (event) => {this.getStartedButton.disabled = !event.target.checked;});
+    Notice.render(document.getElementById("notice"), (confirmed) => {
+      this.noticeConfirmed = confirmed;
+      this.getStartedButton.disabled = !confirmed;
+    });
     this.getStartedButton.addEventListener("click", () => {this._acceptNotice();});
 
     // Bridge
@@ -119,7 +122,7 @@ class SetupWizard
   // Records the acceptance with its time in the configuration, then goes on
   _acceptNotice()
   {
-    if(!this.noticeAcceptedNode.checked){
+    if(!this.noticeConfirmed){
       return;
     }
 

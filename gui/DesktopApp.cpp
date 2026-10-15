@@ -67,9 +67,23 @@ namespace Huenicorn::Gui
       }
       else{
         _refresh();
+        _checkNotice();
       }
 
       reply->deleteLater();
+    });
+  }
+
+
+  void DesktopApp::_checkNotice()
+  {
+    // The light manager covers itself with the notice until it's accepted: show it, even when
+    // started for the tray, so it isn't missed. During the setup, which asks for it itself,
+    // the request fails and nothing happens
+    _request("GET", "/api/notice", {}, [this](const QJsonObject& notice){
+      if(!notice.value("accepted").toBool(true)){
+        showWindow();
+      }
     });
   }
 
@@ -244,6 +258,9 @@ namespace Huenicorn::Gui
   void DesktopApp::_startService()
   {
     QProcess::startDetached("systemctl", {"--user", "start", QString("%1.service").arg(AppId)});
-    QTimer::singleShot(3000, this, &DesktopApp::_refresh);
+    QTimer::singleShot(3000, this, [this](){
+      _refresh();
+      _checkNotice();
+    });
   }
 }

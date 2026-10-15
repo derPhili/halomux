@@ -398,10 +398,18 @@ namespace Huenicorn::Core
 
 
     /**
-     * @brief Records that the user accepted the notice of the setup, with the current time
+     * @brief Records that the user accepted the current version of the notice, with the current time
      *
      */
     void acceptNotice();
+
+
+    /**
+     * @brief Returns whether the current version of the notice was accepted
+     *
+     * @return true The notice was accepted, in its current version or a later one
+     */
+    bool noticeAccepted() const;
 
 
     /**

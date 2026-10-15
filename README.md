@@ -4,7 +4,7 @@ Screen and sound sync for Philips Hue lamps on Linux
 
 > [!WARNING]
 > **AI-assisted project, no warranty, no liability.**
-> Lightspill is developed with the help of AI: the changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) under the maintainer's direction, and reviewed and tested only on the setup described below. Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes. See also sections 15 and 16 of the [GPLv3](LICENSE.txt).
+> Lightspill is developed with the help of AI: the changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) under the maintainer's direction, and reviewed and tested only on the setup described below. The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use. Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes. See also sections 15 and 16 of the [GPLv3](LICENSE.txt).
 
 <p align="center">
   <img src="assets/logo.svg" alt="Lightspill logo" width="192" height="192">
@@ -172,7 +172,7 @@ Most values are changed from the light manager. All of them can be edited by han
 * **staticColors**: (object) static color per channel ID, as `#rrggbb`
 * **scenes**: (object) saved scenes: name → colors as in `staticColors`
 * **language**: (string) `auto` (system language, English if it's neither German nor English), `en` or `de`
-* **noticeAccepted**: (string) when the notice about AI assistance and the missing warranty was accepted in the setup, in UTC
+* **noticeAccepted**: (object) which **version** of the notice about AI assistance and the missing warranty was accepted, and when (**at**, UTC). When the notice changes, its version increases and the light manager asks to accept it again
 
 ### profile.json
 

@@ -95,7 +95,10 @@ namespace Huenicorn::Serialization
       }
 
       if(configData.noticeAccepted.has_value()){
-        jsonConfigData["noticeAccepted"] = *configData.noticeAccepted;
+        jsonConfigData["noticeAccepted"] = {
+          {"version", configData.noticeAccepted->version},
+          {"at", configData.noticeAccepted->at}
+        };
       }
 
       if(configData.boundBackendIP.has_value()){
@@ -186,7 +189,11 @@ namespace Huenicorn::Serialization
       }
 
       if(jsonConfigData.contains("noticeAccepted")){
-        configData.noticeAccepted = jsonConfigData.at("noticeAccepted");
+        const Json& jsonAcceptance = jsonConfigData.at("noticeAccepted");
+        configData.noticeAccepted = Huenicorn::Core::Config::NoticeAcceptance{
+          .version = jsonAcceptance.value("version", 0u),
+          .at = jsonAcceptance.value("at", std::string{})
+        };
       }
 
       if(jsonConfigData.contains("restoreToken")){

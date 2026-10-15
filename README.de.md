@@ -4,7 +4,7 @@ Bildschirm- und Sound-Sync für Philips-Hue-Lampen unter Linux
 
 > [!WARNING]
 > **KI-gestütztes Projekt, keine Gewähr, keine Haftung.**
-> Lightspill wird mit Hilfe von KI entwickelt: Die Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) nach den Vorgaben des Maintainers geschrieben; geprüft und getestet sind sie nur auf dem unten beschriebenen System. Die Nutzung erfolgt auf eigenes Risiko. Die Software wird ohne jede Gewährleistung bereitgestellt, und soweit gesetzlich zulässig übernimmt der Maintainer keine Haftung für Schäden oder sonstige Folgen ihrer Nutzung. Es besteht keine Pflicht zu Support, Wartung, Updates oder Fehlerbehebungen. Siehe auch die Abschnitte 15 und 16 der [GPLv3](LICENSE.txt).
+> Lightspill wird mit Hilfe von KI entwickelt: Die Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) nach den Vorgaben des Maintainers geschrieben; geprüft und getestet sind sie nur auf dem unten beschriebenen System. Der Maintainer ist nicht verantwortlich für den Code, seine Richtigkeit oder Sicherheit und nicht für die Folgen seiner Nutzung. Die Nutzung erfolgt auf eigenes Risiko. Die Software wird ohne jede Gewährleistung bereitgestellt, und soweit gesetzlich zulässig übernimmt der Maintainer keine Haftung für Schäden oder sonstige Folgen ihrer Nutzung. Es besteht keine Pflicht zu Support, Wartung, Updates oder Fehlerbehebungen. Siehe auch die Abschnitte 15 und 16 der [GPLv3](LICENSE.txt).
 
 <p align="center">
   <img src="assets/logo.svg" alt="Lightspill-Logo" width="192" height="192">
@@ -172,7 +172,7 @@ Die meisten Werte änderst du in der Lichtsteuerung. Von Hand lassen sich alle b
 * **staticColors**: (Objekt) statische Farbe je Kanal-ID, als `#rrggbb`
 * **scenes**: (Objekt) gespeicherte Szenen: Name → Farben wie in `staticColors`
 * **language**: (String) `auto` (Systemsprache, Englisch, wenn sie weder Deutsch noch Englisch ist), `en` oder `de`
-* **noticeAccepted**: (String) wann der Hinweis zu KI-Unterstützung und fehlender Gewährleistung in der Einrichtung bestätigt wurde, in UTC
+* **noticeAccepted**: (Objekt) welche Fassung (**version**) des Hinweises zu KI-Unterstützung und fehlender Gewährleistung bestätigt wurde und wann (**at**, UTC). Ändert sich der Hinweis, steigt seine Version, und die Lichtsteuerung bittet erneut um Zustimmung
 
 ### profile.json
 

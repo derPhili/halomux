@@ -254,6 +254,8 @@ I18n.Translations = {
     "The Hue app, to set up an entertainment area with your lamps" : "Die Hue-App, um einen Entertainment-Bereich mit deinen Lampen einzurichten",
     "AI-assisted project, no warranty, no liability" : "KI-gestütztes Projekt, keine Gewähr, keine Haftung",
     "Lightspill is developed with the help of AI: its changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) and were tested only on a few setups." : "Lightspill wird mit Hilfe von KI entwickelt: Seine Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) geschrieben, getestet sind sie nur auf wenigen Systemen.",
+    "The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use." : "Der Maintainer ist nicht verantwortlich für den Code, seine Richtigkeit oder Sicherheit und nicht für die Folgen seiner Nutzung.",
+    "Accept and continue" : "Zustimmen und fortfahren",
     "Use it at your own risk. It is provided \"as is\", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes." : "Die Nutzung erfolgt auf eigenes Risiko. Die Software wird ohne jede Gewährleistung bereitgestellt, und soweit gesetzlich zulässig übernimmt der Maintainer keine Haftung für Schäden oder sonstige Folgen ihrer Nutzung. Es besteht keine Pflicht zu Support, Wartung, Updates oder Fehlerbehebungen.",
     "I have read and understood this notice." : "Ich habe diesen Hinweis gelesen und verstanden.",
     "Confirm that you read the notice first" : "Bestätige zuerst, dass du den Hinweis gelesen hast",

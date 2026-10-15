@@ -29,16 +29,7 @@
             <li>The Hue app, to set up an entertainment area with your lamps</li>
           </ul>
 
-          <div class="noticeBox">
-            <strong>AI-assisted project, no warranty, no liability</strong>
-            <p>Lightspill is developed with the help of AI: its changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) and were tested only on a few setups.</p>
-            <p>Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes.</p>
-          </div>
-
-          <label class="noticeAcceptance">
-            <input type="checkbox" id="noticeAccepted"/>
-            <span>I have read and understood this notice.</span>
-          </label>
+          <div id="notice"></div>
 
           <div class="buttonRow">
             <button class="primary" id="getStartedButton" disabled title="Confirm that you read the notice first">Get started</button>
@@ -175,6 +166,7 @@
     <script src="Utils.js"></script>
     <script src="I18n.js"></script>
     <script src="Version.js"></script>
+    <script src="Notice.js"></script>
     <script src="Setup.js"></script>
   </body>
 </html>

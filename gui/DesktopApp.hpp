@@ -99,6 +99,13 @@ namespace Huenicorn::Gui
     void _startService();
 
 
+    /**
+     * @brief Shows the window if the current notice wasn't accepted yet
+     *
+     */
+    void _checkNotice();
+
+
     // Attributes
     QUrl m_baseUrl;
     QNetworkAccessManager m_network;

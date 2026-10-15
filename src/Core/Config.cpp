@@ -286,12 +286,19 @@ namespace Huenicorn::Core
   }
 
 
+  std::optional<Config::NoticeAcceptance> Config::noticeAccepted() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().noticeAccepted;
+  }
+
+
   void Config::setNoticeAccepted(
-    const std::string& acceptedAt
+    const NoticeAcceptance& acceptance
   )
   {
     std::lock_guard lock(m_mutex);
-    m_configData.value().noticeAccepted = acceptedAt;
+    m_configData.value().noticeAccepted = acceptance;
     _save();
   }
 
