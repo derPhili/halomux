@@ -37,7 +37,7 @@ It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by Open
 
 ### Tested on
 
-Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU. Reports about other setups are welcome.
+Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU: this path is tested by forcing it with `LIGHTSPILL_DISABLE_GPU=1`, and takes about 8% of a core instead of about 3%. Reports about other setups are welcome.
 
 ## Installation
 
