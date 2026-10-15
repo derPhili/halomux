@@ -46,7 +46,8 @@ Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an N
 `dist/arch/PKGBUILD` builds and installs a package:
 
 ```bash
-cd dist/arch
+git clone https://github.com/derPhili/lightspill.git
+cd lightspill/dist/arch
 makepkg -si
 systemctl --user enable --now lightspill.service
 ```
@@ -76,6 +77,8 @@ sudo cmake --install cpp-httplib/build
 Then build Lightspill:
 
 ```bash
+git clone https://github.com/derPhili/lightspill.git
+cd lightspill
 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build -j
 sudo cmake --install build
