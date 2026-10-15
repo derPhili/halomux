@@ -38,7 +38,16 @@ namespace Huenicorn::Platform
 
 
   std::string GnuLinuxAdapter::getUsername() const{
-    return std::string(getlogin());
+    // getlogin() needs a controlling terminal, which a systemd service doesn't have
+    if(const char* login = getlogin()){
+      return login;
+    }
+
+    if(const passwd* user = getpwuid(getuid())){
+      return user->pw_name;
+    }
+
+    return "user";
   }
 
 
