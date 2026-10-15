@@ -1,5 +1,9 @@
 log = console.log;
 
-let webUI = new WebUI();
+let webUI = null;
 
-webUI.initUI();
+// Texts are translated before the UI is built
+I18n.init().then(() => {
+  webUI = new WebUI();
+  webUI.initUI();
+});

@@ -8,7 +8,7 @@
     <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
   </head>
 
-  <body>
+  <body class="i18nPending">
     <header class="appHeader">
       <img src="logo.svg" class="appLogo" alt="">
       <h1>Philip's Hue Desktop Sync</h1>
@@ -101,7 +101,7 @@
 
             <div class="sceneSection">
               <h3 title="Scenes you saved. Click one to show it, × deletes it">My scenes</h3>
-              <div class="sceneGrid" id="customScenes"></div>
+              <div class="sceneGrid" id="customScenes" data-empty="No saved scene yet"></div>
               <form class="inlineSetting" id="saveSceneForm">
                 <input type="text" id="sceneName" maxlength="40" placeholder="Save current colors as…" required title="Name for the current lamp colors. A scene with the same name is replaced"/>
                 <button type="submit" title="Saves the current colors of the active lamps under this name">Save</button>
@@ -222,6 +222,13 @@
     <footer class="actions">
       <button class="primary" id="saveProfileButton" title="Saves the lamps' screen regions, gamma and activity, loaded on every start. Settings and scenes are saved automatically">Save profile</button>
       <button class="danger" id="stopButton" title="Stops the service: the lamps go back to their state from before. The desktop application can start it again">Shut down</button>
+      <label class="languageField" title="Language of the application. System language follows the desktop, English if it's neither German nor English">
+        <select id="languageSelect">
+          <option value="auto">System language</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </label>
       <span id="versionSection"></span>
     </footer>
 
@@ -245,6 +252,7 @@
 
     <script src="Channel.js"></script>
     <script src="Utils.js"></script>
+    <script src="I18n.js"></script>
     <script src="Version.js"></script>
     <script src="ScreenWidget.js"></script>
     <script src="StaticScene.js"></script>

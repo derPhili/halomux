@@ -76,6 +76,13 @@ namespace Huenicorn::Gui
 
 
     /**
+     * @brief Sets the menu texts in the current language
+     *
+     */
+    void _retranslate();
+
+
+    /**
      * @brief Updates the menu and the tooltip from the service state
      *
      */
@@ -98,11 +105,13 @@ namespace Huenicorn::Gui
 
     QSystemTrayIcon m_tray;
     QMenu m_menu;
+    QAction* m_openAction{nullptr};
     QAction* m_syncAction{nullptr};
     QMenu* m_scenesMenu{nullptr};
     QAction* m_previewAction{nullptr};
     bool m_previewRunning{false};
     QAction* m_startServiceAction{nullptr};
+    QAction* m_quitAction{nullptr};
     QTimer m_refreshTimer;
 
     QPointer<MainWindow> m_window;
