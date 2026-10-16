@@ -210,6 +210,8 @@ Lightspill is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn)
 
 Lightspill is free software under the GNU General Public License version 3, like Huenicorn. See [LICENSE.txt](LICENSE.txt). You may use, study, share and modify it; modified versions you distribute must be under the same license, with their source code.
 
+The screen capture request to the desktop portal (`XdgDesktopPortal.hpp` and `XdgDesktopPortal.cpp`) is adapted from [xdg-dp-start](https://codeberg.org/metamuffin/xdg-dp-start) by metamuffin and remains under the GNU Affero General Public License version 3, see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt). Section 13 of both licenses allows combining them. For that part, users interacting with a modified version over a network must be offered its source code: the light manager links to the source code in its footer, so keep that link pointing to the source of your version.
+
 ## Acknowledgments
 
 * [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel and its contributors

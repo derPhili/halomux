@@ -1076,10 +1076,16 @@ body.i18nPending
 }
 
 
-#versionSection
+#versionSection, #sourceLink
 {
   color: var(--textFaint);
   font-size: 12px;
+}
+
+
+#sourceLink:hover
+{
+  color: var(--text);
 }
 
 
