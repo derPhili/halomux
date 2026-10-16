@@ -28,6 +28,21 @@ namespace Huenicorn::Network::Http::Server
       jsonChannel["monitorMissing"] = channel.state == Hue::Api::Channel::State::Active && !channel.monitorIndex.has_value();
       return jsonChannel;
     }
+
+
+    Json webChannels(
+      const Hue::Api::Channels& channels
+    )
+    {
+      Json jsonChannels = Json::array();
+      for(const auto& [channelId, channel] : channels){
+        Json jsonChannel = webChannel(channel);
+        jsonChannel["channelId"] = channelId;
+        jsonChannels.push_back(std::move(jsonChannel));
+      }
+
+      return jsonChannels;
+    }
   }
 
 
@@ -103,15 +118,8 @@ namespace Huenicorn::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/channels", [this](const Request& /*req*/, Response& res){
-      Json jsonChannels = Json::array();
-      for(const auto& [channelId, channel] : m_coreService->channels()){
-        Json jsonChannel = webChannel(channel);
-        jsonChannel["channelId"] = channelId;
-        jsonChannels.push_back(std::move(jsonChannel));
-      }
-
       res.contentType = "application/json";
-      res.body = jsonChannels.dump();
+      res.body = webChannels(m_coreService->channels()).dump();
     });
 
 
@@ -252,7 +260,7 @@ namespace Huenicorn::Network::Http::Server
       Json jsonResponse = {
         {"succeeded", succeeded},
         {"entertainmentConfigurationId", entertainmentConfigurationId},
-        {"channels", Json(m_coreService->channels())}
+        {"channels", webChannels(m_coreService->channels())}
       };
 
       std::string response = jsonResponse.dump();
@@ -527,7 +535,7 @@ namespace Huenicorn::Network::Http::Server
 
       Json jsonResponse = Json{
         {"succeeded", true},
-        {"channels", Json(m_coreService->channels())},
+        {"channels", webChannels(m_coreService->channels())},
       };
 
       if(active){

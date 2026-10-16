@@ -38,6 +38,12 @@ class WebUI
     this.processingInfoNode = document.getElementById("processingInfo");
     this.statusDotNode = document.getElementById("statusDot");
 
+    // Captured monitors, and choosing them again
+    this.monitorInfoNode = document.getElementById("monitorInfo");
+    this.reselectMonitorsButton = document.getElementById("reselectMonitorsButton");
+    this.reselectMonitorsButton.addEventListener("click", () => {this._reselectMonitors();});
+    this.monitorSelection = "idle";
+
     // Live color dot of each active lamp, and the last color shown, by channel ID
     this.lampSwatches = {};
     this.lampColors = {};
@@ -132,9 +138,10 @@ class WebUI
     displayInfoPromise.then((data) => {this._displayInfoCallback(data);});
     displayInfoPromise.catch((error) => {log(error);});
 
-    // Refreshed periodically: the grabber falls back to the CPU at runtime if the GPU path fails
+    // Refreshed periodically: the grabber falls back to the CPU at runtime if the GPU path fails,
+    // and monitors start or stop being captured as lamps move
     this._refreshProcessingInfo();
-    setInterval(() => {this._refreshProcessingInfo();}, 5000);
+    setInterval(() => {this._refreshProcessingInfo(); this._refreshMonitors();}, 5000);
 
     this._refreshLampColors();
     this.staticScene.init();
@@ -184,6 +191,93 @@ class WebUI
       this.uvRequestInFlight = false;
       this._sendPendingUV();
     });
+  }
+
+
+  /**
+   * Moves a lamp's region, onto another monitor too
+   */
+  moveChannelRegion(channelId, monitor, uvs)
+  {
+    RequestUtils.put(`/api/setChannelMonitor/${channelId}`, JSON.stringify({monitor : monitor, uvs : uvs}))
+    .then((channelData) => {
+      let channel = this.activeChannels[channelId];
+      if(channel){
+        channel.uvs = channelData.uvs;
+        channel.monitor = channelData.monitor;
+        channel.monitorMissing = channelData.monitorMissing;
+        this._fillChannelEntry(channel.node, channel);
+        this.lampSwatches[channelId] = channel.node.querySelector(".lampSwatch");
+      }
+
+      this._refreshMonitors();
+    })
+    .catch((error) => {log(error);})
+    .finally(() => {
+      // The handles were hidden while moving
+      if(this.screenWidget.currentChannel){
+        this.screenWidget.showWidgets(true);
+      }
+      this._redrawScreenWidget();
+    });
+  }
+
+
+  _reselectMonitors()
+  {
+    RequestUtils.post("/api/reselectMonitors", "{}")
+    .then(() => {this._refreshMonitors();})
+    .catch((error) => {log(error);});
+  }
+
+
+  _refreshMonitors()
+  {
+    RequestUtils.get("/api/displayInfo")
+    .then((displayInfo) => {this._monitorsCallback(displayInfo);})
+    .catch((error) => {log(error);});
+  }
+
+
+  _monitorsCallback(displayInfo)
+  {
+    let monitors = displayInfo.monitors;
+    let shown = monitors.filter(monitor => monitor.active);
+    if(shown.length == 0){
+      shown = monitors;
+    }
+
+    this.monitorInfoNode.textContent = t("Source: ") + shown.map(monitor => monitor.description).join(" · ");
+
+    let previousSelection = this.monitorSelection;
+    this.monitorSelection = displayInfo.monitorSelection;
+
+    let pending = displayInfo.monitorSelection == "pending";
+    this.reselectMonitorsButton.disabled = pending;
+    this.reselectMonitorsButton.textContent = t(pending ? "Waiting for the screen selection…" : "Monitors…");
+
+    if(pending){
+      // Until the dialog is answered
+      setTimeout(() => {this._refreshMonitors();}, 2000);
+    }
+    else if(previousSelection == "pending"){
+      if(displayInfo.monitorSelection == "cancelled"){
+        this.reselectMonitorsButton.textContent = t("Selection cancelled, nothing changed");
+        setTimeout(() => {this.reselectMonitorsButton.textContent = t("Monitors…");}, 4000);
+      }
+      else{
+        // Monitor indices changed: reload the lamps
+        RequestUtils.get("/api/channels")
+        .then((channels) => {this._refreshChannelsLists(channels);})
+        .catch((error) => {log(error);});
+      }
+    }
+
+    let monitorsChanged = JSON.stringify(monitors) != JSON.stringify(this.screenWidget.monitors);
+    if(monitorsChanged){
+      this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth, monitors);
+      this._redrawScreenWidget();
+    }
   }
 
 
@@ -303,6 +397,14 @@ class WebUI
     entryNode.title = channel.node
       ? t("{lamp}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it", {lamp : channel.formatMembers()})
       : t("{lamp}: not driven. Drag to Active to have it follow the screen", {lamp : channel.formatMembers()});
+
+    if(channel.node && channel.monitorMissing){
+      let missing = document.createElement("span");
+      missing.className = "hint monitorMissing";
+      missing.textContent = t("Monitor not captured – lamp is off");
+      entryNode.insertBefore(missing, id);
+      entryNode.title = t("The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.");
+    }
   }
 
 
@@ -372,7 +474,8 @@ class WebUI
     this.brightnessInputNode.value = displayInfo.selectedBrightness;
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
-    this.screenWidget.setDimensions(x, y, subsampleWidth);
+    this.screenWidget.setDimensions(x, y, subsampleWidth, displayInfo.monitors);
+    this._monitorsCallback(displayInfo);
     let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
 
     this.availableSubsamplesNode.innerHTML = "";
@@ -463,6 +566,7 @@ class WebUI
     let channelPromise = RequestUtils.get(`/api/channel/${channelId}`);
     channelPromise.then((channelData) => {
       this.activeChannels[channelId].uvs = channelData.uvs;
+      this.activeChannels[channelId].monitor = channelData.monitor;
       this.screenWidget.initChannelRegion(this.activeChannels[channelId]);
     });
     channelPromise.catch((error) => {log(error);});
@@ -569,6 +673,8 @@ class WebUI
 
   _redrawScreenWidget()
   {
+    this.screenWidget.layout();
+
     let currentChannel = this.screenWidget.currentChannel;
     this.screenWidget.showPreview(currentChannel ? currentChannel.channelId : null);
 
