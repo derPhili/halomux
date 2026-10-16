@@ -6,6 +6,8 @@ class WebUI
     // time so dragging a handle doesn't flood the backend and responses can't arrive out of order.
     this.pendingUVs = new Map();
     this.uvRequestInFlight = false;
+    // Region move waiting for the corner updates before it
+    this.pendingMove = null;
 
     this.activeChannelsNode = document.getElementById("activeChannelsList");
     this.activeChannelsNode.addEventListener("drop", (event) => {
@@ -167,6 +169,12 @@ class WebUI
   {
     let next = this.pendingUVs.entries().next();
     if(next.done){
+      // A region moved right after dragging a corner: sent once the corners arrived
+      if(this.pendingMove){
+        let move = this.pendingMove;
+        this.pendingMove = null;
+        this.moveChannelRegion(move.channelId, move.monitor, move.uvs);
+      }
       return;
     }
 
@@ -199,6 +207,12 @@ class WebUI
    */
   moveChannelRegion(channelId, monitor, uvs)
   {
+    // Corner positions still on their way would land after the move, on the wrong monitor
+    if(this.uvRequestInFlight || this.pendingUVs.size > 0){
+      this.pendingMove = {channelId : channelId, monitor : monitor, uvs : uvs};
+      return;
+    }
+
     RequestUtils.put(`/api/setChannelMonitor/${channelId}`, JSON.stringify({monitor : monitor, uvs : uvs}))
     .then((channelData) => {
       let channel = this.activeChannels[channelId];
