@@ -186,6 +186,14 @@ a
 }
 
 
+/* A lamp whose monitor isn't captured: its region waits to be dragged onto a captured monitor */
+#uvArea.missing > rect
+{
+  stroke: var(--warning);
+  stroke-dasharray: 6 4;
+}
+
+
 .statusDot
 {
   width: 8px;

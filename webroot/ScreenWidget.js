@@ -324,11 +324,21 @@ class ScreenWidget
    */
   currentMonitorRect()
   {
-    if(!this.currentChannel || this.currentChannel.monitor === null){
+    if(!this.currentChannel){
       return null;
     }
 
-    return this.monitorRects[this.currentChannel.monitor] || null;
+    return this.monitorRects[this._shownMonitor(this.currentChannel)] || null;
+  }
+
+
+  /**
+   * Returns the monitor the region of the edited lamp is shown on: a lamp whose monitor isn't
+   * captured shows its region on the first one, to be dragged onto a captured monitor
+   */
+  _shownMonitor(channel)
+  {
+    return channel.monitor === null ? 0 : channel.monitor;
   }
 
 
@@ -507,10 +517,19 @@ class ScreenWidget
 
   _updateShape(uvs)
   {
-    let geometry = this._regionGeometry(this.currentChannel ? this.currentChannel.monitor : null, uvs);
+    let geometry = this._regionGeometry(this.currentChannel ? this._shownMonitor(this.currentChannel) : null, uvs);
     if(!geometry){
       this.showWidgets(false);
       return;
+    }
+
+    // Without its monitor, the region can only be moved onto a captured one
+    let missing = this.currentChannel.monitor === null;
+    this.uvAreaNode.classList.toggle("missing", missing);
+    if(missing){
+      for(let handle of Object.values(this.handles)){
+        handle.handleNode.style.display = "none";
+      }
     }
 
     let ax = geometry.x;
@@ -577,7 +596,7 @@ class ScreenWidget
       return;
     }
 
-    let geometry = this._regionGeometry(this.currentChannel.monitor, this.currentChannel.uvs);
+    let geometry = this._regionGeometry(this._shownMonitor(this.currentChannel), this.currentChannel.uvs);
     if(!geometry){
       return;
     }
