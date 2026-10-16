@@ -49,6 +49,15 @@ int main()
   expect("Nothing matching", !findMonitor({{0, 0, 3840, 2160}, "DP-9"}, desktop).has_value());
   expect("No monitors", !findMonitor({Main, "DP-3"}, Monitors{}).has_value());
 
+  // A monitor gone while capturing isn't followed anymore, not even by name
+  {
+    Monitors unplugged = desktop;
+    unplugged[0].name = "DP-1";
+    unplugged[0].lost = true;
+    expect("Lost monitor not found by geometry", !findMonitor({Left, "DP-1"}, unplugged).has_value());
+    expect("Other monitors still found", findMonitor({Main, "DP-3"}, unplugged) == 1u);
+  }
+
   // monitorRef keeps what findMonitor needs
   {
     MonitorInfo info = monitor(Main, 2560, 1440);

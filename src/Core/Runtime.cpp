@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <future>
+#include <ranges>
 #include <utility>
 
 #include <glm/common.hpp>
@@ -421,6 +422,21 @@ namespace Huenicorn::Core
     if(m_grabberReplaced.exchange(false)){
       m_channelRegions.clear();
       grabber->setPaused(m_capturePaused);
+    }
+
+    // A monitor unplugged while capturing: its lamps go off, and the light manager says why
+    const auto now = std::chrono::steady_clock::now();
+    if(now - m_lastLostMonitorsCheck >= std::chrono::seconds(1)){
+      m_lastLostMonitorsCheck = now;
+
+      const auto monitors = grabber->monitors();
+      const bool lostChanged = monitors.size() != m_monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
+        return monitors[i].lost != m_monitors[i].lost;
+      });
+
+      if(lostChanged){
+        _resolveChannelMonitors();
+      }
     }
 
     if(syncing == m_capturePaused){

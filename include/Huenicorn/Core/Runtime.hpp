@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -210,6 +211,8 @@ namespace Huenicorn::Core
     Hue::Api::ChannelStreams m_channelStreams;
     // Captured monitors the channels' monitorIndex refers to
     Grabber::Monitors m_monitors;
+    // Last check for monitors lost while capturing (streaming thread)
+    std::chrono::steady_clock::time_point m_lastLostMonitorsCheck{};
 
     // Current colors snapshot, for external consumers (e.g. REST API)
     mutable std::mutex m_currentColorsMutex;

@@ -13,7 +13,7 @@ namespace Huenicorn::Grabber
   {
     const auto find = [&](auto matches) -> std::optional<size_t> {
       for(size_t i = 0; i < monitors.size(); i++){
-        if(matches(monitors[i])){
+        if(!monitors[i].lost && matches(monitors[i])){
           return i;
         }
       }

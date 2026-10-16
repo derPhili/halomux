@@ -89,6 +89,8 @@ namespace Huenicorn::Grabber
       std::optional<uint64_t> loggedModifier;
       // Last value given to pw_stream_set_active()
       std::atomic<bool> streaming{true};
+      // The stream ended while capturing, such as when the monitor was unplugged
+      std::atomic<bool> lost{false};
 
       // Guarded by PipewireData::channelsMutex
       ChannelRegions regions;
@@ -363,6 +365,18 @@ namespace Huenicorn::Grabber
       void* userdata,
       pw_buffer* buffer
     );
+
+    /**
+     * @brief Notices a stream ending while capturing, such as when its monitor is unplugged
+     *
+     */
+    static void _onStreamStateChanged(
+      void* userdata,
+      pw_stream_state old,
+      pw_stream_state state,
+      const char* error
+    );
+
 
     static void _onStreamParamChanged(
       void* userdata,

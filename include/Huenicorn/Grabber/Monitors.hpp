@@ -65,6 +65,7 @@ namespace Huenicorn::Grabber
     bool gpu{false};
     std::string processingDetails;
     bool active{false}; // Captured right now: followed by a lamp, and not paused
+    bool lost{false}; // Its stream ended while capturing, such as when it was unplugged
   };
 
   using Monitors = std::vector<MonitorInfo>;
@@ -72,6 +73,8 @@ namespace Huenicorn::Grabber
 
   /**
    * @brief Finds the monitor a channel follows: same geometry, else same connector, else same size
+   *
+   * Lost monitors are never found.
    *
    * @param ref Monitor of the channel
    * @param monitors Captured monitors

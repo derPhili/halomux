@@ -166,7 +166,8 @@ namespace Huenicorn::Network::Http::Server
           {"pixelWidth", monitor.pixelWidth},
           {"pixelHeight", monitor.pixelHeight},
           {"gpu", monitor.gpu},
-          {"active", monitor.active}
+          {"active", monitor.active},
+          {"lost", monitor.lost}
         });
       }
 

@@ -304,7 +304,8 @@ namespace Huenicorn::Grabber
     auto lock = std::lock_guard(m_pwData.processingInfoMutex);
     for(size_t i = 0; i < monitors.size() && i < m_pwData.streams.size(); i++){
       const StreamData& stream = *m_pwData.streams[i];
-      monitors[i].active = stream.streaming;
+      monitors[i].lost = stream.lost;
+      monitors[i].active = stream.streaming && !stream.lost;
       monitors[i].gpu = stream.lastFrameOnGpu;
       monitors[i].processingDetails = stream.lastFrameOnGpu
         ? m_pwData.gpuName + ", DMA-BUF"
@@ -604,6 +605,30 @@ namespace Huenicorn::Grabber
   }
 
 
+  void PipewireGrabber::_onStreamStateChanged(
+    void* userdata,
+    pw_stream_state /*old*/,
+    pw_stream_state state,
+    const char* error
+  )
+  {
+    StreamData* stream = static_cast<StreamData*>(userdata);
+    if(state != PW_STREAM_STATE_ERROR && state != PW_STREAM_STATE_UNCONNECTED){
+      return;
+    }
+
+    if(stream->lost.exchange(true)){
+      return;
+    }
+
+    Core::Logger::warn("Capture of ", stream->label, " ended", (error ? std::string(": ") + error : std::string()), ". Its lamps stay off while syncing");
+
+    // Its last colors would be handed out forever
+    auto lock = std::lock_guard(stream->owner->channelsMutex);
+    stream->hasColors = false;
+  }
+
+
   void PipewireGrabber::_onStreamParamChanged(
     void* userdata,
     uint32_t id,
@@ -741,6 +766,7 @@ namespace Huenicorn::Grabber
     static const pw_stream_events streamEvents = [] {
       pw_stream_events events = {};
       events.version = PW_VERSION_STREAM_EVENTS;
+      events.state_changed = _onStreamStateChanged;
       events.param_changed = _onStreamParamChanged;
       events.process = _onStreamProcess;
       events.add_buffer = _onStreamAddBuffer;
