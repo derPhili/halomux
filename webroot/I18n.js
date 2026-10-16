@@ -312,7 +312,7 @@ I18n.Translations = {
     "This page checks again every few seconds." : "Diese Seite prüft alle paar Sekunden erneut.",
     "Check again" : "Erneut prüfen",
     "Ready" : "Fertig",
-    "Next, the desktop asks which screen the app may capture. Choose your monitor and allow it to be remembered, so you aren't asked again on every start." : "Als Nächstes fragt der Desktop, welchen Bildschirm die App aufnehmen darf. Wähle deinen Monitor und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt.",
+    "Next, the desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start." : "Als Nächstes fragt der Desktop, welche Bildschirme Lightspill erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt.",
     "Then, in the light manager:" : "Danach in der Lichtsteuerung:",
     "Drag your lamps from Available to Active." : "Ziehe deine Lampen von „Verfügbar“ nach „Aktiv“.",
     "Select a lamp and adjust the part of the screen it follows." : "Wähle eine Lampe und passe den Bildschirmbereich an, dem sie folgt.",
