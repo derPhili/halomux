@@ -313,6 +313,7 @@ namespace Huenicorn::Core
         channel.monitor = Grabber::monitorRef(m_monitors.front());
       }
 
+      // Lost monitors are never found
       channel.monitorIndex = channel.monitor.has_value() ? Grabber::findMonitor(*channel.monitor, m_monitors) : std::nullopt;
 
       if(channel.monitor.has_value() && !channel.monitorIndex.has_value()){
@@ -410,10 +411,11 @@ namespace Huenicorn::Core
 
     const Audio::AudioAnalyzer::Triggers soundTriggers = m_audioAnalyzer ? m_audioAnalyzer->takeTriggers() : Audio::AudioAnalyzer::Triggers{0.f, 0.f};
 
-    // Kept alive for this update, even if a screen selection replaces it meanwhile
-    const auto grabber = this->grabber();
-
     std::lock_guard channelsLock(m_channelsMutex);
+
+    // Taken under the channels lock, like the replacement of a screen selection: the regions sent
+    // below always reach the grabber that m_grabberReplaced refers to. Kept alive for this update.
+    const auto grabber = this->grabber();
 
     // A new grabber captures everything until told otherwise
     if(m_grabberReplaced.exchange(false)){
