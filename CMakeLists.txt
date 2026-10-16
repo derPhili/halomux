@@ -117,6 +117,10 @@ set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/EntertainmentConfigurationSelector.cpp
 )
 
+set(GRABBER_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+)
+
 set(IMAGING_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
 )
@@ -152,6 +156,7 @@ add_executable(lightspill
   ${APP_SOURCE}
   ${AUDIO_SOURCE}
   ${CORE_SOURCE}
+  ${GRABBER_SOURCE}
   ${HUE_SOURCE}
   ${IMAGING_SOURCE}
   ${NETWORK_SOURCE}

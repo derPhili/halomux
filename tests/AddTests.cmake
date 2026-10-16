@@ -226,3 +226,29 @@ target_compile_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
 target_link_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME BridgeDiscovery COMMAND TestBridgeDiscovery)
+
+
+# TestMonitors: matching monitors between the portal, the compositor and the profile
+add_executable(TestMonitors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestMonitors.cpp
+)
+
+set_target_properties(TestMonitors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestMonitors PUBLIC
+  include
+)
+
+target_link_libraries(TestMonitors PUBLIC
+  glm::glm
+)
+
+target_compile_options(TestMonitors PRIVATE -fsanitize=address,undefined)
+target_link_options(TestMonitors PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME Monitors COMMAND TestMonitors)
