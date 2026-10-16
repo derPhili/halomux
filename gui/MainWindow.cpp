@@ -1,8 +1,11 @@
 #include "MainWindow.hpp"
 
 #include <QCloseEvent>
+#include <QDesktopServices>
 #include <QSettings>
 #include <QTimer>
+#include <QWebEngineNewWindowRequest>
+#include <QWebEnginePage>
 
 #include <Huenicorn/Version.hpp>
 
@@ -41,6 +44,11 @@ namespace Huenicorn::Gui
     if(!restoreGeometry(settings.value("window/geometry").toByteArray())){
       resize(1440, 1000);
     }
+
+    // Links opening a new window, such as the one to the source code, open in the browser
+    connect(page(), &QWebEnginePage::newWindowRequested, this, [](QWebEngineNewWindowRequest& request){
+      QDesktopServices::openUrl(request.requestedUrl());
+    });
 
     connect(this, &QWebEngineView::loadFinished, this, [this](bool ok){
       if(m_showingNotice){

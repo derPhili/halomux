@@ -101,6 +101,9 @@ I18n.Translations = {
     "Where captured frames are processed.\nGPU (green): frames stay in video memory (DMA-BUF), lowest CPU load.\nCPU (orange): fallback through shared memory.":
       "Wo die aufgenommenen Bilder verarbeitet werden.\nGPU (grün): Die Bilder bleiben im Grafikspeicher (DMA-BUF), geringste CPU-Last.\nCPU (orange): Ausweichweg über Shared Memory.",
     "Capture paused · static scene" : "Aufnahme pausiert · statische Szene",
+    "Source code" : "Quellcode",
+    "Source code of Lightspill: free software under the GPLv3, the screen capture request under the AGPLv3":
+      "Quellcode von Lightspill: freie Software unter der GPLv3, die Anfrage zur Bildschirmaufnahme unter der AGPLv3",
     "The monitors whose picture the lamps follow" : "Die Monitore, deren Bild die Lampen folgen",
     "Source: " : "Quelle: ",
     "Monitors…" : "Monitore…",

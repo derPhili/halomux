@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+// Adapted from xdg-dp-start by metamuffin (https://codeberg.org/metamuffin/xdg-dp-start), which is
+// licensed under the GNU Affero General Public License version 3 only: see LICENSE-AGPL-3.0.txt.
+// The rest of Lightspill is under the GNU General Public License version 3 (LICENSE.txt), whose
+// section 13 allows this combination.
+
 /*
   This code is an adapation from https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c
   It consists on an extraction from OBS Source code achieving the call and management of a xdg-portal capture query
