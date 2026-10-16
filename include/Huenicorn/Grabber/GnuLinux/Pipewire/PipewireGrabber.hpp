@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stop_token>
 #include <thread>
 #include <vector>
 
@@ -29,18 +30,6 @@ namespace Huenicorn::Grabber
   class PipewireGrabber : public IGrabber
   {
   private:
-    /**
-     * Channel regions and their colors, shared between the Pipewire thread and the streaming loop
-    */
-    struct SharedChannels
-    {
-      std::mutex mutex;
-      ChannelRegions regions;
-      ChannelColors colors;
-      bool hasColors{false};
-    };
-
-
     /**
      * @brief Per Pipewire buffer resources, attached to the buffer's user_data
      *
@@ -68,37 +57,87 @@ namespace Huenicorn::Grabber
     };
 
 
+    struct PipewireData;
+
+
+    /**
+     * @brief Capture of one monitor
+     *
+     */
+    struct StreamData
+    {
+      PipewireData* owner{nullptr};
+      size_t index{0};
+      uint32_t node{0};
+      // Position and size given by the portal, if any
+      std::optional<MonitorGeometry> portalGeometry;
+      // Connector name for the log, or "monitor N"
+      std::string label;
+
+      pw_stream* stream{nullptr};
+      spa_hook listener{};
+      spa_video_info format{};
+      bool hasFormat{false};
+      // Pixel size of the negotiated format, read by other threads: later negotiations (such as
+      // the modifier's fixation) rewrite format meanwhile
+      std::atomic<int> pixelWidth{0};
+      std::atomic<int> pixelHeight{0};
+
+      // Highest framerate the compositor offered (written by the Pipewire thread)
+      std::atomic<unsigned> displayMaxFramerate{0};
+
+      // GPU path (Pipewire thread only)
+      bool dmaBufFailed{false};
+      bool usingDmaBuf{false};
+      // Modifier last logged, once fixated
+      std::optional<uint64_t> loggedModifier;
+      // Last value given to pw_stream_set_active()
+      std::atomic<bool> streaming{true};
+      // The stream ended while capturing, such as when the monitor was unplugged
+      std::atomic<bool> lost{false};
+
+      // Guarded by PipewireData::channelsMutex
+      ChannelRegions regions;
+      ChannelColors colors;
+      bool hasColors{false};
+
+      // Processing path of the last frame, read by the web UI
+      std::atomic<bool> lastFrameOnGpu{false};
+      std::string cpuReason; // Guarded by PipewireData::processingInfoMutex
+    };
+
+
     struct PipewireData
     {
       spa_hook coreListener;
       pw_main_loop* loop{nullptr};
       pw_context* context{nullptr};
-      pw_stream* stream{nullptr};
-      spa_video_info format{};
-      SharedChannels channels;
+      std::vector<std::unique_ptr<StreamData>> streams;
       std::promise<bool> screenDataReadyPromise;
       bool promiseSetAlready{false};
       Core::Config* config;
+      // Whether the Pipewire thread called pw_init(): a grabber whose screen selection failed
+      // never did, and must not take back the reference of another one
+      bool pwInitialized{false};
 
-      // Highest framerate the compositor offered (written by the Pipewire thread)
-      std::atomic<unsigned> displayMaxFramerate{0};
+      // Channel regions and their colors, shared between the Pipewire thread and the streaming loop
+      mutable std::mutex channelsMutex;
 
       // Current framerate limit, 0 for none (Pipewire thread)
       unsigned frameRateLimit{0};
+      // Whether the lamps don't follow the screen (Pipewire thread)
+      bool paused{false};
+      // Set when the streams are being disconnected (Pipewire thread)
+      bool stopping{false};
 
-      // GPU path (Pipewire thread only)
+      // GPU path (Pipewire thread only), shared by the streams
       std::unique_ptr<EglDownscaler> gpu;
       std::vector<DmaBufFormat> dmaBufFormats;
-      bool dmaBufFailed{false};
-      bool usingDmaBuf{false};
-      // Modifier last logged, once fixated
-      std::optional<uint64_t> loggedModifier;
       spa_source* renegotiateEvent{nullptr};
 
-      // Processing path of the last frame, read by the web UI
-      std::atomic<bool> lastFrameOnGpu{false};
       mutable std::mutex processingInfoMutex;
       std::string gpuName;
+      // Why the CPU is used when the GPU isn't available at all
       std::string cpuReason{"Shared memory"};
     };
 
@@ -109,7 +148,9 @@ namespace Huenicorn::Grabber
      * PipewireGrabber constructor
     */
     PipewireGrabber(
-      Core::Config* config
+      Core::Config* config,
+      bool askForMonitors = false,
+      std::stop_token stopToken = {}
     );
 
 
@@ -150,6 +191,8 @@ namespace Huenicorn::Grabber
 
     virtual ProcessingInfo processingInfo() const override;
 
+    virtual Monitors monitors() const override;
+
 
     /**
      * @brief Renegotiates the stream so the compositor sends at most frameRate frames per second
@@ -179,12 +222,12 @@ namespace Huenicorn::Grabber
      * DMA-BUF formats come first (preferred), followed by a shared memory fallback.
      *
      * @param builder Builder to write the parameters with
-     * @param pw Pipewire data (DMA-BUF capabilities and framerate limit)
+     * @param stream Stream (its DMA-BUF state, the shared capabilities and framerate limit)
      * @return std::vector<const spa_pod*> Built parameters
      */
     static std::vector<const spa_pod*> _buildFormatParams(
       spa_pod_builder* builder,
-      const PipewireData* pw
+      const StreamData* stream
     );
 
 
@@ -208,11 +251,32 @@ namespace Huenicorn::Grabber
     /**
      * @brief Sends the current EnumFormat parameters to the compositor (Pipewire thread)
      *
-     * @param pw Pipewire data
+     * @param stream Stream to renegotiate
      * @return int Pipewire result
      */
     static int _updateFormatParams(
+      StreamData* stream
+    );
+
+
+    /**
+     * @brief Runs the streams followed by a region, and stops the others (Pipewire thread)
+     *
+     * @param pw Pipewire data
+     */
+    static void _updateStreamActivity(
       PipewireData* pw
+    );
+
+
+    /**
+     * @brief Returns the pixel width of the widest monitor whose format is known (Pipewire thread)
+     *
+     * @param pw Pipewire data
+     * @return int Width, 0 if no format is known yet
+     */
+    static int _referencePixelWidth(
+      const PipewireData* pw
     );
 
 
@@ -228,10 +292,11 @@ namespace Huenicorn::Grabber
      * @return true Colors were computed
      */
     static bool _processDmaBuf(
-      PipewireData* pw,
+      StreamData* stream,
       pw_buffer* pwBuffer,
       int width,
       int height,
+      int subsampleWidth,
       const ChannelRegions& regions,
       ChannelColors& colors
     );
@@ -243,16 +308,26 @@ namespace Huenicorn::Grabber
      * @return true Colors were computed
      */
     static bool _processSharedMemory(
-      PipewireData* pw,
+      StreamData* stream,
       pw_buffer* pwBuffer,
       int width,
       int height,
+      int subsampleWidth,
       Imaging::PixelFormat pixelFormat,
       const ChannelRegions& regions,
       ChannelColors& colors
     );
 
     static int _onUpdateFrameRateLimit(
+      spa_loop* loop,
+      bool async,
+      uint32_t seq,
+      const void* data,
+      size_t size,
+      void* userData
+    );
+
+    static int _onUpdateRegions(
       spa_loop* loop,
       bool async,
       uint32_t seq,
@@ -297,11 +372,34 @@ namespace Huenicorn::Grabber
       pw_buffer* buffer
     );
 
+    /**
+     * @brief Notices a stream ending while capturing, such as when its monitor is unplugged
+     *
+     */
+    static void _onStreamStateChanged(
+      void* userdata,
+      pw_stream_state old,
+      pw_stream_state state,
+      const char* error
+    );
+
+
     static void _onStreamParamChanged(
       void* userdata,
       uint32_t id,
       const spa_pod* param
     );
+
+    /**
+     * @brief Gives up the screen selection, in the portal thread
+     *
+     * @param userData Capture
+     * @return gboolean G_SOURCE_REMOVE
+     */
+    static gboolean _onAbortCapture(
+      void* userData
+    );
+
 
     /**
      * Screencast portal thread
@@ -337,5 +435,7 @@ namespace Huenicorn::Grabber
     std::optional<std::thread> m_pipewireThread;
     XdgDesktopPortal::Capture m_capture;
     PipewireData m_pwData;
+    // Captured monitors, known once every stream has its format
+    Monitors m_monitors;
   };
 }

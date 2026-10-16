@@ -11,6 +11,10 @@ class Channel
     if(channelData.uvs){
       this.uvs = channelData.uvs;
     }
+
+    // Index of the captured monitor the region is on, null if that monitor isn't captured
+    this.monitor = channelData.monitor ?? null;
+    this.monitorMissing = channelData.monitorMissing || false;
   }
 
 

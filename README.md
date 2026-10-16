@@ -25,6 +25,7 @@ It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by Open
 ## Features
 
 * **Screen sync**: each lamp follows the screen region you assign to it, at up to 60 Hz through the Hue Entertainment API
+* **Several monitors**: each lamp can follow a region of a different monitor, arranged as on your desktop
 * **GPU capture**: frames stay in video memory (DMA-BUF) and the lamp colors are computed on the GPU, with an automatic CPU fallback
 * **Highlight boost**: lamps flash brighter on sudden bright moments (explosions, lightning), optionally on loud moments of the computer's sound too
 * **Static scenes**: one color for all lamps, a color per lamp, built-in scenes or your own saved ones, switched with one click
@@ -41,7 +42,7 @@ It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by Open
 
 ### Tested on
 
-Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU: this path is tested by forcing it with `LIGHTSPILL_DISABLE_GPU=1`, and takes about 8% of a core instead of about 3%. Reports about other setups are welcome.
+Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU: this path is tested by forcing it with `LIGHTSPILL_DISABLE_GPU=1`, and takes about 8% of a core instead of about 3%. Several monitors are tested with two monitors of different sizes side by side: each monitor a lamp follows adds about 3% of a core on the GPU path. Reports about other setups are welcome.
 
 ## Installation
 
@@ -67,7 +68,7 @@ The package contains:
 Dependencies on Arch based distributions:
 
 ```bash
-sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm qt6-base qt6-svg qt6-webengine
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm wayland wayland-protocols qt6-base qt6-svg qt6-webengine
 ```
 
 Lightspill needs **Mbed TLS 4.x** and **[cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.46 or newer**. If your distribution ships older versions, build them from source. For cpp-httplib:
@@ -103,7 +104,7 @@ Start "Lightspill" from the application menu. As long as no bridge is paired, a 
 2. **Finding the bridge**: it is searched automatically in the local network (mDNS), then through the discovery service of Philips if none answers, or you enter its IP address
 3. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
 4. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
-5. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
+5. **Screen selection**: the desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start
 
 Then, in the light manager, drag your lamps from "Available" to "Active", select a lamp to adjust the screen region it follows, and save the profile.
 
@@ -126,7 +127,8 @@ journalctl --user -u lightspill.service -f
 
 ### Light manager
 
-* **Screen regions**: the part of the screen each active lamp follows, with a gamma correction per lamp
+* **Screen regions**: the part of the screen each active lamp follows, with a gamma correction per lamp. With several monitors, they are shown as arranged on the desktop: drag a region onto another monitor to make the lamp follow it. A monitor no lamp follows isn't captured and costs nothing
+* **Monitors** (header): the captured monitors. "Monitors…" opens the desktop's screen selection again, to capture other monitors; until it's confirmed, everything keeps running as before
 * **Sync** (header): switches between following the screen and showing the static scene. Without sync, screen capture and sound analysis pause
 * **Static scene**: one color for all lamps, a color per lamp, built-in scenes whose colors are spread over the lamps from left to right, and your own saved scenes. Picking one turns sync off
 * **Settings**: brightness, transition smoothing (presets "Gaming" and "Movie"), highlight boost (presets from "Subtle" to "Intense"), reacting to sound, capture resolution and refresh rate
@@ -177,7 +179,7 @@ Most values are changed from the light manager. All of them can be edited by han
 ### profile.json
 
 * **entertainmentConfigurationId**: (string) UUID of the entertainment area
-* **channels**: (array) the lamps of the area, each with **channelId**, **active**, **devices**, **gammaFactor** and **uvs** (top left **uvA** and bottom right **uvB** corner of its screen region, from 0 to 1)
+* **channels**: (array) the lamps of the area, each with **channelId**, **active**, **devices**, **gammaFactor**, **uvs** (top left **uvA** and bottom right **uvB** corner of its screen region, from 0 to 1) and **monitor**: the monitor the region is on, by its position and size on the desktop (**x**, **y**, **width**, **height**) and its connector **name**. A lamp without it follows the first captured monitor; a lamp whose monitor isn't captured stays off while syncing
 
 ## Troubleshooting
 
@@ -185,9 +187,9 @@ Most values are changed from the light manager. All of them can be edited by han
 
 The credentials may have become invalid. Stop Lightspill, delete `~/.config/lightspill/config.json` and start it again: the setup wizard pairs with the bridge again.
 
-### Choosing another screen
+### Choosing other monitors
 
-Stop Lightspill, remove the `restoreToken` line from `~/.config/lightspill/config.json` and start it again: the desktop asks for the screen again.
+Click "Monitors…" in the header of the light manager and tick the monitors in the desktop's dialog. Lamps whose monitor is no longer captured are marked in the lamp list and stay off until you drag their region onto a captured monitor.
 
 ### The lamps don't react
 

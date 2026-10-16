@@ -117,6 +117,10 @@ set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/EntertainmentConfigurationSelector.cpp
 )
 
+set(GRABBER_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+)
+
 set(IMAGING_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
 )
@@ -152,6 +156,7 @@ add_executable(lightspill
   ${APP_SOURCE}
   ${AUDIO_SOURCE}
   ${CORE_SOURCE}
+  ${GRABBER_SOURCE}
   ${HUE_SOURCE}
   ${IMAGING_SOURCE}
   ${NETWORK_SOURCE}
@@ -179,7 +184,30 @@ pkg_check_modules(LIBGLIB REQUIRED glib-2.0 gio-2.0)
 # GPU downscaling of DMA-BUF frames
 pkg_check_modules(GPU REQUIRED egl glesv2 libdrm)
 
+# Names and logical geometry of the monitors (wl_output, xdg-output)
+pkg_check_modules(WAYLAND REQUIRED wayland-client)
+pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
+pkg_get_variable(WAYLAND_SCANNER wayland-scanner wayland_scanner)
+
+set(XDG_OUTPUT_XML ${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-output/xdg-output-unstable-v1.xml)
+set(PROTOCOLS_DIR ${CMAKE_CURRENT_BINARY_DIR}/protocols)
+file(MAKE_DIRECTORY ${PROTOCOLS_DIR})
+
+add_custom_command(
+  OUTPUT ${PROTOCOLS_DIR}/xdg-output-unstable-v1-client-protocol.h ${PROTOCOLS_DIR}/xdg-output-unstable-v1-protocol.c
+  COMMAND ${WAYLAND_SCANNER} client-header ${XDG_OUTPUT_XML} ${PROTOCOLS_DIR}/xdg-output-unstable-v1-client-protocol.h
+  COMMAND ${WAYLAND_SCANNER} private-code ${XDG_OUTPUT_XML} ${PROTOCOLS_DIR}/xdg-output-unstable-v1-protocol.c
+  DEPENDS ${XDG_OUTPUT_XML}
+)
+
+# Generated C code, built without the application's warning flags
+add_library(wayland_protocols STATIC ${PROTOCOLS_DIR}/xdg-output-unstable-v1-protocol.c)
+target_include_directories(wayland_protocols PUBLIC ${PROTOCOLS_DIR} ${WAYLAND_INCLUDE_DIRS})
+target_link_libraries(wayland_protocols PUBLIC ${WAYLAND_LIBRARIES})
+
 target_sources(lightspill PRIVATE
+  ${PROTOCOLS_DIR}/xdg-output-unstable-v1-client-protocol.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/WaylandOutputs.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
@@ -193,6 +221,7 @@ target_include_directories(lightspill PUBLIC
 )
 
 target_link_libraries(lightspill PUBLIC
+  wayland_protocols
   GIO::GIO
   ${LIB_PIPEWIRE_LIBRARIES}
   ${LIBGLIB_LIBRARIES}

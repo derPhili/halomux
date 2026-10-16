@@ -112,6 +112,7 @@ a
   z-index: 1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 14px 28px;
   /* Opaque: a backdrop blur would be recomputed whenever the live colors under it change */
@@ -140,6 +141,56 @@ a
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
+}
+
+
+.headerMonitors
+{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+#monitorInfo
+{
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.headerMonitors button
+{
+  padding: 4px 12px;
+  min-height: 28px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+
+.monitorMissing
+{
+  color: var(--warning);
+}
+
+
+#uvArea text
+{
+  pointer-events: none;
+}
+
+
+/* A lamp whose monitor isn't captured: its region waits to be dragged onto a captured monitor */
+#uvArea.missing > rect
+{
+  stroke: var(--warning);
+  stroke-dasharray: 6 4;
 }
 
 
@@ -909,8 +960,35 @@ input[type=color]::-webkit-color-swatch
 
 #screenArea
 {
+  fill: transparent;
+}
+
+
+.monitorScreen
+{
   fill: var(--screenFill);
   stroke: var(--border);
+}
+
+
+.gridLine
+{
+  stroke: var(--gridColor);
+  stroke-width: 1px;
+}
+
+
+/* Monitors no lamp follows aren't captured */
+.monitor.idle
+{
+  opacity: 0.45;
+}
+
+
+#svgArea .monitorLabel
+{
+  fill: var(--textMuted);
+  font-size: 12px;
 }
 
 
@@ -919,6 +997,7 @@ input[type=color]::-webkit-color-swatch
   fill: var(--accentSoft);
   stroke: var(--accent);
   stroke-width: 1.5px;
+  cursor: move;
 }
 
 

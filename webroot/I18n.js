@@ -101,9 +101,24 @@ I18n.Translations = {
     "Where captured frames are processed.\nGPU (green): frames stay in video memory (DMA-BUF), lowest CPU load.\nCPU (orange): fallback through shared memory.":
       "Wo die aufgenommenen Bilder verarbeitet werden.\nGPU (grün): Die Bilder bleiben im Grafikspeicher (DMA-BUF), geringste CPU-Last.\nCPU (orange): Ausweichweg über Shared Memory.",
     "Capture paused · static scene" : "Aufnahme pausiert · statische Szene",
+    "The monitors whose picture the lamps follow" : "Die Monitore, deren Bild die Lampen folgen",
+    "Source: " : "Quelle: ",
+    "Monitors…" : "Monitore…",
+    "Opens the system dialog to choose which monitors Lightspill captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.":
+      "Öffnet den Systemdialog, in dem du wählst, welche Monitore Lightspill erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.",
+    "Waiting for the screen selection…" : "Warte auf die Bildschirmauswahl…",
+    "Selection cancelled, nothing changed" : "Auswahl abgebrochen, nichts geändert",
 
     // Screen regions
-    "Which part of the screen each lamp follows" : "Welchem Bildschirmbereich jede Lampe folgt",
+    "Which part of the screen each lamp follows. With several monitors, drag a region onto another monitor to make the lamp follow it.":
+      "Welchem Bildschirmbereich jede Lampe folgt. Bei mehreren Monitoren: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt.",
+    "Drag to move the region. With several monitors, drop it onto another monitor to make the lamp follow it":
+      "Ziehen, um den Bereich zu verschieben. Bei mehreren Monitoren: Auf einen anderen Monitor ziehen, damit die Lampe ihm folgt",
+    "{monitor}: captured, a lamp follows it" : "{monitor}: wird erfasst, eine Lampe folgt ihm",
+    "{monitor}: no lamp follows it, so it isn't captured" : "{monitor}: Keine Lampe folgt ihm, daher wird er nicht erfasst",
+    "Monitor not captured – lamp is off" : "Monitor nicht erfasst – Lampe aus",
+    "The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.":
+      "Der Monitor, dem diese Lampe gefolgt ist, wird nicht erfasst. Wähle ihn über „Monitore…“ erneut oder zieh den Bereich auf einen erfassten Monitor.",
     "Screen regions" : "Bildschirmbereiche",
     "Select an active lamp, then drag the corners of its region" : "Aktive Lampe auswählen, dann die Ecken ihres Bereichs ziehen",
     "Each colored rectangle is the screen region a lamp follows, filled with the lamp's current color. Select an active lamp in the list to edit its region.":
@@ -297,7 +312,7 @@ I18n.Translations = {
     "This page checks again every few seconds." : "Diese Seite prüft alle paar Sekunden erneut.",
     "Check again" : "Erneut prüfen",
     "Ready" : "Fertig",
-    "Next, the desktop asks which screen the app may capture. Choose your monitor and allow it to be remembered, so you aren't asked again on every start." : "Als Nächstes fragt der Desktop, welchen Bildschirm die App aufnehmen darf. Wähle deinen Monitor und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt.",
+    "Next, the desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start." : "Als Nächstes fragt der Desktop, welche Bildschirme Lightspill erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt.",
     "Then, in the light manager:" : "Danach in der Lichtsteuerung:",
     "Drag your lamps from Available to Active." : "Ziehe deine Lampen von „Verfügbar“ nach „Aktiv“.",
     "Select a lamp and adjust the part of the screen it follows." : "Wähle eine Lampe und passe den Bildschirmbereich an, dem sie folgt.",

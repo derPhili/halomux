@@ -1,11 +1,13 @@
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
 #include <glm/exponential.hpp>
 #include <glm/vec3.hpp>
 
+#include <Huenicorn/Grabber/Monitors.hpp>
 #include <Huenicorn/Hue/Api/Device.hpp>
 #include <Huenicorn/Imaging/Color.hpp>
 #include <Huenicorn/Imaging/UV.hpp>
@@ -132,6 +134,11 @@ namespace Huenicorn::Hue::Api
     Devices devices;
     float gammaFactor{0.0};
     Imaging::UVs uvs{};
+    // Monitor the region is on, nothing until it's known (profiles from before monitors per lamp)
+    std::optional<Grabber::MonitorRef> monitor;
+
+    // Index of the monitor among the captured ones, nothing if it isn't captured (not persisted)
+    std::optional<size_t> monitorIndex;
 
     // Transient streaming state (not persisted): last xyBrightness value sent,
     // used to ease transitions when Config::transitionSmoothing() > 0.

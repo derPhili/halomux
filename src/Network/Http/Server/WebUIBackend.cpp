@@ -4,6 +4,7 @@
 
 #include <Huenicorn/Core/CoreService.hpp>
 #include <Huenicorn/Core/Scenes.hpp>
+#include <Huenicorn/Serialization/Channel.hpp>
 #include <Huenicorn/Serialization/Config.hpp>
 #include <Huenicorn/Serialization/Json.hpp>
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
@@ -13,6 +14,37 @@
 namespace Huenicorn::Network::Http::Server
 {
   using namespace Serialization;
+
+
+  namespace
+  {
+    // Channel as the light manager sees it: the index of its monitor instead of the stored reference
+    Json webChannel(
+      const Hue::Api::Channel& channel
+    )
+    {
+      Json jsonChannel = Json(channel);
+      jsonChannel["monitor"] = channel.monitorIndex.has_value() ? Json(*channel.monitorIndex) : Json(nullptr);
+      jsonChannel["monitorMissing"] = channel.state == Hue::Api::Channel::State::Active && !channel.monitorIndex.has_value();
+      return jsonChannel;
+    }
+
+
+    Json webChannels(
+      const Hue::Api::Channels& channels
+    )
+    {
+      Json jsonChannels = Json::array();
+      for(const auto& [channelId, channel] : channels){
+        Json jsonChannel = webChannel(channel);
+        jsonChannel["channelId"] = channelId;
+        jsonChannels.push_back(std::move(jsonChannel));
+      }
+
+      return jsonChannels;
+    }
+  }
+
 
   WebUIBackend::WebUIBackend(
     Huenicorn::Core::CoreService* coreService
@@ -79,16 +111,15 @@ namespace Huenicorn::Network::Http::Server
     m_httpServer.addRoute(HttpMethod::Get, "/api/channel/:channelId", [this](const Request& req, Response& res){
       uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
 
-      std::string response = Json(m_coreService->channels().at(channelId)).dump();
+      std::string response = webChannel(m_coreService->channels().at(channelId)).dump();
       res.contentType = "application/json";
       res.body = response;
     });
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/channels", [this](const Request& /*req*/, Response& res){
-      std::string response = Json(m_coreService->channels()).dump();
       res.contentType = "application/json";
-      res.body = response;
+      res.body = webChannels(m_coreService->channels()).dump();
     });
 
 
@@ -120,7 +151,36 @@ namespace Huenicorn::Network::Http::Server
         });
       }
 
+      Json jsonMonitors = Json::array();
+      const auto monitors = m_coreService->monitors();
+      for(size_t i = 0; i < monitors.size(); i++){
+        const auto& monitor = monitors[i];
+        jsonMonitors.push_back({
+          {"index", i},
+          {"name", monitor.name},
+          {"description", monitor.description},
+          {"x", monitor.geometry.x},
+          {"y", monitor.geometry.y},
+          {"width", monitor.geometry.width},
+          {"height", monitor.geometry.height},
+          {"pixelWidth", monitor.pixelWidth},
+          {"pixelHeight", monitor.pixelHeight},
+          {"gpu", monitor.gpu},
+          {"active", monitor.active},
+          {"lost", monitor.lost}
+        });
+      }
+
+      std::string monitorSelection = "idle";
+      switch(m_coreService->monitorSelection()){
+        case Core::MonitorSelection::Pending: monitorSelection = "pending"; break;
+        case Core::MonitorSelection::Cancelled: monitorSelection = "cancelled"; break;
+        case Core::MonitorSelection::Idle: break;
+      }
+
       Json jsonDisplayInfo{
+        {"monitors", jsonMonitors},
+        {"monitorSelection", monitorSelection},
         {"x", displayResolution.x},
         {"y", displayResolution.y},
         {"subsampleWidth", m_coreService->subsampleWidth()},
@@ -201,7 +261,7 @@ namespace Huenicorn::Network::Http::Server
       Json jsonResponse = {
         {"succeeded", succeeded},
         {"entertainmentConfigurationId", entertainmentConfigurationId},
-        {"channels", Json(m_coreService->channels())}
+        {"channels", webChannels(m_coreService->channels())}
       };
 
       std::string response = jsonResponse.dump();
@@ -240,6 +300,33 @@ namespace Huenicorn::Network::Http::Server
       std::string response = jsonResponse.dump();
       res.contentType = "application/json";
       res.body = response;
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelMonitor/:channelId", [this](const Request& req, Response& res){
+      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
+      res.contentType = "application/json";
+
+      size_t monitor = 0;
+      Imaging::UVs uvs;
+      try{
+        const Json jsonData = Json::parse(req.body);
+        monitor = jsonData.at("monitor").get<size_t>();
+        uvs = jsonData.at("uvs").get<Imaging::UVs>();
+      }
+      catch(const Json::exception&){
+        res.status = 400;
+        res.body = Json{{"succeeded", false}, {"error", "expected a monitor index and uvs"}}.dump();
+        return;
+      }
+
+      if(!m_coreService->setChannelMonitor(channelId, monitor, uvs).has_value()){
+        res.status = 400;
+        res.body = Json{{"succeeded", false}, {"error", "invalid channel id or monitor"}}.dump();
+        return;
+      }
+
+      res.body = webChannel(m_coreService->channels().at(channelId)).dump();
     });
 
 
@@ -449,7 +536,7 @@ namespace Huenicorn::Network::Http::Server
 
       Json jsonResponse = Json{
         {"succeeded", true},
-        {"channels", Json(m_coreService->channels())},
+        {"channels", webChannels(m_coreService->channels())},
       };
 
       if(active){
@@ -465,6 +552,12 @@ namespace Huenicorn::Network::Http::Server
     m_httpServer.addRoute(HttpMethod::Post, "/api/preview", [this](const Request& /*req*/, Response& res){
       res.contentType = "application/json";
       res.body = Json{{"duration", m_coreService->startPreview()}}.dump();
+    });
+
+
+    m_httpServer.addRoute(HttpMethod::Post, "/api/reselectMonitors", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Json{{"started", m_coreService->reselectMonitors()}}.dump();
     });
 
 

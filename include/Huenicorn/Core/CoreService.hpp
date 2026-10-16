@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Core/MonitorSelection.hpp>
 #include <Huenicorn/Grabber/IGrabber.hpp>
 
 #include <Huenicorn/Hue/Api/EntertainmentConfiguration.hpp>
@@ -242,6 +243,48 @@ namespace Huenicorn::Core
       Imaging::UV&& uv,
       Imaging::UVCorner uvCorner
     );
+
+
+    /**
+     * @brief Moves a channel's region onto a captured monitor
+     *
+     * @param channelId ID of the channel to affect
+     * @param monitor Index of the monitor, as in monitors()
+     * @param uvs Region on that monitor, clamped to it
+     * @return std::optional<Imaging::UVs> Clamped region, empty if the channel or the monitor doesn't exist
+     */
+    std::optional<Imaging::UVs> setChannelMonitor(
+      uint8_t channelId,
+      size_t monitor,
+      const Imaging::UVs& uvs
+    );
+
+
+    /**
+     * @brief Returns the captured monitors
+     *
+     * @return Grabber::Monitors Captured monitors, in the order channels refer to them
+     */
+    Grabber::Monitors monitors() const;
+
+
+    /**
+     * @brief Asks for the monitors to capture: the desktop shows its screen selection dialog
+     *
+     * The current monitors keep being captured until the selection is confirmed.
+     *
+     * @return true The screen selection started
+     * @return false A screen selection is already pending
+     */
+    bool reselectMonitors();
+
+
+    /**
+     * @brief Returns the state of the last screen selection
+     *
+     * @return MonitorSelection Pending while the dialog is open, Cancelled if it was cancelled
+     */
+    MonitorSelection monitorSelection() const;
 
 
     /**

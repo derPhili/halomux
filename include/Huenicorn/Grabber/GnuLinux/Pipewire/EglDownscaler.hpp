@@ -151,6 +151,8 @@ namespace Huenicorn::Grabber
      * @param subsampleHeight Subsample height
      * @param regions Regions in subsample pixels (see ImageProcessing::subImageRect), at most MaxRegions
      * @param colors RGBA average per region, transparent black for empty regions
+     * @param slot Render targets to use: one per source size, such as one per monitor, so they
+     *        aren't reallocated (and waited for) when sources of different sizes alternate
      * @return true Averages computed
      * @return false A GL error occurred
      */
@@ -159,11 +161,34 @@ namespace Huenicorn::Grabber
       int subsampleWidth,
       int subsampleHeight,
       const std::vector<cv::Rect>& regions,
-      std::vector<cv::Vec4b>& colors
+      std::vector<cv::Vec4b>& colors,
+      size_t slot = 0
     );
 
 
   private:
+    /**
+     * @brief Render targets of one slot, sized on demand
+     *
+     */
+    struct Targets
+    {
+      GLuint targetTexture{0};
+      GLuint framebuffer{0};
+      int targetWidth{0};
+      int targetHeight{0};
+
+      GLuint rowMeansTexture{0};
+      GLuint rowMeansFramebuffer{0};
+      int rowMeansRowCount{0};
+
+      GLuint regionsTexture{0};
+      GLuint regionsFramebuffer{0};
+      int regionsTargetCount{0};
+    };
+
+
+    void _selectSlot(size_t slot);
     bool _initDisplay();
     bool _initContext();
     bool _initProgram();
@@ -188,22 +213,15 @@ namespace Huenicorn::Grabber
     GLint m_blockSizeLocation{-1};
     GLint m_tapsLocation{-1};
 
-    GLuint m_targetTexture{0};
-    GLuint m_framebuffer{0};
-    int m_targetWidth{0};
-    int m_targetHeight{0};
+    // Render targets per slot, and the slot in use
+    std::vector<Targets> m_targets;
+    Targets* m_active{nullptr};
 
     // Region averaging: row means (one per region and subsample row), then one pixel per region
     GLuint m_rowMeansProgram{0};
     GLint m_rowMeansRegionsLocation{-1};
-    GLuint m_rowMeansTexture{0};
-    GLuint m_rowMeansFramebuffer{0};
-    int m_rowMeansRowCount{0};
 
     GLuint m_regionMeansProgram{0};
     GLint m_regionMeansRegionsLocation{-1};
-    GLuint m_regionsTexture{0};
-    GLuint m_regionsFramebuffer{0};
-    int m_regionsTargetCount{0};
   };
 }

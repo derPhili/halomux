@@ -226,3 +226,97 @@ target_compile_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
 target_link_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME BridgeDiscovery COMMAND TestBridgeDiscovery)
+
+
+# TestMonitors: matching monitors between the portal, the compositor and the profile
+add_executable(TestMonitors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestMonitors.cpp
+)
+
+set_target_properties(TestMonitors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestMonitors PUBLIC
+  include
+)
+
+target_link_libraries(TestMonitors PUBLIC
+  glm::glm
+)
+
+target_compile_options(TestMonitors PRIVATE -fsanitize=address,undefined)
+target_link_options(TestMonitors PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME Monitors COMMAND TestMonitors)
+
+
+# TestWaylandOutputs (manual: needs a Wayland session): prints the compositor's monitors
+add_executable(TestWaylandOutputs
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/WaylandOutputs.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestWaylandOutputs.cpp
+)
+
+set_target_properties(TestWaylandOutputs PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestWaylandOutputs PUBLIC
+  include
+)
+
+target_link_libraries(TestWaylandOutputs PUBLIC
+  wayland_protocols
+)
+
+
+# TestChannelMonitors: the monitor each lamp follows, in the profile
+add_executable(TestChannelMonitors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelMonitors.cpp
+)
+
+set_target_properties(TestChannelMonitors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestChannelMonitors PUBLIC
+  include
+)
+
+target_link_libraries(TestChannelMonitors PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+target_compile_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
+target_link_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME ChannelMonitors COMMAND TestChannelMonitors)
+
+
+# TestGrabberCancel: a failed screen selection leaves the running capture alone
+add_executable(TestGrabberCancel
+  ${APP_SOURCES}
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGrabberCancel.cpp
+)
+
+add_dependencies(TestGrabberCancel generate_version_header generate_webroot_header)
+
+set_target_properties(TestGrabberCancel PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestGrabberCancel PUBLIC ${APP_INCLUDE_DIRECTORIES})
+if(APP_COMPILE_DEFINITIONS)
+  target_compile_definitions(TestGrabberCancel PUBLIC ${APP_COMPILE_DEFINITIONS})
+endif()
+target_link_libraries(TestGrabberCancel PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
+
+add_test(NAME GrabberCancel COMMAND TestGrabberCancel)

@@ -1,5 +1,6 @@
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <sstream>
@@ -9,6 +10,7 @@
 #include <unistd.h>
 
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
+#include <Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp>
 #include <Huenicorn/Imaging/ImageProcessing.hpp>
 #include <Huenicorn/Core/Config.hpp>
 #include <Huenicorn/Core/Logger.hpp>
@@ -72,31 +74,113 @@ namespace
 namespace Huenicorn::Grabber
 {
   PipewireGrabber::PipewireGrabber(
-    Core::Config* config
+    Core::Config* config,
+    bool askForMonitors,
+    std::stop_token stopToken
   ):
   IGrabber(config)
   {
     m_pwData.config = config;
     m_capture.config = config;
+    m_capture.askForMonitors = askForMonitors;
 
     std::promise<bool> fdReadyPromise;
     auto fdReadyFuture = fdReadyPromise.get_future();
     m_capture.fdReadyPromise = std::move(fdReadyPromise);
     m_xdgThread.emplace(_initCapture, &m_capture);
-    fdReadyFuture.wait();
+
+    // The screen selection dialog may stay open: a stop request closes it
+    GSource* abortSource = nullptr;
+    {
+      std::stop_callback abortOnStop(stopToken, [this, &abortSource](){
+        // Runs in the thread requesting the stop (or right here if it already was): the abort
+        // itself runs in the portal thread, which owns the default GLib context
+        abortSource = g_idle_source_new();
+        g_source_set_callback(abortSource, _onAbortCapture, &m_capture, nullptr);
+        g_source_attach(abortSource, nullptr);
+      });
+
+      fdReadyFuture.wait();
+    }
+
+    if(abortSource){
+      g_source_destroy(abortSource);
+      g_source_unref(abortSource);
+    }
 
     if(!fdReadyFuture.get()){
       _stop();
       throw Grabber::GrabberCancelled("Failed to get monitor file descriptor");
     }
 
+    // Names the streams in the log, and the monitors once their sizes are known
+    const auto outputs = listWaylandOutputs();
+
+    for(size_t i = 0; i < m_capture.streams.size(); i++){
+      auto stream = std::make_unique<StreamData>();
+      stream->owner = &m_pwData;
+      stream->index = i;
+      stream->node = m_capture.streams[i].node;
+      stream->portalGeometry = m_capture.streams[i].geometry;
+      stream->label = "monitor " + std::to_string(i + 1);
+
+      for(const auto& output : outputs){
+        if(stream->portalGeometry == output.geometry && !output.name.empty()){
+          stream->label = output.name;
+        }
+      }
+
+      m_pwData.streams.push_back(std::move(stream));
+    }
+
     auto configDataReadyFuture = m_pwData.screenDataReadyPromise.get_future();
     m_pipewireThread.emplace(_pipewireThread, &m_capture, &m_pwData);
-    configDataReadyFuture.wait();
+
+    // A stream that never negotiates must neither hang a screen selection nor the shutdown
+    static constexpr auto StreamsTimeout = std::chrono::seconds(15);
+    const auto deadline = std::chrono::steady_clock::now() + StreamsTimeout;
+    while(configDataReadyFuture.wait_for(100ms) != std::future_status::ready){
+      if(stopToken.stop_requested()){
+        _stop();
+        throw Grabber::GrabberCancelled("Screen capture aborted");
+      }
+
+      if(std::chrono::steady_clock::now() >= deadline){
+        _stop();
+        throw Grabber::GrabberUnavailable("The capture of the selected monitors didn't start");
+      }
+    }
 
     if(!configDataReadyFuture.get()){
       _stop();
       throw Grabber::GrabberUnavailable("Failed to initialize Pipewire capture");
+    }
+
+    // Every stream has its format
+    std::vector<std::pair<int, int>> pixelSizes;
+    for(const auto& stream : m_pwData.streams){
+      pixelSizes.emplace_back(stream->pixelWidth.load(), stream->pixelHeight.load());
+    }
+
+    const auto fallback = fallbackGeometry(pixelSizes);
+    for(size_t i = 0; i < m_pwData.streams.size(); i++){
+      MonitorInfo monitor;
+      monitor.geometry = m_pwData.streams[i]->portalGeometry.value_or(fallback[i]);
+      monitor.pixelWidth = pixelSizes[i].first;
+      monitor.pixelHeight = pixelSizes[i].second;
+      m_monitors.push_back(std::move(monitor));
+    }
+
+    nameMonitors(m_monitors, outputs);
+
+    for(const auto& monitor : m_monitors){
+      Core::Logger::log("Capturing ", monitor.description, (monitor.name.empty() ? "" : " (" + monitor.name + ")"), ", ", monitor.pixelWidth, "x", monitor.pixelHeight, " at ", monitor.geometry.x, ",", monitor.geometry.y);
+    }
+
+    // Saved only now: a token of a selection that doesn't capture would ask again on every start
+    if(m_capture.restoreToken.has_value() && config->restoreToken() != m_capture.restoreToken){
+      config->setRestoreToken(*m_capture.restoreToken);
+      Core::Logger::log("Registered restore token: '", *m_capture.restoreToken, "' into config");
     }
   }
 
@@ -117,7 +201,14 @@ namespace Huenicorn::Grabber
 
   IGrabber::Resolution PipewireGrabber::displayResolution() const
   {
-    return {m_pwData.format.info.raw.size.width, m_pwData.format.info.raw.size.height};
+    Resolution widest{0, 0};
+    for(const auto& monitor : m_monitors){
+      if(monitor.pixelWidth > widest.x){
+        widest = {monitor.pixelWidth, monitor.pixelHeight};
+      }
+    }
+
+    return widest;
   }
 
 
@@ -125,7 +216,12 @@ namespace Huenicorn::Grabber
   {
     // Highest framerate offered by the compositor, regardless of the limit requested
     // through setFrameRateLimit()
-    if(unsigned displayMaxFramerate = m_pwData.displayMaxFramerate; displayMaxFramerate > 0){
+    unsigned displayMaxFramerate = 0;
+    for(const auto& stream : m_pwData.streams){
+      displayMaxFramerate = std::max(displayMaxFramerate, stream->displayMaxFramerate.load());
+    }
+
+    if(displayMaxFramerate > 0){
       return displayMaxFramerate;
     }
 
@@ -138,8 +234,22 @@ namespace Huenicorn::Grabber
     const ChannelRegions& regions
   )
   {
-    auto lock = std::lock_guard(m_pwData.channels.mutex);
-    m_pwData.channels.regions = regions;
+    {
+      auto lock = std::lock_guard(m_pwData.channelsMutex);
+      for(auto& stream : m_pwData.streams){
+        stream->regions.clear();
+      }
+
+      for(const auto& region : regions){
+        if(region.monitor < m_pwData.streams.size()){
+          m_pwData.streams[region.monitor]->regions.push_back(region);
+        }
+      }
+    }
+
+    if(m_pwData.loop){
+      pw_loop_invoke(pw_main_loop_get_loop(m_pwData.loop), _onUpdateRegions, 0, nullptr, 0, false, &m_pwData);
+    }
   }
 
 
@@ -147,21 +257,77 @@ namespace Huenicorn::Grabber
     ChannelColors& colors
   )
   {
-    auto lock = std::lock_guard(m_pwData.channels.mutex);
-    colors = m_pwData.channels.colors;
-    return m_pwData.channels.hasColors;
+    auto lock = std::lock_guard(m_pwData.channelsMutex);
+
+    colors.clear();
+    bool hasRegions = false;
+    bool hasColors = false;
+    for(const auto& stream : m_pwData.streams){
+      if(stream->regions.empty()){
+        continue;
+      }
+
+      hasRegions = true;
+      if(stream->hasColors){
+        hasColors = true;
+        colors.insert(colors.end(), stream->colors.begin(), stream->colors.end());
+      }
+    }
+
+    // Without regions there is nothing to wait for
+    return hasColors || !hasRegions;
   }
 
 
   IGrabber::ProcessingInfo PipewireGrabber::processingInfo() const
   {
-    auto lock = std::lock_guard(m_pwData.processingInfoMutex);
-
-    if(m_pwData.lastFrameOnGpu){
-      return {.gpu = true, .details = m_pwData.gpuName + ", DMA-BUF"};
+    std::vector<const StreamData*> active;
+    {
+      auto lock = std::lock_guard(m_pwData.channelsMutex);
+      for(const auto& stream : m_pwData.streams){
+        if(stream->streaming && !stream->regions.empty()){
+          active.push_back(stream.get());
+        }
+      }
     }
 
-    return {.gpu = false, .details = m_pwData.cpuReason};
+    if(active.empty() && !m_pwData.streams.empty()){
+      active.push_back(m_pwData.streams.front().get());
+    }
+
+    auto lock = std::lock_guard(m_pwData.processingInfoMutex);
+
+    for(const StreamData* stream : active){
+      if(!stream->lastFrameOnGpu){
+        const std::string& reason = stream->cpuReason.empty() ? m_pwData.cpuReason : stream->cpuReason;
+        if(m_monitors.size() > 1 && stream->index < m_monitors.size()){
+          return {.gpu = false, .details = m_monitors[stream->index].description + ": " + reason};
+        }
+
+        return {.gpu = false, .details = reason};
+      }
+    }
+
+    return {.gpu = true, .details = m_pwData.gpuName + ", DMA-BUF"};
+  }
+
+
+  Monitors PipewireGrabber::monitors() const
+  {
+    Monitors monitors = m_monitors;
+
+    auto lock = std::lock_guard(m_pwData.processingInfoMutex);
+    for(size_t i = 0; i < monitors.size() && i < m_pwData.streams.size(); i++){
+      const StreamData& stream = *m_pwData.streams[i];
+      monitors[i].lost = stream.lost;
+      monitors[i].active = stream.streaming && !stream.lost;
+      monitors[i].gpu = stream.lastFrameOnGpu;
+      monitors[i].processingDetails = stream.lastFrameOnGpu
+        ? m_pwData.gpuName + ", DMA-BUF"
+        : (stream.cpuReason.empty() ? m_pwData.cpuReason : stream.cpuReason);
+    }
+
+    return monitors;
   }
 
 
@@ -201,20 +367,21 @@ namespace Huenicorn::Grabber
     void* userdata
   )
   {
-    PipewireData* pw = static_cast<PipewireData*>(userdata);
+    StreamData* stream = static_cast<StreamData*>(userdata);
+    PipewireData* pw = stream->owner;
     pw_buffer* pwBuffer;
 
-    if((pwBuffer = pw_stream_dequeue_buffer(pw->stream)) == NULL){
+    if((pwBuffer = pw_stream_dequeue_buffer(stream->stream)) == NULL){
       //pw_log_warn("out of buffers");
       return;
     }
 
-    const auto width = static_cast<int>(pw->format.info.raw.size.width);
-    const auto height = static_cast<int>(pw->format.info.raw.size.height);
+    const auto width = static_cast<int>(stream->format.info.raw.size.width);
+    const auto height = static_cast<int>(stream->format.info.raw.size.height);
 
     // Only 4 bytes per pixel formats are negotiated (see SupportedFormats)
     Imaging::PixelFormat pixelFormat;
-    switch(pw->format.info.raw.format){
+    switch(stream->format.info.raw.format){
       case SPA_VIDEO_FORMAT_BGRx:
       case SPA_VIDEO_FORMAT_BGRA:
         pixelFormat = Imaging::PixelFormat::BGRA;
@@ -226,7 +393,7 @@ namespace Huenicorn::Grabber
         break;
 
       default:
-        pw_stream_queue_buffer(pw->stream, pwBuffer);
+        pw_stream_queue_buffer(stream->stream, pwBuffer);
         return;
     }
 
@@ -234,43 +401,48 @@ namespace Huenicorn::Grabber
     const bool corrupted = data.chunk != nullptr && (data.chunk->flags & SPA_CHUNK_FLAG_CORRUPTED);
 
     if(width == 0 || height == 0 || corrupted){
-      pw_stream_queue_buffer(pw->stream, pwBuffer);
+      pw_stream_queue_buffer(stream->stream, pwBuffer);
       return;
     }
 
     ChannelRegions regions;
     {
-      auto lock = std::lock_guard(pw->channels.mutex);
-      regions = pw->channels.regions;
+      auto lock = std::lock_guard(pw->channelsMutex);
+      regions = stream->regions;
     }
+
+    // Every monitor is subsampled in the same ratio as the configured width of the widest one
+    const int subsampleWidth = subsampleWidthFor(pw->config->subsampleWidth(), _referencePixelWidth(pw), width);
 
     ChannelColors colors;
     const bool computed = data.type == SPA_DATA_DmaBuf
-      ? _processDmaBuf(pw, pwBuffer, width, height, regions, colors)
-      : _processSharedMemory(pw, pwBuffer, width, height, pixelFormat, regions, colors);
+      ? _processDmaBuf(stream, pwBuffer, width, height, subsampleWidth, regions, colors)
+      : _processSharedMemory(stream, pwBuffer, width, height, subsampleWidth, pixelFormat, regions, colors);
 
     if(computed){
-      pw->lastFrameOnGpu = data.type == SPA_DATA_DmaBuf;
+      stream->lastFrameOnGpu = data.type == SPA_DATA_DmaBuf;
 
-      auto lock = std::lock_guard(pw->channels.mutex);
-      pw->channels.colors = std::move(colors);
-      pw->channels.hasColors = true;
+      auto lock = std::lock_guard(pw->channelsMutex);
+      stream->colors = std::move(colors);
+      stream->hasColors = true;
     }
 
-    pw_stream_queue_buffer(pw->stream, pwBuffer);
+    pw_stream_queue_buffer(stream->stream, pwBuffer);
   }
 
 
   bool PipewireGrabber::_processDmaBuf(
-    PipewireData* pw,
+    StreamData* stream,
     pw_buffer* pwBuffer,
     int width,
     int height,
+    int subsampleWidth,
     const ChannelRegions& regions,
     ChannelColors& colors
   )
   {
-    if(!pw->gpu || pw->dmaBufFailed){
+    PipewireData* pw = stream->owner;
+    if(!pw->gpu || stream->dmaBufFailed){
       return false;
     }
 
@@ -293,29 +465,29 @@ namespace Huenicorn::Grabber
         .stride = static_cast<uint32_t>(data.chunk->stride),
         .width = width,
         .height = height,
-        .drmFormat = toDrmFormat(pw->format.info.raw.format),
-        .modifier = pw->format.info.raw.modifier
+        .drmFormat = toDrmFormat(stream->format.info.raw.format),
+        .modifier = stream->format.info.raw.modifier
       });
     }
 
-    const int subsampleWidth = std::min(static_cast<int>(pw->config->subsampleWidth()), width);
+    subsampleWidth = std::min(subsampleWidth, width);
     const int subsampleHeight = std::max(1, static_cast<int>(static_cast<int64_t>(height) * subsampleWidth / width));
 
     // Regions are taken from the subsample, exactly like on the CPU path
     std::vector<cv::Rect> rects;
     rects.reserve(regions.size());
-    for(const auto& [channelId, uvs] : regions){
-      rects.push_back(Imaging::ImageProcessing::subImageRect(subsampleWidth, subsampleHeight, uvs));
+    for(const auto& region : regions){
+      rects.push_back(Imaging::ImageProcessing::subImageRect(subsampleWidth, subsampleHeight, region.uvs));
     }
 
     std::vector<cv::Vec4b> rgbaColors;
-    if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors)){
+    if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors, stream->index)){
       // Fall back to shared memory buffers for good
-      Core::Logger::warn("[gpu] GPU downscaling failed, falling back to the CPU path");
-      pw->dmaBufFailed = true;
+      Core::Logger::warn("[gpu] GPU downscaling failed on ", stream->label, ", falling back to the CPU path");
+      stream->dmaBufFailed = true;
       {
         auto lock = std::lock_guard(pw->processingInfoMutex);
-        pw->cpuReason = "GPU downscaling failed, shared memory";
+        stream->cpuReason = "GPU downscaling failed, shared memory";
       }
       pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
       return false;
@@ -325,7 +497,7 @@ namespace Huenicorn::Grabber
     colors.reserve(regions.size());
     for(size_t i = 0; i < regions.size(); i++){
       const cv::Vec4b& rgba = rgbaColors[i];
-      colors.emplace_back(regions[i].first, Imaging::Color(rgba[0], rgba[1], rgba[2]));
+      colors.emplace_back(regions[i].channelId, Imaging::Color(rgba[0], rgba[1], rgba[2]));
     }
 
     return true;
@@ -333,10 +505,11 @@ namespace Huenicorn::Grabber
 
 
   bool PipewireGrabber::_processSharedMemory(
-    PipewireData* pw,
+    StreamData* /*stream*/,
     pw_buffer* pwBuffer,
     int width,
     int height,
+    int subsampleWidth,
     Imaging::PixelFormat pixelFormat,
     const ChannelRegions& regions,
     ChannelColors& colors
@@ -365,7 +538,6 @@ namespace Huenicorn::Grabber
     // Downscale straight from the shared memory instead of copying the full
     // resolution frame first: only the subsample is copied out.
     Imaging::ImageData subsample;
-    const int subsampleWidth = static_cast<int>(pw->config->subsampleWidth());
 
     if(width > subsampleWidth){
       Imaging::ImageProcessing::rescaleSampled(frameViewData, subsample, subsampleWidth);
@@ -379,7 +551,7 @@ namespace Huenicorn::Grabber
     std::vector<Imaging::UVs> uvs;
     uvs.reserve(regions.size());
     for(const auto& region : regions){
-      uvs.push_back(region.second);
+      uvs.push_back(region.uvs);
     }
 
     const auto regionColors = Imaging::ImageProcessing::averageRegions(subsample, uvs);
@@ -387,7 +559,7 @@ namespace Huenicorn::Grabber
     colors.clear();
     colors.reserve(regions.size());
     for(size_t i = 0; i < regions.size(); i++){
-      colors.emplace_back(regions[i].first, regionColors[i]);
+      colors.emplace_back(regions[i].channelId, regionColors[i]);
     }
 
     return true;
@@ -429,7 +601,7 @@ namespace Huenicorn::Grabber
     pw_buffer* buffer
   )
   {
-    PipewireData* pw = static_cast<PipewireData*>(userdata);
+    StreamData* stream = static_cast<StreamData*>(userdata);
     auto* bufferData = static_cast<BufferData*>(buffer->user_data);
     if(!bufferData){
       return;
@@ -439,12 +611,36 @@ namespace Huenicorn::Grabber
       munmap(bufferData->map, bufferData->mapSize);
     }
 
-    if(bufferData->gpuImage && pw->gpu){
-      pw->gpu->releaseImage(*bufferData->gpuImage);
+    if(bufferData->gpuImage && stream->owner->gpu){
+      stream->owner->gpu->releaseImage(*bufferData->gpuImage);
     }
 
     delete bufferData;
     buffer->user_data = nullptr;
+  }
+
+
+  void PipewireGrabber::_onStreamStateChanged(
+    void* userdata,
+    pw_stream_state /*old*/,
+    pw_stream_state state,
+    const char* error
+  )
+  {
+    StreamData* stream = static_cast<StreamData*>(userdata);
+    if(stream->owner->stopping || (state != PW_STREAM_STATE_ERROR && state != PW_STREAM_STATE_UNCONNECTED)){
+      return;
+    }
+
+    if(stream->lost.exchange(true)){
+      return;
+    }
+
+    Core::Logger::warn("Capture of ", stream->label, " ended", (error ? std::string(": ") + error : std::string()), ". Its lamps stay off while syncing");
+
+    // Its last colors would be handed out forever
+    auto lock = std::lock_guard(stream->owner->channelsMutex);
+    stream->hasColors = false;
   }
 
 
@@ -454,54 +650,36 @@ namespace Huenicorn::Grabber
     const spa_pod* param
   )
   {
-    //Logger::log("Params changed !");
-    PipewireData* pw = static_cast<PipewireData*>(userdata);
+    StreamData* stream = static_cast<StreamData*>(userdata);
+    PipewireData* pw = stream->owner;
 
     if(param == NULL || id != SPA_PARAM_Format){
       return;
     }
 
-    if(spa_format_parse(param, &pw->format.media_type, &pw->format.media_subtype) < 0){
+    if(spa_format_parse(param, &stream->format.media_type, &stream->format.media_subtype) < 0){
       return;
     }
 
-    if(pw->format.media_type != SPA_MEDIA_TYPE_video || pw->format.media_subtype != SPA_MEDIA_SUBTYPE_raw){
+    if(stream->format.media_type != SPA_MEDIA_TYPE_video || stream->format.media_subtype != SPA_MEDIA_SUBTYPE_raw){
       return;
     }
 
-    if(spa_format_video_raw_parse(param, &pw->format.info.raw) < 0){
+    if(spa_format_video_raw_parse(param, &stream->format.info.raw) < 0){
       return;
     }
 
     // Variable framerate streams advertise their bound in max_framerate, fixed ones in framerate.
     // Keep the highest value seen: later negotiations are limited by setFrameRateLimit().
-    for(const auto& fraction : {pw->format.info.raw.max_framerate, pw->format.info.raw.framerate}){
+    for(const auto& fraction : {stream->format.info.raw.max_framerate, stream->format.info.raw.framerate}){
       if(fraction.num > 0 && fraction.denom > 0){
         unsigned framerate = fraction.num / fraction.denom;
-        if(framerate > pw->displayMaxFramerate){
-          pw->displayMaxFramerate = framerate;
+        if(framerate > stream->displayMaxFramerate){
+          stream->displayMaxFramerate = framerate;
         }
         break;
       }
     }
-
-    /*
-    std::stringstream ss;
-    Logger::debug("got video format:");
-
-    ss.str("  format: ");
-    ss << pw->format.info.raw.format << spa_debug_type_find_name(spa_type_video_format, pw->format.info.raw.format);
-    Logger::debug(ss.str());
-
-    ss.str("  size: ");
-    ss << pw->format.info.raw.size.width << "x" << pw->format.info.raw.size.height;
-    Logger::debug(ss.str());
-
-    ss.str("  framerate: ");
-    ss << pw->format.info.raw.framerate.num << "/" << pw->format.info.raw.framerate.denom;
-    Logger::debug(ss.str());
-    */
-
 
     // DMA-BUF formats carry a modifier: ask for the matching buffer type
     const spa_pod_prop* modifierProp = spa_pod_find_prop(param, nullptr, SPA_FORMAT_VIDEO_modifier);
@@ -527,25 +705,48 @@ namespace Huenicorn::Grabber
       SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(dataTypes)
     ));
 #pragma GCC diagnostic pop
-    pw_stream_update_params(pw->stream, &buffersParam, 1);
+    pw_stream_update_params(stream->stream, &buffersParam, 1);
 
-    if(dmaBuf != pw->usingDmaBuf || !pw->promiseSetAlready){
-      pw->usingDmaBuf = dmaBuf;
-      pw->loggedModifier.reset();
+    if(dmaBuf != stream->usingDmaBuf || !stream->hasFormat){
+      stream->usingDmaBuf = dmaBuf;
+      stream->loggedModifier.reset();
       if(!dmaBuf){
-        Core::Logger::log("Capture path: CPU (shared memory)");
+        Core::Logger::log("Capture path (", stream->label, "): CPU (shared memory)");
       }
     }
 
-    if(modifierFixated && pw->loggedModifier != pw->format.info.raw.modifier){
-      pw->loggedModifier = pw->format.info.raw.modifier;
-      Core::Logger::log("Capture path: GPU (DMA-BUF, modifier 0x", std::hex, pw->format.info.raw.modifier, std::dec, ")");
+    if(modifierFixated && stream->loggedModifier != stream->format.info.raw.modifier){
+      stream->loggedModifier = stream->format.info.raw.modifier;
+      Core::Logger::log("Capture path (", stream->label, "): GPU (DMA-BUF, modifier 0x", std::hex, stream->format.info.raw.modifier, std::dec, ")");
     }
 
-    if(!pw->promiseSetAlready){
+    stream->pixelWidth = static_cast<int>(stream->format.info.raw.size.width);
+    stream->pixelHeight = static_cast<int>(stream->format.info.raw.size.height);
+    stream->hasFormat = true;
+
+    // Ready once every monitor has its format
+    const bool allFormats = std::all_of(pw->streams.begin(), pw->streams.end(), [](const auto& other){return other->hasFormat;});
+    if(allFormats && !pw->promiseSetAlready){
       pw->screenDataReadyPromise.set_value(true);
       pw->promiseSetAlready = true;
     }
+  }
+
+
+  gboolean PipewireGrabber::_onAbortCapture(
+    void* userData
+  )
+  {
+    auto* capture = static_cast<XdgDesktopPortal::Capture*>(userData);
+    Core::Logger::log("Screen selection aborted");
+
+    // Closes the pending portal request, and with it the dialog
+    if(capture->cancellable){
+      g_cancellable_cancel(capture->cancellable);
+    }
+
+    XdgDesktopPortal::resolveCapture(capture, false);
+    return G_SOURCE_REMOVE;
   }
 
 
@@ -572,20 +773,23 @@ namespace Huenicorn::Grabber
     PipewireData* pw
   )
   {
-    //capture->updateXdgContext = false;
-
     pw_init(NULL, NULL);
+    pw->pwInitialized = true;
     pw_core_events coreEvents = {};
     coreEvents.version = PW_VERSION_CORE_EVENTS;
     coreEvents.info = _onCoreInfoCallback;
     coreEvents.error = _onCoreErrorCallback;
 
-    pw_stream_events streamEvents = {};
-    streamEvents.version = PW_VERSION_STREAM_EVENTS;
-    streamEvents.param_changed = _onStreamParamChanged;
-    streamEvents.process = _onStreamProcess;
-    streamEvents.add_buffer = _onStreamAddBuffer;
-    streamEvents.remove_buffer = _onStreamRemoveBuffer;
+    static const pw_stream_events streamEvents = [] {
+      pw_stream_events events = {};
+      events.version = PW_VERSION_STREAM_EVENTS;
+      events.state_changed = _onStreamStateChanged;
+      events.param_changed = _onStreamParamChanged;
+      events.process = _onStreamProcess;
+      events.add_buffer = _onStreamAddBuffer;
+      events.remove_buffer = _onStreamRemoveBuffer;
+      return events;
+    }();
 
     pw->loop = pw_main_loop_new(NULL);
     pw->context = pw_context_new(pw_main_loop_get_loop(pw->loop), NULL, 0);
@@ -628,6 +832,9 @@ namespace Huenicorn::Grabber
         pw->screenDataReadyPromise.set_value(false);
         pw->promiseSetAlready = true;
       }
+      pw->gpu.reset();
+      pw_loop_destroy_source(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+      pw->renegotiateEvent = nullptr;
       pw_context_destroy(pw->context);
       pw->context = nullptr;
       pw_main_loop_destroy(pw->loop);
@@ -640,45 +847,47 @@ namespace Huenicorn::Grabber
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     pw_core_add_listener(core, &pw->coreListener, &coreEvents, pw);
 
-    uint32_t targetNode = capture->pwNode;
+    // One stream per captured monitor, on the same connection
+    for(auto& stream : pw->streams){
+      auto props = pw_properties_new(
+        PW_KEY_MEDIA_TYPE, "Video",
+        PW_KEY_MEDIA_CATEGORY, "Capture",
+        PW_KEY_MEDIA_ROLE, "Screen",
+        NULL
+      );
 
-    auto props = pw_properties_new(
-      PW_KEY_MEDIA_TYPE, "Video",
-      PW_KEY_MEDIA_CATEGORY, "Capture",
-      PW_KEY_MEDIA_ROLE, "Screen",
-      NULL
-    );
+      const std::string streamName = "LightspillVideo" + std::to_string(stream->index + 1);
+      stream->stream = pw_stream_new(core, streamName.c_str(), props);
+      pw_stream_add_listener(stream->stream, &stream->listener, &streamEvents, stream.get());
 
-    std::string streamName = "LightspillVideo";
+      std::array<uint8_t, 8192> buffer;
+      spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
 
-    pw->stream = pw_stream_new_simple(
-      pw_main_loop_get_loop(pw->loop),
-      streamName.c_str(),
-      props,
-      &streamEvents,
-      pw
-    );
+      // Unconstrained at first, so the display's actual maximal framerate is learnt
+      // (see displayRefreshRate()). setFrameRateLimit() renegotiates it afterwards.
+      auto params = _buildFormatParams(&b, stream.get());
 
-    std::array<uint8_t, 8192> buffer;
-    spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
-
-    // Unconstrained at first, so the display's actual maximal framerate is learnt
-    // (see displayRefreshRate()). setFrameRateLimit() renegotiates it afterwards.
-    auto params = _buildFormatParams(&b, pw);
+      pw_stream_connect(stream->stream, PW_DIRECTION_INPUT, stream->node, static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS), params.data(), static_cast<uint32_t>(params.size()));
+    }
 #pragma GCC diagnostic pop
-
-    pw_stream_connect(pw->stream, PW_DIRECTION_INPUT, targetNode, static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS), params.data(), static_cast<uint32_t>(params.size()));
 
     pw_main_loop_run(pw->loop);
 
-    pw_stream_disconnect(pw->stream);
-
     // Releases the buffers, and with them the imported DMA-BUFs, while the GL context still exists
-    g_clear_pointer(&pw->stream, pw_stream_destroy);
+    // Disconnecting isn't a monitor lost while capturing
+    pw->stopping = true;
+    for(auto& stream : pw->streams){
+      pw_stream_disconnect(stream->stream);
+      spa_hook_remove(&stream->listener);
+      g_clear_pointer(&stream->stream, pw_stream_destroy);
+    }
+
     pw->gpu.reset();
     pw_loop_destroy_source(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
     pw->renegotiateEvent = nullptr;
 
+    spa_hook_remove(&pw->coreListener);
+    pw_core_disconnect(core);
     g_clear_pointer(&pw->context, pw_context_destroy);
     g_clear_pointer(&pw->loop, pw_main_loop_destroy);
   }
@@ -690,12 +899,13 @@ namespace Huenicorn::Grabber
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
   std::vector<const spa_pod*> PipewireGrabber::_buildFormatParams(
     spa_pod_builder* builder,
-    const PipewireData* pw
+    const StreamData* stream
   )
   {
+    const PipewireData* pw = stream->owner;
     std::vector<const spa_pod*> params;
 
-    if(!pw->dmaBufFailed){
+    if(!stream->dmaBufFailed){
       for(const auto& dmaBufFormat : pw->dmaBufFormats){
         params.push_back(_buildFormatParam(builder, {dmaBufFormat.format}, dmaBufFormat.modifiers, pw->frameRateLimit));
       }
@@ -779,18 +989,56 @@ namespace Huenicorn::Grabber
 
 
   int PipewireGrabber::_updateFormatParams(
-    PipewireData* pw
+    StreamData* stream
   )
   {
-    if(!pw->stream){
+    if(!stream->stream){
       return 0;
     }
 
     std::array<uint8_t, 8192> buffer;
     spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
-    auto params = _buildFormatParams(&b, pw);
+    auto params = _buildFormatParams(&b, stream);
 
-    return pw_stream_update_params(pw->stream, params.data(), static_cast<uint32_t>(params.size()));
+    return pw_stream_update_params(stream->stream, params.data(), static_cast<uint32_t>(params.size()));
+  }
+
+
+  void PipewireGrabber::_updateStreamActivity(
+    PipewireData* pw
+  )
+  {
+    for(auto& stream : pw->streams){
+      bool hasRegions;
+      {
+        auto lock = std::lock_guard(pw->channelsMutex);
+        hasRegions = !stream->regions.empty();
+
+        if(pw->paused || !hasRegions){
+          // Don't hand out the colors of a frame captured before stopping
+          stream->hasColors = false;
+        }
+      }
+
+      const bool streaming = hasRegions && !pw->paused;
+      if(streaming != stream->streaming && stream->stream){
+        pw_stream_set_active(stream->stream, streaming);
+      }
+      stream->streaming = streaming;
+    }
+  }
+
+
+  int PipewireGrabber::_referencePixelWidth(
+    const PipewireData* pw
+  )
+  {
+    int width = 0;
+    for(const auto& stream : pw->streams){
+      width = std::max(width, static_cast<int>(stream->format.info.raw.size.width));
+    }
+
+    return width;
   }
 
 
@@ -799,8 +1047,10 @@ namespace Huenicorn::Grabber
     uint64_t /*count*/
   )
   {
-    // Runs in the Pipewire thread, outside of the process callback
-    _updateFormatParams(static_cast<PipewireData*>(userData));
+    // Runs in the Pipewire thread, outside of the process callbacks
+    for(auto& stream : static_cast<PipewireData*>(userData)->streams){
+      _updateFormatParams(stream.get());
+    }
   }
 
 
@@ -817,7 +1067,14 @@ namespace Huenicorn::Grabber
     PipewireData* pw = static_cast<PipewireData*>(userData);
     pw->frameRateLimit = *static_cast<const unsigned*>(data);
 
-    return _updateFormatParams(pw);
+    int result = 0;
+    for(auto& stream : pw->streams){
+      if(int streamResult = _updateFormatParams(stream.get()); streamResult < 0){
+        result = streamResult;
+      }
+    }
+
+    return result;
   }
 
 
@@ -832,19 +1089,26 @@ namespace Huenicorn::Grabber
   {
     // Runs in the Pipewire thread, so no frame is being processed meanwhile
     PipewireData* pw = static_cast<PipewireData*>(userData);
-    const bool paused = *static_cast<const bool*>(data);
+    pw->paused = *static_cast<const bool*>(data);
+    _updateStreamActivity(pw);
 
-    if(paused){
-      // Don't hand out the colors of a frame captured before the pause
-      auto lock = std::lock_guard(pw->channels.mutex);
-      pw->channels.hasColors = false;
-    }
+    return 0;
+  }
 
-    if(!pw->stream){
-      return 0;
-    }
 
-    return pw_stream_set_active(pw->stream, !paused);
+  int PipewireGrabber::_onUpdateRegions(
+    spa_loop* /*loop*/,
+    bool /*async*/,
+    uint32_t /*seq*/,
+    const void* /*data*/,
+    size_t /*size*/,
+    void* userData
+  )
+  {
+    // Runs in the Pipewire thread: monitors without regions stop sending frames
+    _updateStreamActivity(static_cast<PipewireData*>(userData));
+
+    return 0;
   }
 
 
@@ -894,7 +1158,11 @@ namespace Huenicorn::Grabber
       m_capture.pwFd = 0;
     }
 
-    pw_deinit();
+    // The thread is joined: the flag is stable
+    if(m_pwData.pwInitialized){
+      pw_deinit();
+      m_pwData.pwInitialized = false;
+    }
   }
 
 

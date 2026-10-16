@@ -6,6 +6,8 @@
 #include <iomanip>
 #include <optional>
 
+#include <glm/common.hpp>
+
 #include <Huenicorn/Version.hpp>
 #include <Huenicorn/Core/CoreService.hpp>
 #include <Huenicorn/Core/Logger.hpp>
@@ -180,7 +182,23 @@ namespace Huenicorn::Core
       return false;
     }
 
-    channels.at(channelId).setActive(active);
+    auto& channel = channels.at(channelId);
+
+    // A lamp set up for the first time follows the monitor most other lamps follow
+    if(active && !channel.monitor.has_value() && !m_runtime.m_monitors.empty()){
+      std::vector<size_t> monitorsOfActiveLamps;
+      for(const auto& [otherId, other] : channels){
+        if(other.state == Hue::Api::Channel::State::Active && other.monitorIndex.has_value()){
+          monitorsOfActiveLamps.push_back(*other.monitorIndex);
+        }
+      }
+
+      const size_t monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_runtime.m_monitors.size());
+      channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
+      channel.monitorIndex = monitor;
+    }
+
+    channel.setActive(active);
 
     return true;
   }
@@ -210,13 +228,13 @@ namespace Huenicorn::Core
 
   glm::ivec2 CoreService::displayResolution() const
   {
-    return m_runtime.m_grabber->displayResolution();
+    return m_runtime.grabber()->displayResolution();
   }
 
 
   std::vector<glm::ivec2> CoreService::subsampleResolutionCandidates() const
   {
-    return m_runtime.m_grabber->subsampleResolutionCandidates();
+    return m_runtime.grabber()->subsampleResolutionCandidates();
   }
 
 
@@ -234,19 +252,19 @@ namespace Huenicorn::Core
 
   unsigned CoreService::maxRefreshRate() const
   {
-    return std::min(m_runtime.m_grabber->displayRefreshRate(), Stream::MaxStreamingRate);
+    return std::min(m_runtime.grabber()->displayRefreshRate(), Stream::MaxStreamingRate);
   }
 
 
   Grabber::IGrabber::ProcessingInfo CoreService::processingInfo() const
   {
-    return m_runtime.m_grabber->processingInfo();
+    return m_runtime.grabber()->processingInfo();
   }
 
 
   unsigned CoreService::displayRefreshRate() const
   {
-    return m_runtime.m_grabber->displayRefreshRate();
+    return m_runtime.grabber()->displayRefreshRate();
   }
 
 
@@ -357,6 +375,61 @@ namespace Huenicorn::Core
   }
 
 
+  std::optional<Imaging::UVs> CoreService::setChannelMonitor(
+    uint8_t channelId,
+    size_t monitor,
+    const Imaging::UVs& uvs
+  )
+  {
+    std::lock_guard lock(m_runtime.m_channelsMutex);
+    auto channelIt = m_runtime.m_channels.find(channelId);
+    if(channelIt == m_runtime.m_channels.end() || monitor >= m_runtime.m_monitors.size()){
+      return std::nullopt;
+    }
+
+    const auto clamp = [](const Imaging::UV& uv){
+      return Imaging::UV{std::clamp(uv.x, 0.f, 1.f), std::clamp(uv.y, 0.f, 1.f)};
+    };
+
+    const Imaging::UV a = clamp(uvs.min);
+    const Imaging::UV b = clamp(uvs.max);
+
+    // At least one cell of the monitor's subsample, which the region is averaged on
+    const auto& target = m_runtime.m_monitors[monitor];
+    int widestPixelWidth = 0;
+    for(const auto& captured : m_runtime.m_monitors){
+      widestPixelWidth = std::max(widestPixelWidth, captured.pixelWidth);
+    }
+    const int subsampleWidth = Grabber::subsampleWidthFor(m_config.subsampleWidth(), widestPixelWidth, target.pixelWidth);
+    const int subsampleHeight = std::max(1, target.pixelWidth > 0 ? target.pixelHeight * subsampleWidth / target.pixelWidth : 1);
+
+    auto& channel = channelIt->second;
+    channel.uvs = Grabber::minimalRegion({glm::min(a, b), glm::max(a, b)}, 1.f / static_cast<float>(subsampleWidth), 1.f / static_cast<float>(subsampleHeight));
+    channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
+    channel.monitorIndex = monitor;
+
+    return channel.uvs;
+  }
+
+
+  Grabber::Monitors CoreService::monitors() const
+  {
+    return m_runtime.grabber()->monitors();
+  }
+
+
+  bool CoreService::reselectMonitors()
+  {
+    return m_runtime._reselectMonitors();
+  }
+
+
+  MonitorSelection CoreService::monitorSelection() const
+  {
+    return m_runtime.m_monitorSelection;
+  }
+
+
   bool CoreService::setChannelGammaFactor(
     uint8_t channelId,
     float gammaExponent
@@ -399,7 +472,7 @@ namespace Huenicorn::Core
       m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
     }
 
-    m_runtime.m_grabber->setFrameRateLimit(refreshRate);
+    m_runtime.grabber()->setFrameRateLimit(refreshRate);
   }
 
 
@@ -507,10 +580,14 @@ namespace Huenicorn::Core
         return false;
       }
 
+      // Colors are spread from left to right over the whole desktop
       std::vector<std::pair<uint8_t, float>> lampCenters;
-      for(const auto& [channelId, channel] : channels()){
-        if(channel.state == Hue::Api::Channel::State::Active){
-          lampCenters.emplace_back(channelId, (channel.uvs.min.x + channel.uvs.max.x) / 2.f);
+      {
+        std::lock_guard lock(m_runtime.m_channelsMutex);
+        for(const auto& [channelId, channel] : m_runtime.m_channels){
+          if(channel.state == Hue::Api::Channel::State::Active){
+            lampCenters.emplace_back(channelId, m_runtime._desktopCenterX(channel));
+          }
         }
       }
 

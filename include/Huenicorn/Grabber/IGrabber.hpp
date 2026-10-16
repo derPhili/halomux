@@ -9,6 +9,7 @@
 
 #include <glm/vec2.hpp>
 
+#include <Huenicorn/Grabber/Monitors.hpp>
 #include <Huenicorn/Imaging/Color.hpp>
 #include <Huenicorn/Imaging/ImageData.hpp>
 #include <Huenicorn/Imaging/UV.hpp>
@@ -48,8 +49,20 @@ namespace Huenicorn::Grabber
     using Resolutions = std::vector<Resolution>;
     using RefreshRate = unsigned;
 
-    // Normalized screen region of a channel, keyed by channel ID
-    using ChannelRegions = std::vector<std::pair<uint8_t, Imaging::UVs>>;
+    /**
+     * @brief Normalized region of a channel on one of the captured monitors
+     *
+     */
+    struct ChannelRegion
+    {
+      uint8_t channelId;
+      size_t monitor; // Index in monitors()
+      Imaging::UVs uvs;
+
+      bool operator==(const ChannelRegion& other) const = default;
+    };
+
+    using ChannelRegions = std::vector<ChannelRegion>;
     // Average color of a channel's region, keyed by channel ID
     using ChannelColors = std::vector<std::pair<uint8_t, Imaging::Color>>;
 
@@ -94,24 +107,34 @@ namespace Huenicorn::Grabber
 
 
     /**
-     * @brief Returns the resolution of the selected display
+     * @brief Returns the pixel resolution of the widest captured monitor
      * 
-     * @return Resolution Resolution of the selected display
+     * @return Resolution Resolution of the widest captured monitor
      */
     virtual Resolution displayResolution() const = 0;
 
 
     /**
-     * @brief Returns the refresh rate of the display
+     * @brief Returns the highest refresh rate of the captured monitors
      * 
      * @return RefreshRate Refresh rate of the display
      */
     virtual RefreshRate displayRefreshRate() const = 0;
 
 
+    /**
+     * @brief Returns the captured monitors, in a stable order
+     *
+     * @return Monitors Captured monitors
+     */
+    virtual Monitors monitors() const = 0;
+
+
     // Methods
     /**
      * @brief Sets the screen regions whose average colors grabChannelColors() returns
+     *
+     * Monitors without a region aren't captured. Regions on a monitor index out of range are ignored.
      *
      * @param regions Regions of the active channels
      */
@@ -126,8 +149,11 @@ namespace Huenicorn::Grabber
      * Frames are captured asynchronously: right after setChannelRegions(), colors may still
      * come from the previous regions, or miss newly added channels.
      *
+     * Each monitor sends frames only when its content changes: a channel keeps the color of the
+     * last frame of its monitor.
+     *
      * @param colors Average color per channel
-     * @return true At least one frame was processed
+     * @return true A frame of a monitor with regions was processed, or there are no regions
      * @return false No frame was processed yet
      */
     virtual bool grabChannelColors(

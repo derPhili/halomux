@@ -25,6 +25,7 @@ Es ist ein Fork von [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) von
 ## Funktionen
 
 * **Bildschirm-Sync**: Jede Lampe folgt dem Bildschirmbereich, den du ihr zuweist, mit bis zu 60 Hz über die Hue-Entertainment-API
+* **Mehrere Monitore**: Jede Lampe kann einem Bereich auf einem anderen Monitor folgen, angeordnet wie auf deinem Desktop
 * **Aufnahme auf der GPU**: Die Bilder bleiben im Grafikspeicher (DMA-BUF), die Lampenfarben werden auf der GPU berechnet, mit automatischem Ausweichen auf die CPU
 * **Highlight-Boost**: Die Lampen blitzen bei plötzlich hellen Momenten auf (Explosionen, Blitze), auf Wunsch auch bei lauten Momenten im Sound des Computers
 * **Statische Szenen**: eine Farbe für alle Lampen, eine Farbe pro Lampe, eingebaute oder eigene gespeicherte Szenen, mit einem Klick umgeschaltet
@@ -41,7 +42,7 @@ Es ist ein Fork von [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) von
 
 ### Getestet auf
 
-Lightspill wird unter CachyOS mit KDE Plasma (Wayland) und einer NVIDIA-Grafikkarte (proprietärer Treiber) entwickelt und getestet. Der GPU-Pfad nutzt nur herstellerneutrale EGL-Erweiterungen und sollte mit AMD- und Intel-Grafik (Mesa) funktionieren, das ist aber noch nicht getestet. Ohne nutzbare GPU werden die Bilder auf der CPU verarbeitet: Dieser Weg ist getestet, indem er mit `LIGHTSPILL_DISABLE_GPU=1` erzwungen wird, und braucht etwa 8 % eines Kerns statt etwa 3 %. Rückmeldungen zu anderen Systemen sind willkommen.
+Lightspill wird unter CachyOS mit KDE Plasma (Wayland) und einer NVIDIA-Grafikkarte (proprietärer Treiber) entwickelt und getestet. Der GPU-Pfad nutzt nur herstellerneutrale EGL-Erweiterungen und sollte mit AMD- und Intel-Grafik (Mesa) funktionieren, das ist aber noch nicht getestet. Ohne nutzbare GPU werden die Bilder auf der CPU verarbeitet: Dieser Weg ist getestet, indem er mit `LIGHTSPILL_DISABLE_GPU=1` erzwungen wird, und braucht etwa 8 % eines Kerns statt etwa 3 %. Mehrere Monitore sind mit zwei unterschiedlich großen Monitoren nebeneinander getestet: Jeder Monitor, dem eine Lampe folgt, kostet auf dem GPU-Pfad etwa 3 % eines Kerns mehr. Rückmeldungen zu anderen Systemen sind willkommen.
 
 ## Installation
 
@@ -67,7 +68,7 @@ Das Paket enthält:
 Abhängigkeiten unter Arch-basierten Distributionen:
 
 ```bash
-sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm qt6-base qt6-svg qt6-webengine
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm wayland wayland-protocols qt6-base qt6-svg qt6-webengine
 ```
 
 Lightspill braucht **Mbed TLS 4.x** und **[cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.46 oder neuer**. Liefert deine Distribution ältere Versionen, baue sie selbst. Für cpp-httplib:
@@ -103,7 +104,7 @@ Starte „Lightspill“ aus dem Startmenü. Solange keine Bridge gekoppelt ist, 
 2. **Bridge finden**: Sie wird automatisch im lokalen Netz gesucht (mDNS), antwortet dort keine, über den Discovery-Dienst von Philips, oder du gibst ihre IP-Adresse ein
 3. **Koppeln**: Drücke den runden Knopf oben auf der Bridge. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist
 4. **Entertainment-Bereich**: Der Assistent prüft, ob einer existiert, und erklärt sonst, wie du ihn in der Hue-App anlegst
-5. **Bildschirmauswahl**: Der Desktop fragt, welchen Bildschirm Lightspill aufnehmen darf. Erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
+5. **Bildschirmauswahl**: Der Desktop fragt, welche Bildschirme Lightspill erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
 
 Danach in der Lichtsteuerung die Lampen von „Verfügbar“ nach „Aktiv“ ziehen, eine Lampe auswählen und den Bildschirmbereich anpassen, dem sie folgt, und das Profil speichern.
 
@@ -126,7 +127,8 @@ journalctl --user -u lightspill.service -f
 
 ### Lichtsteuerung
 
-* **Bildschirmbereiche**: der Teil des Bildschirms, dem jede aktive Lampe folgt, mit einer Gammakorrektur pro Lampe
+* **Bildschirmbereiche**: der Teil des Bildschirms, dem jede aktive Lampe folgt, mit einer Gammakorrektur pro Lampe. Bei mehreren Monitoren erscheinen sie so angeordnet wie auf dem Desktop: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt. Ein Monitor, dem keine Lampe folgt, wird nicht erfasst und kostet nichts
+* **Monitore** (Kopfzeile): die erfassten Monitore. „Monitore…“ öffnet die Bildschirmauswahl des Desktops erneut, um andere Monitore zu erfassen; bis zur Bestätigung läuft alles weiter wie bisher
 * **Sync** (Kopfzeile): wechselt zwischen Bildschirm und statischer Szene. Ohne Sync pausieren Bildschirmaufnahme und Sound-Analyse
 * **Statische Szene**: eine Farbe für alle Lampen, eine Farbe pro Lampe, eingebaute Szenen, deren Farben von links nach rechts über die Lampen verteilt werden, und eigene gespeicherte Szenen. Eine Auswahl schaltet Sync aus
 * **Einstellungen**: Helligkeit, Übergangsglättung (Vorlagen „Gaming“ und „Film“), Highlight-Boost (Vorlagen von „Dezent“ bis „Intensiv“), Reaktion auf Sound, Aufnahmeauflösung und Bildwiederholrate
@@ -177,7 +179,7 @@ Die meisten Werte änderst du in der Lichtsteuerung. Von Hand lassen sich alle b
 ### profile.json
 
 * **entertainmentConfigurationId**: (String) UUID des Entertainment-Bereichs
-* **channels**: (Array) die Lampen des Bereichs, jeweils mit **channelId**, **active**, **devices**, **gammaFactor** und **uvs** (obere linke Ecke **uvA** und untere rechte Ecke **uvB** ihres Bildschirmbereichs, von 0 bis 1)
+* **channels**: (Array) die Lampen des Bereichs, jeweils mit **channelId**, **active**, **devices**, **gammaFactor**, **uvs** (obere linke Ecke **uvA** und untere rechte Ecke **uvB** ihres Bildschirmbereichs, von 0 bis 1) und **monitor**: der Monitor, auf dem der Bereich liegt, über seine Position und Größe auf dem Desktop (**x**, **y**, **width**, **height**) und seinen Anschlussnamen (**name**). Eine Lampe ohne dieses Feld folgt dem ersten erfassten Monitor; eine Lampe, deren Monitor nicht erfasst wird, bleibt bei Sync aus
 
 ## Fehlerbehebung
 
@@ -185,9 +187,9 @@ Die meisten Werte änderst du in der Lichtsteuerung. Von Hand lassen sich alle b
 
 Die Zugangsdaten sind womöglich ungültig geworden. Beende Lightspill, lösche `~/.config/lightspill/config.json` und starte es neu: Der Einrichtungsassistent koppelt sich erneut mit der Bridge.
 
-### Einen anderen Bildschirm wählen
+### Andere Monitore wählen
 
-Beende Lightspill, entferne die Zeile mit `restoreToken` aus `~/.config/lightspill/config.json` und starte es neu: Der Desktop fragt erneut nach dem Bildschirm.
+Klicke in der Kopfzeile der Lichtsteuerung auf „Monitore…“ und hake die Monitore im Dialog des Desktops an. Lampen, deren Monitor nicht mehr erfasst wird, sind in der Lampenliste markiert und bleiben aus, bis du ihren Bereich auf einen erfassten Monitor ziehst.
 
 ### Die Lampen reagieren nicht
 
