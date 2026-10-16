@@ -628,7 +628,7 @@ namespace Huenicorn::Grabber
   )
   {
     StreamData* stream = static_cast<StreamData*>(userdata);
-    if(state != PW_STREAM_STATE_ERROR && state != PW_STREAM_STATE_UNCONNECTED){
+    if(stream->owner->stopping || (state != PW_STREAM_STATE_ERROR && state != PW_STREAM_STATE_UNCONNECTED)){
       return;
     }
 
@@ -874,6 +874,8 @@ namespace Huenicorn::Grabber
     pw_main_loop_run(pw->loop);
 
     // Releases the buffers, and with them the imported DMA-BUFs, while the GL context still exists
+    // Disconnecting isn't a monitor lost while capturing
+    pw->stopping = true;
     for(auto& stream : pw->streams){
       pw_stream_disconnect(stream->stream);
       spa_hook_remove(&stream->listener);

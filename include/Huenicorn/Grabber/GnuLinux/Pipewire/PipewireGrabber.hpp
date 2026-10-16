@@ -127,6 +127,8 @@ namespace Huenicorn::Grabber
       unsigned frameRateLimit{0};
       // Whether the lamps don't follow the screen (Pipewire thread)
       bool paused{false};
+      // Set when the streams are being disconnected (Pipewire thread)
+      bool stopping{false};
 
       // GPU path (Pipewire thread only), shared by the streams
       std::unique_ptr<EglDownscaler> gpu;
