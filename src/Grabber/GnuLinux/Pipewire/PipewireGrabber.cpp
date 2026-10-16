@@ -93,7 +93,8 @@ namespace Huenicorn::Grabber
     GSource* abortSource = nullptr;
     {
       std::stop_callback abortOnStop(stopToken, [this, &abortSource](){
-        // Runs in the portal thread, which owns the default GLib context
+        // Runs in the thread requesting the stop (or right here if it already was): the abort
+        // itself runs in the portal thread, which owns the default GLib context
         abortSource = g_idle_source_new();
         g_source_set_callback(abortSource, _onAbortCapture, &m_capture, nullptr);
         g_source_attach(abortSource, nullptr);
@@ -134,17 +135,31 @@ namespace Huenicorn::Grabber
 
     auto configDataReadyFuture = m_pwData.screenDataReadyPromise.get_future();
     m_pipewireThread.emplace(_pipewireThread, &m_capture, &m_pwData);
-    configDataReadyFuture.wait();
+
+    // A stream that never negotiates must neither hang a screen selection nor the shutdown
+    static constexpr auto StreamsTimeout = std::chrono::seconds(15);
+    const auto deadline = std::chrono::steady_clock::now() + StreamsTimeout;
+    while(configDataReadyFuture.wait_for(100ms) != std::future_status::ready){
+      if(stopToken.stop_requested()){
+        _stop();
+        throw Grabber::GrabberCancelled("Screen capture aborted");
+      }
+
+      if(std::chrono::steady_clock::now() >= deadline){
+        _stop();
+        throw Grabber::GrabberUnavailable("The capture of the selected monitors didn't start");
+      }
+    }
 
     if(!configDataReadyFuture.get()){
       _stop();
       throw Grabber::GrabberUnavailable("Failed to initialize Pipewire capture");
     }
 
-    // Formats are known: written once by the Pipewire thread before the promise
+    // Every stream has its format
     std::vector<std::pair<int, int>> pixelSizes;
     for(const auto& stream : m_pwData.streams){
-      pixelSizes.emplace_back(static_cast<int>(stream->format.info.raw.size.width), static_cast<int>(stream->format.info.raw.size.height));
+      pixelSizes.emplace_back(stream->pixelWidth.load(), stream->pixelHeight.load());
     }
 
     const auto fallback = fallbackGeometry(pixelSizes);
@@ -705,6 +720,8 @@ namespace Huenicorn::Grabber
       Core::Logger::log("Capture path (", stream->label, "): GPU (DMA-BUF, modifier 0x", std::hex, stream->format.info.raw.modifier, std::dec, ")");
     }
 
+    stream->pixelWidth = static_cast<int>(stream->format.info.raw.size.width);
+    stream->pixelHeight = static_cast<int>(stream->format.info.raw.size.height);
     stream->hasFormat = true;
 
     // Ready once every monitor has its format

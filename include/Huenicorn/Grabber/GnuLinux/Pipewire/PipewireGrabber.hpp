@@ -78,6 +78,10 @@ namespace Huenicorn::Grabber
       spa_hook listener{};
       spa_video_info format{};
       bool hasFormat{false};
+      // Pixel size of the negotiated format, read by other threads: later negotiations (such as
+      // the modifier's fixation) rewrite format meanwhile
+      std::atomic<int> pixelWidth{0};
+      std::atomic<int> pixelHeight{0};
 
       // Highest framerate the compositor offered (written by the Pipewire thread)
       std::atomic<unsigned> displayMaxFramerate{0};
