@@ -365,29 +365,32 @@ class ScreenWidget
       screen.classList.add("monitorScreen");
       group.appendChild(screen);
 
-      // Grid of the subsample the regions are averaged on, when it isn't too dense to see
+      // Grid of the subsample the regions are averaged on, when it isn't too dense to see: one
+      // repeated pattern instead of a line per row and column, cheaper to draw
       if(rect.width / rect.subsampleWidth >= 2){
-        for(let column = 0; column < rect.subsampleWidth; column++){
-          let line = document.createElementNS(svg, "line");
-          let x = `${column / rect.subsampleWidth * 100}%`;
-          line.setAttribute("x1", x);
-          line.setAttribute("x2", x);
-          line.setAttribute("y1", "0%");
-          line.setAttribute("y2", "100%");
-          line.classList.add("gridLine");
-          group.appendChild(line);
-        }
+        let cellWidth = rect.width / rect.subsampleWidth;
+        let cellHeight = rect.height / rect.subsampleHeight;
 
-        for(let row = 0; row < rect.subsampleHeight; row++){
-          let line = document.createElementNS(svg, "line");
-          let y = `${row / rect.subsampleHeight * 100}%`;
-          line.setAttribute("x1", "0%");
-          line.setAttribute("x2", "100%");
-          line.setAttribute("y1", y);
-          line.setAttribute("y2", y);
-          line.classList.add("gridLine");
-          group.appendChild(line);
-        }
+        let pattern = document.createElementNS(svg, "pattern");
+        pattern.id = `monitorGrid${i}`;
+        pattern.setAttribute("patternUnits", "userSpaceOnUse");
+        pattern.setAttribute("width", cellWidth);
+        pattern.setAttribute("height", cellHeight);
+
+        let cell = document.createElementNS(svg, "path");
+        cell.setAttribute("d", `M ${cellWidth} 0 L 0 0 0 ${cellHeight}`);
+        cell.classList.add("gridLine");
+        pattern.appendChild(cell);
+
+        let defs = document.createElementNS(svg, "defs");
+        defs.appendChild(pattern);
+        group.appendChild(defs);
+
+        let grid = document.createElementNS(svg, "rect");
+        grid.setAttribute("width", "100%");
+        grid.setAttribute("height", "100%");
+        grid.setAttribute("fill", `url(#${pattern.id})`);
+        group.appendChild(grid);
       }
 
       if(this.monitors.length > 1){
