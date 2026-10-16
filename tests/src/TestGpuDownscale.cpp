@@ -173,6 +173,33 @@ int main(int argc, char* argv[])
     }
   }
 
+  // Monitors of different sizes alternate on one downscaler, each in its own slot: results must
+  // match those of a single size
+  {
+    std::vector<cv::Rect> wholeSmall{{0, 0, 80, 45}};
+    std::vector<cv::Rect> wholeLarge{{0, 0, 160, 90}};
+    std::vector<cv::Vec4b> reference;
+    if(!downscaler.averageRegions(*gpuImage, 160, 90, wholeLarge, reference, 0)){
+      return 1;
+    }
+
+    for(int i = 0; i < 4; i++){
+      std::vector<cv::Vec4b> small;
+      std::vector<cv::Vec4b> large;
+      if(!downscaler.averageRegions(*gpuImage, 80, 45, wholeSmall, small, 1) || !downscaler.averageRegions(*gpuImage, 160, 90, wholeLarge, large, 0)){
+        Core::Logger::error("Alternating slots failed");
+        failures++;
+        break;
+      }
+
+      if(large != reference || std::abs(int(small[0][0]) - int(reference[0][0])) > 1){
+        Core::Logger::error("Alternating slots changed the averages");
+        failures++;
+        break;
+      }
+    }
+  }
+
   // A second downscaler started and stopped in another thread, like the grabber replaced when
   // monitors are chosen again, must leave the first one working: they share the EGL display
   {

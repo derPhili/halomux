@@ -465,7 +465,7 @@ namespace Huenicorn::Grabber
     }
 
     std::vector<cv::Vec4b> rgbaColors;
-    if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors)){
+    if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors, stream->index)){
       // Fall back to shared memory buffers for good
       Core::Logger::warn("[gpu] GPU downscaling failed on ", stream->label, ", falling back to the CPU path");
       stream->dmaBufFailed = true;

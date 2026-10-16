@@ -314,6 +314,7 @@ void main()
     cv::Mat& output
   )
   {
+    _selectSlot(0);
     if(!_renderSubsample(image, outputWidth, outputHeight)){
       return false;
     }
@@ -337,9 +338,11 @@ void main()
     int subsampleWidth,
     int subsampleHeight,
     const std::vector<cv::Rect>& regions,
-    std::vector<cv::Vec4b>& colors
+    std::vector<cv::Vec4b>& colors,
+    size_t slot
   )
   {
+    _selectSlot(slot);
     colors.clear();
     if(regions.empty()){
       return true;
@@ -368,19 +371,19 @@ void main()
     glActiveTexture(GL_TEXTURE0);
 
     // Pass 1: row means of each region
-    glBindFramebuffer(GL_FRAMEBUFFER, m_rowMeansFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_active->rowMeansFramebuffer);
     glViewport(0, 0, regionCount, subsampleHeight);
     glUseProgram(m_rowMeansProgram);
     glUniform4iv(m_rowMeansRegionsLocation, regionCount, packedRegions);
-    glBindTexture(GL_TEXTURE_2D, m_targetTexture);
+    glBindTexture(GL_TEXTURE_2D, m_active->targetTexture);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     // Pass 2: mean of the row means
-    glBindFramebuffer(GL_FRAMEBUFFER, m_regionsFramebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_active->regionsFramebuffer);
     glViewport(0, 0, regionCount, 1);
     glUseProgram(m_regionMeansProgram);
     glUniform4iv(m_regionMeansRegionsLocation, regionCount, packedRegions);
-    glBindTexture(GL_TEXTURE_2D, m_rowMeansTexture);
+    glBindTexture(GL_TEXTURE_2D, m_active->rowMeansTexture);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     // Synchronous: once it returns, the GPU is done with the source buffer
@@ -414,7 +417,7 @@ void main()
     const int tapsX = std::max(1, static_cast<int>(std::ceil(blockWidth / 2.f)));
     const int tapsY = std::max(1, static_cast<int>(std::ceil(blockHeight / 2.f)));
 
-    glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_active->framebuffer);
     glViewport(0, 0, outputWidth, outputHeight);
 
     glUseProgram(m_program);
@@ -428,6 +431,18 @@ void main()
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     return true;
+  }
+
+
+  void EglDownscaler::_selectSlot(
+    size_t slot
+  )
+  {
+    if(slot >= m_targets.size()){
+      m_targets.resize(slot + 1);
+    }
+
+    m_active = &m_targets[slot];
   }
 
 
@@ -550,8 +565,6 @@ void main()
     m_blockSizeLocation = glGetUniformLocation(m_program, "u_blockSize");
     m_tapsLocation = glGetUniformLocation(m_program, "u_taps");
 
-    glGenFramebuffers(1, &m_framebuffer);
-
     return glGetError() == GL_NO_ERROR;
   }
 
@@ -572,9 +585,6 @@ void main()
     glUniform1i(glGetUniformLocation(m_regionMeansProgram, "u_rowMeans"), 0);
     m_regionMeansRegionsLocation = glGetUniformLocation(m_regionMeansProgram, "u_regions");
 
-    glGenFramebuffers(1, &m_rowMeansFramebuffer);
-    glGenFramebuffers(1, &m_regionsFramebuffer);
-
     return glGetError() == GL_NO_ERROR;
   }
 
@@ -584,11 +594,17 @@ void main()
     int rowCount
   )
   {
-    if(m_regionsTexture != 0 && m_regionsTargetCount == regionCount && m_rowMeansRowCount == rowCount){
+    if(m_active->regionsTexture != 0 && m_active->regionsTargetCount == regionCount && m_active->rowMeansRowCount == rowCount){
       return true;
     }
 
-    for(GLuint* texture : {&m_regionsTexture, &m_rowMeansTexture}){
+    for(GLuint* framebuffer : {&m_active->rowMeansFramebuffer, &m_active->regionsFramebuffer}){
+      if(*framebuffer == 0){
+        glGenFramebuffers(1, framebuffer);
+      }
+    }
+
+    for(GLuint* texture : {&m_active->regionsTexture, &m_active->rowMeansTexture}){
       if(*texture != 0){
         glDeleteTextures(1, texture);
         *texture = 0;
@@ -596,34 +612,34 @@ void main()
     }
 
     // Row means keep full precision (float color buffers are renderable in GLES 3.2)
-    glGenTextures(1, &m_rowMeansTexture);
-    glBindTexture(GL_TEXTURE_2D, m_rowMeansTexture);
+    glGenTextures(1, &m_active->rowMeansTexture);
+    glBindTexture(GL_TEXTURE_2D, m_active->rowMeansTexture);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, regionCount, rowCount);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, m_rowMeansFramebuffer);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_rowMeansTexture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_active->rowMeansFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_active->rowMeansTexture, 0);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
       Core::Logger::error("[gpu] Incomplete row means framebuffer");
       return false;
     }
 
-    glGenTextures(1, &m_regionsTexture);
-    glBindTexture(GL_TEXTURE_2D, m_regionsTexture);
+    glGenTextures(1, &m_active->regionsTexture);
+    glBindTexture(GL_TEXTURE_2D, m_active->regionsTexture);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, regionCount, 1);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, m_regionsFramebuffer);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_regionsTexture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_active->regionsFramebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_active->regionsTexture, 0);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
       Core::Logger::error("[gpu] Incomplete framebuffer for ", regionCount, " regions");
       return false;
     }
 
-    m_regionsTargetCount = regionCount;
-    m_rowMeansRowCount = rowCount;
+    m_active->regionsTargetCount = regionCount;
+    m_active->rowMeansRowCount = rowCount;
     return true;
   }
 
@@ -633,32 +649,36 @@ void main()
     int height
   )
   {
-    if(m_targetTexture != 0 && m_targetWidth == width && m_targetHeight == height){
+    if(m_active->targetTexture != 0 && m_active->targetWidth == width && m_active->targetHeight == height){
       return true;
     }
 
-    if(m_targetTexture != 0){
-      glDeleteTextures(1, &m_targetTexture);
-      m_targetTexture = 0;
+    if(m_active->targetTexture != 0){
+      glDeleteTextures(1, &m_active->targetTexture);
+      m_active->targetTexture = 0;
     }
 
-    glGenTextures(1, &m_targetTexture);
-    glBindTexture(GL_TEXTURE_2D, m_targetTexture);
+    if(m_active->framebuffer == 0){
+      glGenFramebuffers(1, &m_active->framebuffer);
+    }
+
+    glGenTextures(1, &m_active->targetTexture);
+    glBindTexture(GL_TEXTURE_2D, m_active->targetTexture);
     glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
     // Read back with texelFetch by the regions stage
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_targetTexture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_active->framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_active->targetTexture, 0);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
       Core::Logger::error("[gpu] Incomplete framebuffer for a ", width, "x", height, " target");
       return false;
     }
 
-    m_targetWidth = width;
-    m_targetHeight = height;
+    m_active->targetWidth = width;
+    m_active->targetHeight = height;
     return true;
   }
 
@@ -672,32 +692,22 @@ void main()
     if(m_context != EGL_NO_CONTEXT){
       eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, m_context);
 
-      if(m_targetTexture != 0){
-        glDeleteTextures(1, &m_targetTexture);
-      }
-
-      if(m_framebuffer != 0){
-        glDeleteFramebuffers(1, &m_framebuffer);
-      }
-
       if(m_program != 0){
         glDeleteProgram(m_program);
       }
 
-      if(m_regionsTexture != 0){
-        glDeleteTextures(1, &m_regionsTexture);
-      }
+      for(Targets& targets : m_targets){
+        for(GLuint texture : {targets.targetTexture, targets.rowMeansTexture, targets.regionsTexture}){
+          if(texture != 0){
+            glDeleteTextures(1, &texture);
+          }
+        }
 
-      if(m_regionsFramebuffer != 0){
-        glDeleteFramebuffers(1, &m_regionsFramebuffer);
-      }
-
-      if(m_rowMeansTexture != 0){
-        glDeleteTextures(1, &m_rowMeansTexture);
-      }
-
-      if(m_rowMeansFramebuffer != 0){
-        glDeleteFramebuffers(1, &m_rowMeansFramebuffer);
+        for(GLuint framebuffer : {targets.framebuffer, targets.rowMeansFramebuffer, targets.regionsFramebuffer}){
+          if(framebuffer != 0){
+            glDeleteFramebuffers(1, &framebuffer);
+          }
+        }
       }
 
       for(GLuint program : {m_rowMeansProgram, m_regionMeansProgram}){
@@ -714,15 +724,9 @@ void main()
     // The display of a device is shared by every downscaler of the process, such as the one of a
     // grabber replacing this one: terminating it would break theirs. It stays initialized.
     m_display = EGL_NO_DISPLAY;
-    m_targetTexture = 0;
-    m_framebuffer = 0;
+    m_targets.clear();
+    m_active = nullptr;
     m_program = 0;
-    m_regionsTexture = 0;
-    m_regionsFramebuffer = 0;
-    m_regionsTargetCount = 0;
-    m_rowMeansTexture = 0;
-    m_rowMeansFramebuffer = 0;
-    m_rowMeansRowCount = 0;
     m_rowMeansProgram = 0;
     m_regionMeansProgram = 0;
   }

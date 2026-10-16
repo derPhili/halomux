@@ -475,6 +475,8 @@ class WebUI
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
     this.screenWidget.setDimensions(x, y, subsampleWidth, displayInfo.monitors);
+    // The lamps may have arrived before the monitors
+    this._redrawScreenWidget();
     this._monitorsCallback(displayInfo);
     let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
 
@@ -689,6 +691,7 @@ class WebUI
     let promise = RequestUtils.put("/api/setSubsampleWidth", JSON.stringify(subsampleWidth));
     promise.then((displayInfo) => {
       this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth);
+      this._redrawScreenWidget();
     });
     promise.catch((error) => {log(error);});
   }
