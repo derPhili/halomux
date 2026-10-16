@@ -711,7 +711,8 @@ void main()
       m_context = EGL_NO_CONTEXT;
     }
 
-    eglTerminate(m_display);
+    // The display of a device is shared by every downscaler of the process, such as the one of a
+    // grabber replacing this one: terminating it would break theirs. It stays initialized.
     m_display = EGL_NO_DISPLAY;
     m_targetTexture = 0;
     m_framebuffer = 0;

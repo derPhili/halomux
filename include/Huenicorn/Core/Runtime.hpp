@@ -9,6 +9,7 @@
 #include <Huenicorn/Audio/AudioAnalyzer.hpp>
 #include <Huenicorn/Core/CoreService.hpp>
 #include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Core/MonitorSelection.hpp>
 #include <Huenicorn/Hue/Api/EntertainmentConfigurationSelector.hpp>
 #include <Huenicorn/Grabber/IGrabber.hpp>
 #include <Huenicorn/Network/Http/Server/WebUIBackend.hpp>
@@ -120,6 +121,23 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns the current grabber, which a screen selection may replace at any time
+     *
+     * @return std::shared_ptr<Grabber::IGrabber> Grabber, kept alive by the caller while used
+     */
+    std::shared_ptr<Grabber::IGrabber> grabber() const;
+
+
+    /**
+     * @brief Asks for the monitors to capture in the background, and switches to them once confirmed
+     *
+     * @return true The screen selection started
+     * @return false A screen selection is already pending
+     */
+    bool _reselectMonitors();
+
+
+    /**
      * @brief Finds the captured monitor of each channel, with m_channelsMutex held
      *
      * Active channels of profiles from before monitors per lamp follow the first monitor.
@@ -205,7 +223,11 @@ namespace Huenicorn::Core
     ThreadedRestService m_webUIService;
 
     //  Image Processing
+    mutable std::mutex m_grabberMutex;
     std::shared_ptr<Grabber::IGrabber> m_grabber;
+    // Set when a screen selection replaced the grabber, for the streaming thread
+    std::atomic<bool> m_grabberReplaced{false};
+    std::atomic<MonitorSelection> m_monitorSelection{MonitorSelection::Idle};
     Grabber::IGrabber::ChannelRegions m_channelRegions;
     // Capture is paused while sync is disabled (streaming thread)
     bool m_capturePaused{false};
@@ -215,5 +237,8 @@ namespace Huenicorn::Core
 
     // Start of the running preview (steady clock ticks), 0 when none
     std::atomic<int64_t> m_previewStart{0};
+
+    // Screen selection in progress, joined (and aborted) before the members it uses go away
+    std::jthread m_reselectThread;
   };
 }

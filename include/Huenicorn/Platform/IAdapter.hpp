@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <stop_token>
 
 #include <Huenicorn/Grabber/IGrabber.hpp>
 #include <Huenicorn/Core/Logger.hpp>
@@ -116,17 +117,48 @@ namespace Huenicorn::Platform
     }
 
 
+    /**
+     * @brief Starts a grabber that asks for the monitors to capture, and keeps it on success
+     *
+     * The current grabber keeps running meanwhile: its owners replace it with the returned one.
+     *
+     * @param config Huenicorn current configuration
+     * @param stopToken Aborts the screen selection
+     * @return SharedGrabber New grabber, nullptr if the selection was cancelled or failed
+     */
+    inline SharedGrabber replaceGrabber(
+      Core::Config* config,
+      std::stop_token stopToken
+    )
+    {
+      try{
+        auto grabber = _createGrabber(config, true, stopToken);
+        m_grabber = grabber;
+        return grabber;
+      }
+      catch(const Grabber::GrabberCancelled&){
+        Core::Logger::warn("Screen selection cancelled, keeping the current monitors");
+      }
+      catch(const std::exception& e){
+        Core::Logger::error(e.what());
+      }
+
+      return nullptr;
+    }
+
   protected:
     /**
      * @brief Factory method for grabber
      * 
      * @param config Huenicorn current configuration
      * @param askForMonitors Whether to ask for the monitors instead of restoring the saved selection
+     * @param stopToken Aborts the screen selection
      * @return SharedGrabber New grabber
      */
     virtual SharedGrabber _createGrabber(
       Core::Config* config,
-      bool askForMonitors
+      bool askForMonitors,
+      std::stop_token stopToken = {}
     ) = 0;
 
     // Attributes

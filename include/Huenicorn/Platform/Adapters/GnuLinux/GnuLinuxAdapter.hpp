@@ -21,7 +21,8 @@ namespace Huenicorn::Platform
   protected:
     virtual SharedGrabber _createGrabber(
       Core::Config* config,
-      bool askForMonitors
+      bool askForMonitors,
+      std::stop_token stopToken = {}
     ) override;
   };
 }

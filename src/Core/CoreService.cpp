@@ -228,13 +228,13 @@ namespace Huenicorn::Core
 
   glm::ivec2 CoreService::displayResolution() const
   {
-    return m_runtime.m_grabber->displayResolution();
+    return m_runtime.grabber()->displayResolution();
   }
 
 
   std::vector<glm::ivec2> CoreService::subsampleResolutionCandidates() const
   {
-    return m_runtime.m_grabber->subsampleResolutionCandidates();
+    return m_runtime.grabber()->subsampleResolutionCandidates();
   }
 
 
@@ -252,19 +252,19 @@ namespace Huenicorn::Core
 
   unsigned CoreService::maxRefreshRate() const
   {
-    return std::min(m_runtime.m_grabber->displayRefreshRate(), Stream::MaxStreamingRate);
+    return std::min(m_runtime.grabber()->displayRefreshRate(), Stream::MaxStreamingRate);
   }
 
 
   Grabber::IGrabber::ProcessingInfo CoreService::processingInfo() const
   {
-    return m_runtime.m_grabber->processingInfo();
+    return m_runtime.grabber()->processingInfo();
   }
 
 
   unsigned CoreService::displayRefreshRate() const
   {
-    return m_runtime.m_grabber->displayRefreshRate();
+    return m_runtime.grabber()->displayRefreshRate();
   }
 
 
@@ -405,7 +405,19 @@ namespace Huenicorn::Core
 
   Grabber::Monitors CoreService::monitors() const
   {
-    return m_runtime.m_grabber->monitors();
+    return m_runtime.grabber()->monitors();
+  }
+
+
+  bool CoreService::reselectMonitors()
+  {
+    return m_runtime._reselectMonitors();
+  }
+
+
+  MonitorSelection CoreService::monitorSelection() const
+  {
+    return m_runtime.m_monitorSelection;
   }
 
 
@@ -451,7 +463,7 @@ namespace Huenicorn::Core
       m_runtime.m_loopRegulator->setTickInterval(Timing::fromHertz(refreshRate));
     }
 
-    m_runtime.m_grabber->setFrameRateLimit(refreshRate);
+    m_runtime.grabber()->setFrameRateLimit(refreshRate);
   }
 
 

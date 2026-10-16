@@ -5,6 +5,7 @@
 #include <cmath>
 #include <fstream>
 #include <future>
+#include <utility>
 
 #include <glm/common.hpp>
 
@@ -73,7 +74,7 @@ namespace Huenicorn::Core
       return;
     }
 
-    Logger::log("Started ", m_grabber->name());
+    Logger::log("Started ", grabber()->name());
 
     if(!_initSettings()){
       Logger::error("Could not load suitable entertainment configuration.");
@@ -100,6 +101,8 @@ namespace Huenicorn::Core
   void Runtime::stop()
   {
     m_keepLooping = false;
+    // Closes a pending screen selection dialog
+    m_reselectThread.request_stop();
     m_coreService->abortInitialSetup();
   }
 
@@ -110,17 +113,17 @@ namespace Huenicorn::Core
     // Streaming faster than the bridge can process, or than the display refreshes, only wastes resources
     const unsigned maxRefreshRate = m_coreService->maxRefreshRate();
     if(m_config.refreshRate() == 0 || m_config.refreshRate() > maxRefreshRate){
-      Logger::log("Refresh rate set to ", maxRefreshRate, " Hz (display: ", m_grabber->displayRefreshRate(), " Hz, bridge limit: ", Stream::MaxStreamingRate, " Hz)");
+      Logger::log("Refresh rate set to ", maxRefreshRate, " Hz (display: ", grabber()->displayRefreshRate(), " Hz, bridge limit: ", Stream::MaxStreamingRate, " Hz)");
       m_config.setRefreshRate(maxRefreshRate);
     }
 
     // Don't let the compositor produce frames that would never be consumed
-    m_grabber->setFrameRateLimit(m_config.refreshRate());
+    grabber()->setFrameRateLimit(m_config.refreshRate());
 
     if(m_config.subsampleWidth() == 0){
-      auto displayResolution = m_grabber->displayResolution();
+      auto displayResolution = grabber()->displayResolution();
       float percentThreshold = 1.0;
-      auto subsampleCandidates = m_grabber->subsampleResolutionCandidates();
+      auto subsampleCandidates = grabber()->subsampleResolutionCandidates();
 
       auto bestSubsampleWidth = subsampleCandidates.back().x;
       for(auto i = subsampleCandidates.size(); i--;){
@@ -137,7 +140,7 @@ namespace Huenicorn::Core
 
     const float warningThreshold = 50.0;
 
-    float ratio = static_cast<float>(m_config.subsampleWidth()) / static_cast<float>(m_grabber->displayResolution().x);
+    float ratio = static_cast<float>(m_config.subsampleWidth()) / static_cast<float>(grabber()->displayResolution().x);
 
     if(ratio >= warningThreshold / 100){
       Logger::warn("Subsample width is >= ", warningThreshold, "% of the display resolution. Color computation might be intensive.");
@@ -168,7 +171,9 @@ namespace Huenicorn::Core
 
   bool Runtime::_initGrabber()
   {
-    m_grabber = Platform::adapter.getGrabber(&m_config);
+    auto grabber = Platform::adapter.getGrabber(&m_config);
+    std::lock_guard lock(m_grabberMutex);
+    m_grabber = std::move(grabber);
     return m_grabber != nullptr;
   }
 
@@ -246,9 +251,61 @@ namespace Huenicorn::Core
   }
 
 
+  std::shared_ptr<Grabber::IGrabber> Runtime::grabber() const
+  {
+    std::lock_guard lock(m_grabberMutex);
+    return m_grabber;
+  }
+
+
+  bool Runtime::_reselectMonitors()
+  {
+    MonitorSelection expected = m_monitorSelection.load();
+    if(expected == MonitorSelection::Pending || !m_monitorSelection.compare_exchange_strong(expected, MonitorSelection::Pending)){
+      return false;
+    }
+
+    // The previous selection is over: its thread only needs joining
+    if(m_reselectThread.joinable()){
+      m_reselectThread.join();
+    }
+
+    m_reselectThread = std::jthread([this](std::stop_token stopToken){
+      auto newGrabber = Platform::adapter.replaceGrabber(&m_config, stopToken);
+      if(!newGrabber){
+        m_monitorSelection = MonitorSelection::Cancelled;
+        return;
+      }
+
+      newGrabber->setFrameRateLimit(m_config.refreshRate());
+
+      std::shared_ptr<Grabber::IGrabber> oldGrabber;
+      {
+        std::lock_guard channelsLock(m_channelsMutex);
+        {
+          std::lock_guard grabberLock(m_grabberMutex);
+          oldGrabber = std::exchange(m_grabber, newGrabber);
+        }
+
+        // Channel monitor indices refer to the new monitors from now on
+        _resolveChannelMonitors();
+        m_grabberReplaced = true;
+      }
+
+      m_monitorSelection = MonitorSelection::Idle;
+      Logger::log("Switched to the newly selected monitors");
+
+      // Stops the former capture, unless an update still uses it
+      oldGrabber.reset();
+    });
+
+    return true;
+  }
+
+
   void Runtime::_resolveChannelMonitors()
   {
-    m_monitors = m_grabber->monitors();
+    m_monitors = grabber()->monitors();
 
     for(auto& [channelId, channel] : m_channels){
       // Profiles from before monitors per lamp captured only one monitor: the first one
@@ -353,11 +410,20 @@ namespace Huenicorn::Core
 
     const Audio::AudioAnalyzer::Triggers soundTriggers = m_audioAnalyzer ? m_audioAnalyzer->takeTriggers() : Audio::AudioAnalyzer::Triggers{0.f, 0.f};
 
+    // Kept alive for this update, even if a screen selection replaces it meanwhile
+    const auto grabber = this->grabber();
+
     std::lock_guard channelsLock(m_channelsMutex);
+
+    // A new grabber captures everything until told otherwise
+    if(m_grabberReplaced.exchange(false)){
+      m_channelRegions.clear();
+      grabber->setPaused(m_capturePaused);
+    }
 
     if(syncing == m_capturePaused){
       m_capturePaused = !syncing;
-      m_grabber->setPaused(m_capturePaused);
+      grabber->setPaused(m_capturePaused);
 
       // A jump between the static colors and the screen is no highlight
       for(auto& [channelId, channel] : m_channels){
@@ -377,7 +443,7 @@ namespace Huenicorn::Core
     }
 
     if(regions != m_channelRegions){
-      m_grabber->setChannelRegions(regions);
+      grabber->setChannelRegions(regions);
       m_channelRegions = std::move(regions);
     }
 
@@ -396,7 +462,7 @@ namespace Huenicorn::Core
     const bool previewing = previewTime >= 0.f;
 
     Grabber::IGrabber::ChannelColors channelColors;
-    if(syncing && !m_grabber->grabChannelColors(channelColors) && !previewing){
+    if(syncing && !grabber->grabChannelColors(channelColors) && !previewing){
       // Grabbers with asynchronous capture may produce slower than the core consumes
       return;
     }

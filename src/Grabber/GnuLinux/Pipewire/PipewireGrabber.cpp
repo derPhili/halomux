@@ -75,7 +75,8 @@ namespace Huenicorn::Grabber
 {
   PipewireGrabber::PipewireGrabber(
     Core::Config* config,
-    bool askForMonitors
+    bool askForMonitors,
+    std::stop_token stopToken
   ):
   IGrabber(config)
   {
@@ -87,7 +88,24 @@ namespace Huenicorn::Grabber
     auto fdReadyFuture = fdReadyPromise.get_future();
     m_capture.fdReadyPromise = std::move(fdReadyPromise);
     m_xdgThread.emplace(_initCapture, &m_capture);
-    fdReadyFuture.wait();
+
+    // The screen selection dialog may stay open: a stop request closes it
+    GSource* abortSource = nullptr;
+    {
+      std::stop_callback abortOnStop(stopToken, [this, &abortSource](){
+        // Runs in the portal thread, which owns the default GLib context
+        abortSource = g_idle_source_new();
+        g_source_set_callback(abortSource, _onAbortCapture, &m_capture, nullptr);
+        g_source_attach(abortSource, nullptr);
+      });
+
+      fdReadyFuture.wait();
+    }
+
+    if(abortSource){
+      g_source_destroy(abortSource);
+      g_source_unref(abortSource);
+    }
 
     if(!fdReadyFuture.get()){
       _stop();
@@ -670,6 +688,23 @@ namespace Huenicorn::Grabber
       pw->screenDataReadyPromise.set_value(true);
       pw->promiseSetAlready = true;
     }
+  }
+
+
+  gboolean PipewireGrabber::_onAbortCapture(
+    void* userData
+  )
+  {
+    auto* capture = static_cast<XdgDesktopPortal::Capture*>(userData);
+    Core::Logger::log("Screen selection aborted");
+
+    // Closes the pending portal request, and with it the dialog
+    if(capture->cancellable){
+      g_cancellable_cancel(capture->cancellable);
+    }
+
+    XdgDesktopPortal::resolveCapture(capture, false);
+    return G_SOURCE_REMOVE;
   }
 
 

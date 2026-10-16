@@ -3,6 +3,7 @@
 #include <mutex>
 
 #include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Core/MonitorSelection.hpp>
 #include <Huenicorn/Grabber/IGrabber.hpp>
 
 #include <Huenicorn/Hue/Api/EntertainmentConfiguration.hpp>
@@ -265,6 +266,25 @@ namespace Huenicorn::Core
      * @return Grabber::Monitors Captured monitors, in the order channels refer to them
      */
     Grabber::Monitors monitors() const;
+
+
+    /**
+     * @brief Asks for the monitors to capture: the desktop shows its screen selection dialog
+     *
+     * The current monitors keep being captured until the selection is confirmed.
+     *
+     * @return true The screen selection started
+     * @return false A screen selection is already pending
+     */
+    bool reselectMonitors();
+
+
+    /**
+     * @brief Returns the state of the last screen selection
+     *
+     * @return MonitorSelection Pending while the dialog is open, Cancelled if it was cancelled
+     */
+    MonitorSelection monitorSelection() const;
 
 
     /**

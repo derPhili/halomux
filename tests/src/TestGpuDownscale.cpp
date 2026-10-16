@@ -11,6 +11,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <thread>
+
 #include <Huenicorn/Core/Logger.hpp>
 #include <Huenicorn/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
 #include <Huenicorn/Imaging/ImageProcessing.hpp>
@@ -168,6 +170,45 @@ int main(int argc, char* argv[])
         Core::Logger::error("GPU region average differs from the CPU one");
         failures++;
       }
+    }
+  }
+
+  // A second downscaler started and stopped in another thread, like the grabber replaced when
+  // monitors are chosen again, must leave the first one working: they share the EGL display
+  {
+    std::thread other([]{
+      Grabber::EglDownscaler second;
+      if(!second.init()){
+        Core::Logger::error("Second GPU downscaler unavailable");
+      }
+    });
+    other.join();
+
+    std::vector<cv::Rect> rects{{0, 0, 16, 9}};
+    std::vector<cv::Vec4b> colors;
+    if(!downscaler.averageRegions(*gpuImage, 16, 9, rects, colors)){
+      Core::Logger::error("GPU downscaler broken by another one shutting down");
+      failures++;
+    }
+
+    // The compositor may hand out new buffers afterwards
+    auto newImage = downscaler.importDmaBuf({
+      .fd = dmaBufFd,
+      .offset = gbm_bo_get_offset(bo, 0),
+      .stride = gbm_bo_get_stride(bo),
+      .width = frame.cols,
+      .height = frame.rows,
+      .drmFormat = DRM_FORMAT_XRGB8888,
+      .modifier = DRM_FORMAT_MOD_LINEAR
+    });
+
+    if(!newImage || !downscaler.averageRegions(*newImage, 16, 9, rects, colors)){
+      Core::Logger::error("GPU downscaler can't import buffers after another one shut down");
+      failures++;
+    }
+
+    if(newImage){
+      downscaler.releaseImage(*newImage);
     }
   }
 

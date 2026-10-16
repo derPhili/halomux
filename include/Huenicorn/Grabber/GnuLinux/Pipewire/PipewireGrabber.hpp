@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stop_token>
 #include <thread>
 #include <vector>
 
@@ -137,7 +138,8 @@ namespace Huenicorn::Grabber
     */
     PipewireGrabber(
       Core::Config* config,
-      bool askForMonitors = false
+      bool askForMonitors = false,
+      std::stop_token stopToken = {}
     );
 
 
@@ -364,6 +366,17 @@ namespace Huenicorn::Grabber
       uint32_t id,
       const spa_pod* param
     );
+
+    /**
+     * @brief Gives up the screen selection, in the portal thread
+     *
+     * @param userData Capture
+     * @return gboolean G_SOURCE_REMOVE
+     */
+    static gboolean _onAbortCapture(
+      void* userData
+    );
+
 
     /**
      * Screencast portal thread
