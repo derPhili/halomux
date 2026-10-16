@@ -164,6 +164,23 @@ namespace Huenicorn::Grabber
 
 
   /**
+   * @brief Grows a region smaller than one subsample cell to one cell, inside [0, 1]
+   *
+   * A region moved onto a monitor with a coarser grid could otherwise collapse to nothing.
+   *
+   * @param uvs Region
+   * @param cellWidth Width of a subsample cell, normalized
+   * @param cellHeight Height of a subsample cell, normalized
+   * @return Imaging::UVs Region of at least one cell
+   */
+  Imaging::UVs minimalRegion(
+    const Imaging::UVs& uvs,
+    float cellWidth,
+    float cellHeight
+  );
+
+
+  /**
    * @brief Returns the monitor a newly activated lamp follows: the one most other lamps follow
    *
    * @param monitorsOfActiveLamps Monitor index of each active lamp

@@ -152,6 +152,31 @@ namespace Huenicorn::Grabber
   }
 
 
+  Imaging::UVs minimalRegion(
+    const Imaging::UVs& uvs,
+    float cellWidth,
+    float cellHeight
+  )
+  {
+    Imaging::UVs region = uvs;
+
+    const auto grow = [](float& min, float& max, float cell){
+      cell = std::min(cell, 1.f);
+      if(max - min >= cell){
+        return;
+      }
+
+      // Grows towards the inside when at the edge
+      max = std::min(min + cell, 1.f);
+      min = max - cell;
+    };
+
+    grow(region.min.x, region.max.x, cellWidth);
+    grow(region.min.y, region.max.y, cellHeight);
+    return region;
+  }
+
+
   size_t defaultMonitorForNewLamp(
     const std::vector<size_t>& monitorsOfActiveLamps,
     size_t monitorCount

@@ -114,6 +114,19 @@ int main()
   expect("Subsample capped to the monitor", subsampleWidthFor(5000, 2560, 1920) == 1920);
   expect("Subsample at least one pixel", subsampleWidthFor(0, 2560, 1920) == 1);
 
+  // minimalRegion: a region never collapses below one subsample cell
+  {
+    const auto collapsed = minimalRegion({{0.5f, 0.25f}, {0.5f, 0.25f}}, 0.1f, 0.2f);
+    expect("Collapsed region gets one cell wide", std::abs((collapsed.max.x - collapsed.min.x) - 0.1f) < 1e-5f);
+    expect("Collapsed region gets one cell high", std::abs((collapsed.max.y - collapsed.min.y) - 0.2f) < 1e-5f);
+
+    const auto atEdge = minimalRegion({{1.f, 1.f}, {1.f, 1.f}}, 0.1f, 0.2f);
+    expect("Region at the edge grows inwards", atEdge.max.x <= 1.f && atEdge.max.y <= 1.f && atEdge.max.x - atEdge.min.x > 0.099f && atEdge.max.y - atEdge.min.y > 0.199f);
+
+    const Imaging::UVs large{{0.1f, 0.1f}, {0.6f, 0.9f}};
+    expect("Large region unchanged", minimalRegion(large, 0.1f, 0.2f) == large);
+  }
+
   // defaultMonitorForNewLamp: where most lamps are, the first one on a tie
   expect("Most followed monitor", defaultMonitorForNewLamp({1, 1, 0}, 2) == 1);
   expect("Tie goes to the first", defaultMonitorForNewLamp({0, 1}, 2) == 0);

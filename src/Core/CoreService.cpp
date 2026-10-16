@@ -394,8 +394,17 @@ namespace Huenicorn::Core
     const Imaging::UV a = clamp(uvs.min);
     const Imaging::UV b = clamp(uvs.max);
 
+    // At least one cell of the monitor's subsample, which the region is averaged on
+    const auto& target = m_runtime.m_monitors[monitor];
+    int widestPixelWidth = 0;
+    for(const auto& captured : m_runtime.m_monitors){
+      widestPixelWidth = std::max(widestPixelWidth, captured.pixelWidth);
+    }
+    const int subsampleWidth = Grabber::subsampleWidthFor(m_config.subsampleWidth(), widestPixelWidth, target.pixelWidth);
+    const int subsampleHeight = std::max(1, target.pixelWidth > 0 ? target.pixelHeight * subsampleWidth / target.pixelWidth : 1);
+
     auto& channel = channelIt->second;
-    channel.uvs = {glm::min(a, b), glm::max(a, b)};
+    channel.uvs = Grabber::minimalRegion({glm::min(a, b), glm::max(a, b)}, 1.f / static_cast<float>(subsampleWidth), 1.f / static_cast<float>(subsampleHeight));
     channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
     channel.monitorIndex = monitor;
 

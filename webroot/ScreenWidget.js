@@ -654,6 +654,14 @@ class ScreenWidget
       uvB : {x : snap((x + width - target.x) / target.width, target.subsampleWidth), y : snap((y + height - target.y) / target.height, target.subsampleHeight)}
     };
 
+    // On a coarser grid a small region could snap to nothing: keep at least one cell
+    for(let [axis, steps] of [["x", target.subsampleWidth], ["y", target.subsampleHeight]]){
+      if(uvs.uvB[axis] - uvs.uvA[axis] < 1 / steps){
+        uvs.uvB[axis] = Math.min(uvs.uvA[axis] + 1 / steps, 1);
+        uvs.uvA[axis] = uvs.uvB[axis] - 1 / steps;
+      }
+    }
+
     this.webApp.moveChannelRegion(this.currentChannel.channelId, target.index, uvs);
   }
 
