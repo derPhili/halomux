@@ -98,6 +98,12 @@ namespace Huenicorn::Grabber
       _stop();
       throw Grabber::GrabberUnavailable("Failed to initialize Pipewire capture");
     }
+
+    // Saved only now: a token of a selection that doesn't capture would ask again on every start
+    if(m_capture.restoreToken.has_value() && config->restoreToken() != m_capture.restoreToken){
+      config->setRestoreToken(*m_capture.restoreToken);
+      Core::Logger::log("Registered restore token: '", *m_capture.restoreToken, "' into config");
+    }
   }
 
 
@@ -640,7 +646,7 @@ namespace Huenicorn::Grabber
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     pw_core_add_listener(core, &pw->coreListener, &coreEvents, pw);
 
-    uint32_t targetNode = capture->pwNode;
+    uint32_t targetNode = capture->streams.front().node;
 
     auto props = pw_properties_new(
       PW_KEY_MEDIA_TYPE, "Video",

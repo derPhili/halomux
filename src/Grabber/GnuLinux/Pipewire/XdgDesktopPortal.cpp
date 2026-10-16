@@ -359,27 +359,43 @@ namespace Huenicorn::Grabber
       }
 
       g_autoptr(GVariant) streams = g_variant_lookup_value(result, "streams", G_VARIANT_TYPE_ARRAY);
+      if(!streams){
+        Core::Logger::error("The screencast portal returned no stream");
+        resolveCapture(capture, false);
+        return;
+      }
 
       GVariantIter iter;
       g_variant_iter_init(&iter, streams);
 
-      size_t n_streams = g_variant_iter_n_children(&iter);
-      if(n_streams != 1){
-        Core::Logger::error("received more than one stream when only one was expected. this is probably a bug in the desktop portal implementation you are using.");
+      capture->streams.clear();
+      uint32_t node = 0;
+      GVariant* streamProperties = nullptr;
+      while(g_variant_iter_loop(&iter, "(u@a{sv})", &node, &streamProperties)){
+        PortalStream stream{.node = node, .geometry = std::nullopt};
+
+        int32_t x = 0;
+        int32_t y = 0;
+        int32_t width = 0;
+        int32_t height = 0;
+        if(g_variant_lookup(streamProperties, "position", "(ii)", &x, &y) && g_variant_lookup(streamProperties, "size", "(ii)", &width, &height)){
+          stream.geometry = MonitorGeometry{x, y, width, height};
+        }
+
+        capture->streams.push_back(stream);
+      }
+
+      if(capture->streams.empty()){
+        Core::Logger::error("The screencast portal returned no stream");
+        resolveCapture(capture, false);
+        return;
       }
 
       const char* token = nullptr;
       if(g_variant_lookup(result, "restore_token", "&s", &token)){
-        Core::Config* config = capture->config;
-
-        if(!config->restoreToken().has_value() || *config->restoreToken() != token){
-          config->setRestoreToken(token);
-          Core::Logger::log("Registered restore token: '", token, "' into config");
-        }
+        capture->restoreToken = token;
       }
 
-      g_autoptr(GVariant) streamProperties = NULL;
-      g_variant_iter_loop(&iter, "(u@a{sv})", &capture->pwNode, &streamProperties);
       openPipewireRemote(capture);
     }
 
@@ -492,10 +508,14 @@ namespace Huenicorn::Grabber
       GVariantBuilder builder;
       g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
       g_variant_builder_add(&builder, "{sv}", "types", g_variant_new_uint32(capture->captureType));
-      g_variant_builder_add(&builder, "{sv}", "multiple", g_variant_new_boolean(FALSE));
+      // Lamps may follow different monitors: every ticked monitor becomes a stream
+      g_variant_builder_add(&builder, "{sv}", "multiple", g_variant_new_boolean(TRUE));
       g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(pathAndToken.second.c_str()));
 
-      if(capture->config->restoreToken().has_value()){
+      if(capture->askForMonitors){
+        Core::Logger::log("Asking for the monitors to capture");
+      }
+      else if(capture->config->restoreToken().has_value()){
         Core::Logger::log("Using saved restore token for screen capture session");
         g_variant_builder_add(
           &builder,

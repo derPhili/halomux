@@ -10,11 +10,14 @@
 
 
 #include <future>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include <gio/gunixfdlist.h>
 
 #include <Huenicorn/Core/Config.hpp>
+#include <Huenicorn/Grabber/Monitors.hpp>
 
 
 namespace Huenicorn::Grabber
@@ -50,12 +53,28 @@ namespace Huenicorn::Grabber
 
 
     // Structures
+    /**
+     * @brief Pipewire node of a captured monitor
+     *
+     */
+    struct PortalStream
+    {
+      uint32_t node{0};
+      // Logical position and size, if the portal tells them
+      std::optional<MonitorGeometry> geometry;
+    };
+
+
     struct Capture
     {
       CaptureType captureType;
       GCancellable* cancellable{nullptr};
       char* sessionHandle{nullptr};
-      uint32_t pwNode{0};
+      std::vector<PortalStream> streams;
+      // Ignores the saved restore token, so the desktop asks for the monitors again
+      bool askForMonitors{false};
+      // Token received from the portal, saved by the grabber once capture works
+      std::optional<std::string> restoreToken;
       uint32_t pwFd{0};
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
