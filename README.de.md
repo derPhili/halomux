@@ -67,7 +67,7 @@ Das Paket enthält:
 Abhängigkeiten unter Arch-basierten Distributionen:
 
 ```bash
-sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm qt6-base qt6-svg qt6-webengine
+sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm wayland wayland-protocols qt6-base qt6-svg qt6-webengine
 ```
 
 Lightspill braucht **Mbed TLS 4.x** und **[cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.46 oder neuer**. Liefert deine Distribution ältere Versionen, baue sie selbst. Für cpp-httplib:

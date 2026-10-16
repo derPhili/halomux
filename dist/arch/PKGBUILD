@@ -22,9 +22,10 @@ depends=(
   'qt6-base'
   'qt6-svg'
   'qt6-webengine'
+  'wayland'
   'xdg-desktop-portal'
 )
-makedepends=('cmake' 'git' 'glm' 'nlohmann-json')
+makedepends=('cmake' 'git' 'glm' 'nlohmann-json' 'wayland-protocols')
 install=lightspill.install
 # Former name of the package
 provides=('hue-desktop-sync')

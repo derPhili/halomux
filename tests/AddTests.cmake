@@ -252,3 +252,24 @@ target_compile_options(TestMonitors PRIVATE -fsanitize=address,undefined)
 target_link_options(TestMonitors PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME Monitors COMMAND TestMonitors)
+
+
+# TestWaylandOutputs (manual: needs a Wayland session): prints the compositor's monitors
+add_executable(TestWaylandOutputs
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/WaylandOutputs.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestWaylandOutputs.cpp
+)
+
+set_target_properties(TestWaylandOutputs PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestWaylandOutputs PUBLIC
+  include
+)
+
+target_link_libraries(TestWaylandOutputs PUBLIC
+  wayland_protocols
+)
