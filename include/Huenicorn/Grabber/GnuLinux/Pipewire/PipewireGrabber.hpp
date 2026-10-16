@@ -110,6 +110,9 @@ namespace Huenicorn::Grabber
       std::promise<bool> screenDataReadyPromise;
       bool promiseSetAlready{false};
       Core::Config* config;
+      // Whether the Pipewire thread called pw_init(): a grabber whose screen selection failed
+      // never did, and must not take back the reference of another one
+      bool pwInitialized{false};
 
       // Channel regions and their colors, shared between the Pipewire thread and the streaming loop
       mutable std::mutex channelsMutex;

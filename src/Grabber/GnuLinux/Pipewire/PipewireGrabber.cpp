@@ -732,6 +732,7 @@ namespace Huenicorn::Grabber
   )
   {
     pw_init(NULL, NULL);
+    pw->pwInitialized = true;
     pw_core_events coreEvents = {};
     coreEvents.version = PW_VERSION_CORE_EVENTS;
     coreEvents.info = _onCoreInfoCallback;
@@ -1112,7 +1113,11 @@ namespace Huenicorn::Grabber
       m_capture.pwFd = 0;
     }
 
-    pw_deinit();
+    // The thread is joined: the flag is stable
+    if(m_pwData.pwInitialized){
+      pw_deinit();
+      m_pwData.pwInitialized = false;
+    }
   }
 
 

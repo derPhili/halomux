@@ -301,3 +301,22 @@ target_compile_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
 target_link_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME ChannelMonitors COMMAND TestChannelMonitors)
+
+
+# TestGrabberCancel: a failed screen selection leaves the running capture alone
+add_executable(TestGrabberCancel
+  ${APP_SOURCES}
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGrabberCancel.cpp
+)
+
+add_dependencies(TestGrabberCancel generate_version_header generate_webroot_header)
+
+set_target_properties(TestGrabberCancel PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestGrabberCancel PUBLIC ${APP_INCLUDE_DIRECTORIES})
+if(APP_COMPILE_DEFINITIONS)
+  target_compile_definitions(TestGrabberCancel PUBLIC ${APP_COMPILE_DEFINITIONS})
+endif()
+target_link_libraries(TestGrabberCancel PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
+
+add_test(NAME GrabberCancel COMMAND TestGrabberCancel)
