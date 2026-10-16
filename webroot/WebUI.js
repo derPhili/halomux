@@ -260,18 +260,21 @@ class WebUI
       // Until the dialog is answered
       setTimeout(() => {this._refreshMonitors();}, 2000);
     }
-    else if(previousSelection == "pending"){
-      if(displayInfo.monitorSelection == "cancelled"){
-        this.reselectMonitorsButton.textContent = t("Selection cancelled, nothing changed");
-        setTimeout(() => {this.reselectMonitorsButton.textContent = t("Monitors…");}, 4000);
-      }
-      else{
-        // Monitor indices changed: reload the lamps
-        RequestUtils.get("/api/channels")
-        .then((channels) => {this._refreshChannelsLists(channels);})
-        .catch((error) => {log(error);});
-      }
+    else if(previousSelection == "pending" && displayInfo.monitorSelection == "cancelled"){
+      this.reselectMonitorsButton.textContent = t("Selection cancelled, nothing changed");
+      setTimeout(() => {this.reselectMonitorsButton.textContent = t("Monitors…");}, 4000);
     }
+
+    // Other monitors captured, from this page or another one: the lamps' monitor indices changed
+    let layout = JSON.stringify(monitors.map(monitor => [monitor.name, monitor.x, monitor.y, monitor.width, monitor.height, monitor.pixelWidth, monitor.pixelHeight]));
+    if(this.monitorsLayout !== undefined && layout != this.monitorsLayout){
+      this.screenWidget.currentChannel = null;
+      this.screenWidget.showWidgets(false);
+      RequestUtils.get("/api/channels")
+      .then((channels) => {this._refreshChannelsLists(channels);})
+      .catch((error) => {log(error);});
+    }
+    this.monitorsLayout = layout;
 
     let monitorsChanged = JSON.stringify(monitors) != JSON.stringify(this.screenWidget.monitors);
     if(monitorsChanged){
