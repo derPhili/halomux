@@ -73,15 +73,16 @@ namespace Huenicorn::Platform
   }
 
 
-  UniqueGrabber GnuLinuxAdapter::_createGrabber(
-    Core::Config* config
+  SharedGrabber GnuLinuxAdapter::_createGrabber(
+    Core::Config* config,
+    bool askForMonitors
   )
   {
     const char* sessionTypeEnv = std::getenv("XDG_SESSION_TYPE");
     std::string sessionType = sessionTypeEnv ? sessionTypeEnv : "";
 
     if(sessionType == "wayland"){
-      return std::make_unique<Grabber::PipewireGrabber>(config);
+      return std::make_shared<Grabber::PipewireGrabber>(config, askForMonitors);
     }
 
     throw Grabber::GrabberUnavailable(

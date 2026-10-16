@@ -338,7 +338,7 @@ namespace Huenicorn::Core
     Grabber::IGrabber::ChannelRegions regions;
     for(const auto& [channelId, channel] : m_channels){
       if(channel.state == Hue::Api::Channel::State::Active){
-        regions.emplace_back(channelId, channel.uvs);
+        regions.push_back({channelId, 0, channel.uvs});
       }
     }
 

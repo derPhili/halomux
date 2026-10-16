@@ -19,8 +19,9 @@ namespace Huenicorn::Platform
     ) const override;
 
   protected:
-    virtual UniqueGrabber _createGrabber(
-      Core::Config* config
+    virtual SharedGrabber _createGrabber(
+      Core::Config* config,
+      bool askForMonitors
     ) override;
   };
 }

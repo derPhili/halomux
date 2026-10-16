@@ -32,11 +32,20 @@ int main(int argc, char* argv[])
   const auto resolution = grabber->displayResolution();
   Logger::log("Started ", grabber->name(), " on a ", resolution.x, "x", resolution.y, " display at ", grabber->displayRefreshRate(), " Hz");
 
-  grabber->setChannelRegions({
-    {0, {{0.f, 0.f}, {1.f, 1.f}}},   // Whole screen
-    {1, {{0.f, 0.f}, {0.5f, 1.f}}},  // Left half
-    {2, {{0.5f, 0.f}, {1.f, 1.f}}}   // Right half
-  });
+  for(const auto& monitor : grabber->monitors()){
+    Logger::log("Monitor ", monitor.description, " ", monitor.geometry.x, ",", monitor.geometry.y, " ", monitor.geometry.width, "x", monitor.geometry.height);
+  }
+
+  // On the first monitor, and the whole second one if several are captured
+  Grabber::IGrabber::ChannelRegions regions{
+    {0, 0, {{0.f, 0.f}, {1.f, 1.f}}},   // Whole screen
+    {1, 0, {{0.f, 0.f}, {0.5f, 1.f}}},  // Left half
+    {2, 0, {{0.5f, 0.f}, {1.f, 1.f}}}   // Right half
+  };
+  if(grabber->monitors().size() > 1){
+    regions.push_back({3, 1, {{0.f, 0.f}, {1.f, 1.f}}});
+  }
+  grabber->setChannelRegions(regions);
 
   const auto end = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
   while(std::chrono::steady_clock::now() < end){

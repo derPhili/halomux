@@ -184,7 +184,7 @@ namespace Huenicorn::Core
     ThreadedRestService m_webUIService;
 
     //  Image Processing
-    Grabber::IGrabber* m_grabber;
+    std::shared_ptr<Grabber::IGrabber> m_grabber;
     Grabber::IGrabber::ChannelRegions m_channelRegions;
     // Capture is paused while sync is disabled (streaming thread)
     bool m_capturePaused{false};

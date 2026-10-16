@@ -15,7 +15,7 @@ namespace Huenicorn::Core
 
 namespace Huenicorn::Platform
 {
-  using UniqueGrabber = std::unique_ptr<Grabber::IGrabber>;
+  using SharedGrabber = std::shared_ptr<Grabber::IGrabber>;
 
   /**
    * @brief Wrapper interface for platform-specific functions and grabber selection
@@ -93,15 +93,15 @@ namespace Huenicorn::Platform
      * @brief Getter to instanciate / store valid grabber
      * 
      * @param config Huenicorn current configuration
-     * @return UniqueGrabber Grabber instance
+     * @return SharedGrabber Grabber instance, nullptr if none could be started
      */
-    inline Grabber::IGrabber* getGrabber(
+    inline SharedGrabber getGrabber(
       Core::Config* config
     )
     {
       if(!m_grabber){
         try{
-          m_grabber = _createGrabber(config);
+          m_grabber = _createGrabber(config, false);
         }
         catch(const Grabber::GrabberCancelled& e){
           Core::Logger::warn(e.what());
@@ -112,7 +112,7 @@ namespace Huenicorn::Platform
         }
       }
 
-      return m_grabber.get();
+      return m_grabber;
     }
 
 
@@ -121,14 +121,16 @@ namespace Huenicorn::Platform
      * @brief Factory method for grabber
      * 
      * @param config Huenicorn current configuration
-     * @return UniqueGrabber New grabber
+     * @param askForMonitors Whether to ask for the monitors instead of restoring the saved selection
+     * @return SharedGrabber New grabber
      */
-    virtual UniqueGrabber _createGrabber(
-      Core::Config* config
+    virtual SharedGrabber _createGrabber(
+      Core::Config* config,
+      bool askForMonitors
     ) = 0;
 
     // Attributes
     const std::string m_platformName;
-    UniqueGrabber m_grabber;
+    SharedGrabber m_grabber;
   };
 }
