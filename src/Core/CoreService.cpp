@@ -6,6 +6,8 @@
 #include <iomanip>
 #include <optional>
 
+#include <glm/common.hpp>
+
 #include <Huenicorn/Version.hpp>
 #include <Huenicorn/Core/CoreService.hpp>
 #include <Huenicorn/Core/Logger.hpp>
@@ -180,7 +182,23 @@ namespace Huenicorn::Core
       return false;
     }
 
-    channels.at(channelId).setActive(active);
+    auto& channel = channels.at(channelId);
+
+    // A lamp set up for the first time follows the monitor most other lamps follow
+    if(active && !channel.monitor.has_value() && !m_runtime.m_monitors.empty()){
+      std::vector<size_t> monitorsOfActiveLamps;
+      for(const auto& [otherId, other] : channels){
+        if(other.state == Hue::Api::Channel::State::Active && other.monitorIndex.has_value()){
+          monitorsOfActiveLamps.push_back(*other.monitorIndex);
+        }
+      }
+
+      const size_t monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_runtime.m_monitors.size());
+      channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
+      channel.monitorIndex = monitor;
+    }
+
+    channel.setActive(active);
 
     return true;
   }
@@ -357,6 +375,40 @@ namespace Huenicorn::Core
   }
 
 
+  std::optional<Imaging::UVs> CoreService::setChannelMonitor(
+    uint8_t channelId,
+    size_t monitor,
+    const Imaging::UVs& uvs
+  )
+  {
+    std::lock_guard lock(m_runtime.m_channelsMutex);
+    auto channelIt = m_runtime.m_channels.find(channelId);
+    if(channelIt == m_runtime.m_channels.end() || monitor >= m_runtime.m_monitors.size()){
+      return std::nullopt;
+    }
+
+    const auto clamp = [](const Imaging::UV& uv){
+      return Imaging::UV{std::clamp(uv.x, 0.f, 1.f), std::clamp(uv.y, 0.f, 1.f)};
+    };
+
+    const Imaging::UV a = clamp(uvs.min);
+    const Imaging::UV b = clamp(uvs.max);
+
+    auto& channel = channelIt->second;
+    channel.uvs = {glm::min(a, b), glm::max(a, b)};
+    channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
+    channel.monitorIndex = monitor;
+
+    return channel.uvs;
+  }
+
+
+  Grabber::Monitors CoreService::monitors() const
+  {
+    return m_runtime.m_grabber->monitors();
+  }
+
+
   bool CoreService::setChannelGammaFactor(
     uint8_t channelId,
     float gammaExponent
@@ -507,10 +559,14 @@ namespace Huenicorn::Core
         return false;
       }
 
+      // Colors are spread from left to right over the whole desktop
       std::vector<std::pair<uint8_t, float>> lampCenters;
-      for(const auto& [channelId, channel] : channels()){
-        if(channel.state == Hue::Api::Channel::State::Active){
-          lampCenters.emplace_back(channelId, (channel.uvs.min.x + channel.uvs.max.x) / 2.f);
+      {
+        std::lock_guard lock(m_runtime.m_channelsMutex);
+        for(const auto& [channelId, channel] : m_runtime.m_channels){
+          if(channel.state == Hue::Api::Channel::State::Active){
+            lampCenters.emplace_back(channelId, m_runtime._desktopCenterX(channel));
+          }
         }
       }
 

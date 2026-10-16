@@ -25,8 +25,58 @@ namespace Huenicorn::Serialization
         {"gammaFactor", channel.gammaFactor},
         {"devices", Json(channel.devices)}
       };
+
+      if(channel.monitor.has_value()){
+        const auto& geometry = channel.monitor->geometry;
+        jsonChannel["monitor"] = {
+          {"x", geometry.x},
+          {"y", geometry.y},
+          {"width", geometry.width},
+          {"height", geometry.height},
+          {"name", channel.monitor->name}
+        };
+      }
     }
   };
+
+
+  /**
+   * @brief Reads the monitor a channel of the profile follows
+   *
+   * @param jsonChannel Channel of the profile
+   * @return std::optional<Grabber::MonitorRef> Monitor, nothing if missing or malformed
+   */
+  inline std::optional<Grabber::MonitorRef> monitorRefFromJson(
+    const Json& jsonChannel
+  )
+  {
+    if(!jsonChannel.contains("monitor") || !jsonChannel.at("monitor").is_object()){
+      return std::nullopt;
+    }
+
+    const Json& jsonMonitor = jsonChannel.at("monitor");
+    for(const char* key : {"x", "y", "width", "height"}){
+      if(!jsonMonitor.contains(key) || !jsonMonitor.at(key).is_number_integer()){
+        return std::nullopt;
+      }
+    }
+
+    Grabber::MonitorRef ref{
+      .geometry = {
+        jsonMonitor.at("x").get<int>(),
+        jsonMonitor.at("y").get<int>(),
+        jsonMonitor.at("width").get<int>(),
+        jsonMonitor.at("height").get<int>()
+      },
+      .name = ""
+    };
+
+    if(jsonMonitor.contains("name") && jsonMonitor.at("name").is_string()){
+      ref.name = jsonMonitor.at("name").get<std::string>();
+    }
+
+    return ref;
+  }
 
 
   template<>

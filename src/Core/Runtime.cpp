@@ -226,7 +226,8 @@ namespace Huenicorn::Core
           Imaging::UVs uvs = jsonUVs.get<Imaging::UVs>();
 
           float gammaFactor = jsonProfileChannel.at("gammaFactor");
-          channels.emplace(id, Hue::Api::Channel{active, members, gammaFactor, uvs});
+          auto& profileChannel = channels.emplace(id, Hue::Api::Channel{active, members, gammaFactor, uvs}).first->second;
+          profileChannel.monitor = Serialization::monitorRefFromJson(jsonProfileChannel);
 
           found = true;
           break;
@@ -241,6 +242,38 @@ namespace Huenicorn::Core
     std::lock_guard lock(m_channelsMutex);
     m_channels = std::move(channels);
     m_channelStreams.clear();
+    _resolveChannelMonitors();
+  }
+
+
+  void Runtime::_resolveChannelMonitors()
+  {
+    m_monitors = m_grabber->monitors();
+
+    for(auto& [channelId, channel] : m_channels){
+      // Profiles from before monitors per lamp captured only one monitor: the first one
+      if(!channel.monitor.has_value() && channel.state == Hue::Api::Channel::State::Active && !m_monitors.empty()){
+        channel.monitor = Grabber::monitorRef(m_monitors.front());
+      }
+
+      channel.monitorIndex = channel.monitor.has_value() ? Grabber::findMonitor(*channel.monitor, m_monitors) : std::nullopt;
+
+      if(channel.monitor.has_value() && !channel.monitorIndex.has_value()){
+        Logger::warn("The monitor of channel ", static_cast<int>(channelId), " isn't captured (", channel.monitor->name, " ", channel.monitor->geometry.width, "x", channel.monitor->geometry.height, "): it stays off while syncing");
+      }
+    }
+  }
+
+
+  float Runtime::_desktopCenterX(
+    const Hue::Api::Channel& channel
+  ) const
+  {
+    if(!channel.monitorIndex.has_value() || *channel.monitorIndex >= m_monitors.size()){
+      return 0.5f;
+    }
+
+    return Grabber::desktopCenterX(channel.uvs, m_monitors[*channel.monitorIndex].geometry, Grabber::desktopBounds(m_monitors));
   }
 
 
@@ -337,8 +370,9 @@ namespace Huenicorn::Core
     // The grabber averages the regions of the active channels on each captured frame
     Grabber::IGrabber::ChannelRegions regions;
     for(const auto& [channelId, channel] : m_channels){
-      if(channel.state == Hue::Api::Channel::State::Active){
-        regions.push_back({channelId, 0, channel.uvs});
+      // Channels whose monitor isn't captured stay off while syncing
+      if(channel.state == Hue::Api::Channel::State::Active && channel.monitorIndex.has_value()){
+        regions.push_back({channelId, *channel.monitorIndex, channel.uvs});
       }
     }
 
@@ -376,7 +410,9 @@ namespace Huenicorn::Core
         return channelColor.first == channelId;
       });
 
-      if(channel.state == Hue::Api::Channel::State::Active && syncing && colorIt == channelColors.end() && !previewing){
+      const bool monitorMissing = !channel.monitorIndex.has_value();
+
+      if(channel.state == Hue::Api::Channel::State::Active && syncing && colorIt == channelColors.end() && !previewing && !monitorMissing){
         // Activated after the last captured frame: wait for the next one
         continue;
       }
@@ -405,8 +441,8 @@ namespace Huenicorn::Core
         channel.acknowledgeShutdown();
       }
       else{
-        // Horizontal position of the lamp's region, 0 = left, 1 = right
-        const float pan = glm::clamp((channel.uvs.min.x + channel.uvs.max.x) / 2.f, 0.f, 1.f);
+        // Horizontal position of the lamp's region on the whole desktop, 0 = left, 1 = right
+        const float pan = _desktopCenterX(channel);
 
         Imaging::Color color;
         if(previewing){
@@ -415,6 +451,9 @@ namespace Huenicorn::Core
         else if(!syncing){
           const auto staticColorIt = staticColors.find(channelId);
           color = staticColorIt != staticColors.end() ? staticColorIt->second : DefaultStaticColor;
+        }
+        else if(monitorMissing){
+          color = Imaging::Color(0, 0, 0);
         }
         else{
           color = colorIt->second;

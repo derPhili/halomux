@@ -245,6 +245,29 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Moves a channel's region onto a captured monitor
+     *
+     * @param channelId ID of the channel to affect
+     * @param monitor Index of the monitor, as in monitors()
+     * @param uvs Region on that monitor, clamped to it
+     * @return std::optional<Imaging::UVs> Clamped region, empty if the channel or the monitor doesn't exist
+     */
+    std::optional<Imaging::UVs> setChannelMonitor(
+      uint8_t channelId,
+      size_t monitor,
+      const Imaging::UVs& uvs
+    );
+
+
+    /**
+     * @brief Returns the captured monitors
+     *
+     * @return Grabber::Monitors Captured monitors, in the order channels refer to them
+     */
+    Grabber::Monitors monitors() const;
+
+
+    /**
      * @brief Sets the Channel Gamma Factor
      * 
      * @param channelId ID of the channel to affect

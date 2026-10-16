@@ -273,3 +273,31 @@ target_include_directories(TestWaylandOutputs PUBLIC
 target_link_libraries(TestWaylandOutputs PUBLIC
   wayland_protocols
 )
+
+
+# TestChannelMonitors: the monitor each lamp follows, in the profile
+add_executable(TestChannelMonitors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelMonitors.cpp
+)
+
+set_target_properties(TestChannelMonitors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestChannelMonitors PUBLIC
+  include
+)
+
+target_link_libraries(TestChannelMonitors PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+target_compile_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
+target_link_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME ChannelMonitors COMMAND TestChannelMonitors)
