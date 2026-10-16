@@ -103,6 +103,7 @@ namespace Huenicorn::Core
   {
     m_keepLooping = false;
     // Closes a pending screen selection dialog
+    std::lock_guard lock(m_reselectMutex);
     m_reselectThread.request_stop();
     m_coreService->abortInitialSetup();
   }
@@ -263,6 +264,14 @@ namespace Huenicorn::Core
   {
     MonitorSelection expected = m_monitorSelection.load();
     if(expected == MonitorSelection::Pending || !m_monitorSelection.compare_exchange_strong(expected, MonitorSelection::Pending)){
+      return false;
+    }
+
+    std::lock_guard lock(m_reselectMutex);
+
+    // A stop meanwhile: no new dialog
+    if(!m_keepLooping){
+      m_monitorSelection = MonitorSelection::Idle;
       return false;
     }
 

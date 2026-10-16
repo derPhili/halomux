@@ -241,7 +241,9 @@ namespace Huenicorn::Core
     // Start of the running preview (steady clock ticks), 0 when none
     std::atomic<int64_t> m_previewStart{0};
 
-    // Screen selection in progress, joined (and aborted) before the members it uses go away
+    // Screen selection in progress, joined (and aborted) before the members it uses go away.
+    // Started by a web UI thread, stopped by the thread handling a signal.
+    std::mutex m_reselectMutex;
     std::jthread m_reselectThread;
   };
 }
