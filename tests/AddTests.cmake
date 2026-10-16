@@ -204,3 +204,25 @@ target_link_libraries(TestStreamer PUBLIC
 )
 
 add_test(NAME Streamer COMMAND TestStreamer)
+
+
+# TestBridgeDiscovery: reading mDNS answers, which come from the network
+add_executable(TestBridgeDiscovery
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeDiscovery.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestBridgeDiscovery.cpp
+)
+
+set_target_properties(TestBridgeDiscovery PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestBridgeDiscovery PUBLIC
+  include
+)
+
+target_compile_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
+target_link_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME BridgeDiscovery COMMAND TestBridgeDiscovery)

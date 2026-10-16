@@ -286,10 +286,37 @@ namespace Huenicorn::Core
   }
 
 
+  std::optional<std::string> Config::bridgeId() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().bridgeId;
+  }
+
+
+  bool Config::bridgeCertificateVerified() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().bridgeCertificateVerified.value_or(false);
+  }
+
+
   std::optional<Config::NoticeAcceptance> Config::noticeAccepted() const
   {
     std::lock_guard lock(m_mutex);
     return m_configData.value().noticeAccepted;
+  }
+
+
+  void Config::setBridgeIdentity(
+    const std::string& bridgeId,
+    bool certificateVerified
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    auto& data = m_configData.value();
+    data.bridgeId = bridgeId;
+    data.bridgeCertificateVerified = data.bridgeCertificateVerified.value_or(false) || certificateVerified;
+    _save();
   }
 
 
@@ -346,6 +373,8 @@ namespace Huenicorn::Core
       .scenes = Scenes{},
       .language = "auto",
       .noticeAccepted = std::nullopt,
+      .bridgeId = std::nullopt,
+      .bridgeCertificateVerified = false,
       .restoreToken = std::nullopt
     };
 

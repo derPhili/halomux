@@ -100,7 +100,7 @@ Options:
 Start "Lightspill" from the application menu. As long as no bridge is paired, a setup wizard guides you through:
 
 1. **Notice**: confirm that you read the notice about AI assistance and the missing warranty
-2. **Finding the bridge**: it is searched automatically (through the Philips discovery service, which needs internet access), or you enter its IP address
+2. **Finding the bridge**: it is searched automatically in the local network (mDNS), then through the discovery service of Philips if none answers, or you enter its IP address
 3. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
 4. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
 5. **Screen selection**: the desktop asks which screen Lightspill may capture. Allow it to be remembered, so you aren't asked again on every start
@@ -140,7 +140,7 @@ The compositor delivers frames as DMA-BUF in video memory. Lightspill imports th
 
 ```
 [gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)
-Capture path: GPU (DMA-BUF, modifier 0x0)
+Capture path: GPU (DMA-BUF, modifier 0x300000000cdb014)
 ```
 
 If the import fails, Lightspill falls back to shared memory and the CPU (`Capture path: CPU (shared memory)`). `LIGHTSPILL_DISABLE_GPU=1` forces the CPU path, for example to compare.

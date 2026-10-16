@@ -504,7 +504,14 @@ namespace Huenicorn::Grabber
 
 
     // DMA-BUF formats carry a modifier: ask for the matching buffer type
-    const bool dmaBuf = spa_pod_find_prop(param, nullptr, SPA_FORMAT_VIDEO_modifier) != nullptr;
+    const spa_pod_prop* modifierProp = spa_pod_find_prop(param, nullptr, SPA_FORMAT_VIDEO_modifier);
+    const bool dmaBuf = modifierProp != nullptr;
+    // The compositor first offers a choice of modifiers, then the one it allocates with: a plain
+    // value or a choice of type None
+    const bool modifierFixated = dmaBuf && (
+      SPA_POD_TYPE(&modifierProp->value) != SPA_TYPE_Choice ||
+      SPA_POD_CHOICE_TYPE(&modifierProp->value) == SPA_CHOICE_None
+    );
     const int dataTypes = dmaBuf
       ? (1 << SPA_DATA_DmaBuf)
       : ((1 << SPA_DATA_MemFd) | (1 << SPA_DATA_MemPtr));
@@ -524,12 +531,15 @@ namespace Huenicorn::Grabber
 
     if(dmaBuf != pw->usingDmaBuf || !pw->promiseSetAlready){
       pw->usingDmaBuf = dmaBuf;
-      if(dmaBuf){
-        Core::Logger::log("Capture path: GPU (DMA-BUF, modifier 0x", std::hex, pw->format.info.raw.modifier, std::dec, ")");
-      }
-      else{
+      pw->loggedModifier.reset();
+      if(!dmaBuf){
         Core::Logger::log("Capture path: CPU (shared memory)");
       }
+    }
+
+    if(modifierFixated && pw->loggedModifier != pw->format.info.raw.modifier){
+      pw->loggedModifier = pw->format.info.raw.modifier;
+      Core::Logger::log("Capture path: GPU (DMA-BUF, modifier 0x", std::hex, pw->format.info.raw.modifier, std::dec, ")");
     }
 
     if(!pw->promiseSetAlready){

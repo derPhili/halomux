@@ -144,7 +144,7 @@ class SetupWizard
       this.bridgeSearchNode.style.display = "none";
 
       if(!data.succeeded){
-        this._showError("bridgeAddressError", t("The bridge search needs internet access. Enter the address instead."));
+        this._showError("bridgeAddressError", t("No bridge answered in the local network, and the online search needs internet access. Enter the address instead."));
         return;
       }
 

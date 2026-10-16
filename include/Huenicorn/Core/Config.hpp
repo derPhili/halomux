@@ -53,6 +53,10 @@ namespace Huenicorn::Core
       std::optional<Scenes> scenes{Scenes{}};
       std::optional<std::string> language{"auto"};
       std::optional<NoticeAcceptance> noticeAccepted;
+      // Id of the bridge, the name its certificate carries
+      std::optional<std::string> bridgeId;
+      // Whether the bridge's certificate passed the check once: then it always has to
+      std::optional<bool> bridgeCertificateVerified{false};
       std::optional<std::string> restoreToken;
     };
 
@@ -368,12 +372,40 @@ namespace Huenicorn::Core
 
 
     /**
+     * @brief Returns the id of the bridge
+     *
+     * @return std::optional<std::string> Bridge id, empty if not known yet
+    */
+    std::optional<std::string> bridgeId() const;
+
+
+    /**
+     * @brief Returns whether the bridge's certificate passed the check once
+     *
+     * @return true Its certificate always has to pass the check
+    */
+    bool bridgeCertificateVerified() const;
+
+
+    /**
      * @brief Registers that the user accepted a version of the notice
      *
      * @param acceptance Version of the notice and time of the acceptance
     */
     void setNoticeAccepted(
       const NoticeAcceptance& acceptance
+    );
+
+
+    /**
+     * @brief Registers the identity of the bridge
+     *
+     * @param bridgeId Id of the bridge, the name its certificate carries
+     * @param certificateVerified Whether its certificate passed the check. Once true, it stays true
+    */
+    void setBridgeIdentity(
+      const std::string& bridgeId,
+      bool certificateVerified
     );
 
 

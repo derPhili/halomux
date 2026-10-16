@@ -94,6 +94,14 @@ namespace Huenicorn::Serialization
         jsonConfigData["language"] = *configData.language;
       }
 
+      if(configData.bridgeId.has_value()){
+        jsonConfigData["bridgeId"] = *configData.bridgeId;
+      }
+
+      if(configData.bridgeCertificateVerified.has_value()){
+        jsonConfigData["bridgeCertificateVerified"] = *configData.bridgeCertificateVerified;
+      }
+
       if(configData.noticeAccepted.has_value()){
         jsonConfigData["noticeAccepted"] = {
           {"version", configData.noticeAccepted->version},
@@ -186,6 +194,14 @@ namespace Huenicorn::Serialization
 
       if(jsonConfigData.contains("language")){
         configData.language = jsonConfigData.at("language");
+      }
+
+      if(jsonConfigData.contains("bridgeId")){
+        configData.bridgeId = jsonConfigData.at("bridgeId");
+      }
+
+      if(jsonConfigData.contains("bridgeCertificateVerified")){
+        configData.bridgeCertificateVerified = jsonConfigData.at("bridgeCertificateVerified");
       }
 
       if(jsonConfigData.contains("noticeAccepted")){

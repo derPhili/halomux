@@ -12,6 +12,7 @@
 
 #include <Huenicorn/Hue/Api/ApiTools.hpp>
 #include <Huenicorn/Hue/Api/BridgeAddress.hpp>
+#include <Huenicorn/Hue/Api/BridgeTls.hpp>
 #include <Huenicorn/Serialization/Json.hpp>
 #include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
 #include <Huenicorn/Serialization/JsonSerializer.hpp>
@@ -56,7 +57,8 @@ namespace Huenicorn::Core
       return false;
     }
 
-    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "");
+    // Not identified yet: only the CA of its certificate can be checked
+    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(sanitizedAddress));
     if(!response.has_value()){
       return false;
     }
@@ -68,6 +70,8 @@ namespace Huenicorn::Core
       }
 
       m_config.setBridgeAddress(sanitizedAddress);
+      m_config.setBridgeIdentity(responseData.at("bridgeid"), response->tlsVerified());
+      _registerBridge();
 
       return true;
     }
@@ -82,15 +86,17 @@ namespace Huenicorn::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + m_config.bridgeAddress().value() + "/api/" + credentials.username(), "GET", "");
+    const std::string& bridgeAddress = m_config.bridgeAddress().value();
+    const Network::Http::Client::Headers headers = {{"hue-application-key", credentials.username()}};
+    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/clip/v2/resource/bridge", "GET", "", headers, Hue::Api::bridgeTls(bridgeAddress));
     if(!response.has_value()){
       return false;
     }
 
     try{
+      // An unknown application key gets errors and no data
       auto jsonResponse = response.value().asJson();
-
-      if(jsonResponse.is_array() && jsonResponse.at(0).contains("error")){
+      if(!jsonResponse.contains("data") || jsonResponse.at("data").empty()){
         return false;
       }
     }
@@ -589,9 +595,48 @@ namespace Huenicorn::Core
   }
 
 
+  void CoreService::_identifyBridge()
+  {
+    // Bridges set up before the certificate checks, or whose certificate never passed them, are
+    // identified again at each start: once their certificate passes the check, it always has to
+    if(!m_config.bridgeId().has_value() || !m_config.bridgeCertificateVerified()){
+      const std::string& bridgeAddress = m_config.bridgeAddress().value();
+      auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
+
+      try{
+        if(response.has_value() && response->asJson().contains("bridgeid")){
+          m_config.setBridgeIdentity(response->asJson().at("bridgeid"), response->tlsVerified());
+        }
+      }
+      catch(const std::exception& e){
+        Logger::error("Could not identify the bridge: ", e.what());
+      }
+    }
+
+    _registerBridge();
+  }
+
+
+  void CoreService::_registerBridge()
+  {
+    const auto bridgeId = m_config.bridgeId();
+    if(!bridgeId.has_value()){
+      return;
+    }
+
+    const bool verified = m_config.bridgeCertificateVerified();
+    Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified);
+
+    if(!verified){
+      Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");
+    }
+  }
+
+
   bool CoreService::ensureInitialSetup()
   {
     if(m_config.initialSetupOk()){
+      _identifyBridge();
       return true;
     }
 

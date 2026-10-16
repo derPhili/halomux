@@ -3,6 +3,8 @@
 #include <Huenicorn/Core/Logger.hpp>
 #include <Huenicorn/Version.hpp>
 #include <Huenicorn/Hue/Api/BridgeAddress.hpp>
+#include <Huenicorn/Hue/Api/BridgeDiscovery.hpp>
+#include <Huenicorn/Hue/Api/BridgeTls.hpp>
 #include <Huenicorn/Hue/Auth/Credentials.hpp>
 #include <Huenicorn/Network/Http/Client/Client.hpp>
 #include <Huenicorn/Platform/Selector.hpp>
@@ -26,7 +28,7 @@ namespace Huenicorn::Hue::Api
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
       std::string entConfUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
-      auto entConfResponse = Network::Http::Client::sendRequest(entConfUrl, "GET", "", headers);
+      auto entConfResponse = Network::Http::Client::sendRequest(entConfUrl, "GET", "", headers, bridgeTls(bridgeAddress));
 
       if(entConfResponse.has_value()){
         // Listing entertainment configurations
@@ -39,7 +41,7 @@ namespace Huenicorn::Hue::Api
           for(auto& device : entConf.devices){
             std::string lightUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/light/" + device.id;
 
-            auto lightResponse = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers);
+            auto lightResponse = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers, bridgeTls(bridgeAddress));
             if(!lightResponse.has_value()){
               Core::Logger::warn("Could not load the metadata of light ", device.id);
               continue;
@@ -74,7 +76,7 @@ namespace Huenicorn::Hue::Api
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
       std::string resourceUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource";
-      auto resourceResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers);
+      auto resourceResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers, bridgeTls(bridgeAddress));
 
       Devices devices;
 
@@ -109,7 +111,7 @@ namespace Huenicorn::Hue::Api
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
       std::string resourceUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
 
-      auto entertainmentConfigurationsResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers);
+      auto entertainmentConfigurationsResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers, bridgeTls(bridgeAddress));
 
       EntertainmentConfigurationsChannels entConfsChannels;
 
@@ -166,7 +168,7 @@ namespace Huenicorn::Hue::Api
 
       std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
 
-      Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers);
+      Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers, bridgeTls(bridgeAddress));
     }
 
 
@@ -182,7 +184,7 @@ namespace Huenicorn::Hue::Api
 
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
       std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
-      auto entConfResponse = Network::Http::Client::sendRequest(url, "GET", "", headers);
+      auto entConfResponse = Network::Http::Client::sendRequest(url, "GET", "", headers, bridgeTls(bridgeAddress));
       if(entConfResponse.has_value()){
         status = entConfResponse.value().asJson().at("data").front().at("status");
       }
@@ -194,6 +196,17 @@ namespace Huenicorn::Hue::Api
 
   Serialization::Json ApiTools::autodetectedBridge()
   {
+    // In the local network first, as Philips recommends: no internet access needed
+    const auto localBridges = discoverBridges(std::chrono::milliseconds(1500));
+    if(!localBridges.empty()){
+      Serialization::Json jsonBridges = Serialization::Json::array();
+      for(const auto& bridge : localBridges){
+        jsonBridges.push_back({{"id", bridge.id}, {"internalipaddress", bridge.address}});
+      }
+
+      return {{"succeeded", true}, {"bridges", jsonBridges}};
+    }
+
     auto detectedBridgeResponse = Network::Http::Client::sendRequest("https://discovery.meethue.com/", "GET");
 
     if(!detectedBridgeResponse.has_value()){
@@ -212,6 +225,6 @@ namespace Huenicorn::Hue::Api
     std::string deviceType = std::string(Huenicorn::AppId) + "#" + sessionUsername;
 
     Serialization::Json request = {{"devicetype", deviceType}, {"generateclientkey", true}};
-    return Network::Http::Client::sendRequest(HttpProtocol + bridgeAddress + "/api", "POST", request.dump());
+    return Network::Http::Client::sendRequest(HttpProtocol + bridgeAddress + "/api", "POST", request.dump(), {}, bridgeTls(bridgeAddress));
   }
 }

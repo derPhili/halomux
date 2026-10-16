@@ -270,7 +270,7 @@ I18n.Translations = {
     "Search again" : "Erneut suchen",
     "Back" : "Zurück",
     "Hue bridge {id}" : "Hue Bridge {id}",
-    "The bridge search needs internet access. Enter the address instead." : "Die Suche nach Bridges braucht Internetzugang. Gib stattdessen die Adresse ein.",
+    "No bridge answered in the local network, and the online search needs internet access. Enter the address instead." : "Im lokalen Netz hat keine Bridge geantwortet, und die Online-Suche braucht Internetzugang. Gib stattdessen die Adresse ein.",
     "No bridge was found. Enter its address instead." : "Es wurde keine Bridge gefunden. Gib stattdessen ihre Adresse ein.",
     "Pick a bridge or enter its address." : "Wähle eine Bridge oder gib ihre Adresse ein.",
     "No Hue bridge answers at {address}." : "Unter {address} antwortet keine Hue Bridge.",

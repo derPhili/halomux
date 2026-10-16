@@ -100,7 +100,7 @@ Optionen:
 Starte „Lightspill“ aus dem Startmenü. Solange keine Bridge gekoppelt ist, führt ein Einrichtungsassistent durch:
 
 1. **Hinweis**: bestätigen, dass du den Hinweis zu KI-Unterstützung und fehlender Gewährleistung gelesen hast
-2. **Bridge finden**: Sie wird automatisch gesucht (über den Discovery-Dienst von Philips, braucht Internet), oder du gibst ihre IP-Adresse ein
+2. **Bridge finden**: Sie wird automatisch im lokalen Netz gesucht (mDNS), antwortet dort keine, über den Discovery-Dienst von Philips, oder du gibst ihre IP-Adresse ein
 3. **Koppeln**: Drücke den runden Knopf oben auf der Bridge. Die App fragt alle 2 Sekunden nach und koppelt sich, sobald der Knopf gedrückt ist
 4. **Entertainment-Bereich**: Der Assistent prüft, ob einer existiert, und erklärt sonst, wie du ihn in der Hue-App anlegst
 5. **Bildschirmauswahl**: Der Desktop fragt, welchen Bildschirm Lightspill aufnehmen darf. Erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt
@@ -140,7 +140,7 @@ Der Compositor liefert die Bilder als DMA-BUF im Grafikspeicher. Lightspill impo
 
 ```
 [gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)
-Capture path: GPU (DMA-BUF, modifier 0x0)
+Capture path: GPU (DMA-BUF, modifier 0x300000000cdb014)
 ```
 
 Scheitert der Import, weicht Lightspill auf Shared Memory und die CPU aus (`Capture path: CPU (shared memory)`). `LIGHTSPILL_DISABLE_GPU=1` erzwingt den CPU-Pfad, z. B. zum Vergleichen.
