@@ -401,6 +401,17 @@ namespace Halomux::Grabber
 
 
     /**
+     * @brief Closes the portal session and ends the portal thread, in that thread
+     *
+     * @param userData Capture
+     * @return gboolean G_SOURCE_REMOVE
+     */
+    static gboolean _onDestroyCapture(
+      void* userData
+    );
+
+
+    /**
      * Screencast portal thread
     */
     static void _initCapture(

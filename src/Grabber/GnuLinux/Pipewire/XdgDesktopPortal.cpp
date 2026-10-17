@@ -37,14 +37,14 @@ namespace Halomux::Grabber
       StringPair requestPathAndToken = portalCreatePath(CreatePathTokenType::Request);
       StringPair sessionPathAndToken = portalCreatePath(CreatePathTokenType::Session);
 
-      DbusCallData* call = subscribeToSignal(capture, requestPathAndToken.first.c_str(), onCreateSessionResponseReceivedCallback);
+      subscribeToResponse(capture, requestPathAndToken.first, onCreateSessionResponseReceivedCallback);
 
       GVariantBuilder builder;
       g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
       g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(requestPathAndToken.second.c_str()));
       g_variant_builder_add(&builder, "{sv}", "session_handle_token", g_variant_new_string(sessionPathAndToken.second.c_str()));
 
-      g_dbus_proxy_call(getScreencastPortalProxy(), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, call);
+      g_dbus_proxy_call(getScreencastPortalProxy(), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, capture);
     }
 
 
@@ -95,8 +95,21 @@ namespace Halomux::Grabber
       }
 
       capture->fdReadyResolved = true;
-      capture->updateXdgContext = false;
       capture->fdReadyPromise.set_value(succeeded);
+    }
+
+
+    void XdgDesktopPortal::abort(
+      Capture* capture
+    )
+    {
+      closeRequest(capture);
+
+      if(capture->cancellable){
+        g_cancellable_cancel(capture->cancellable);
+      }
+
+      resolveCapture(capture, false);
     }
 
 
@@ -108,6 +121,8 @@ namespace Halomux::Grabber
         return;
       }
 
+      closeRequest(capture);
+
       std::string interfaceName = "org.freedesktop.portal.Session";
       std::string methodName = "Close";
 
@@ -116,8 +131,10 @@ namespace Halomux::Grabber
         g_clear_pointer(&capture->sessionHandle, g_free);
       }
 
-      g_cancellable_cancel(capture->cancellable);
-      g_clear_object(&capture->cancellable);
+      if(capture->cancellable){
+        g_cancellable_cancel(capture->cancellable);
+        g_clear_object(&capture->cancellable);
+      }
     }
 
 
@@ -139,7 +156,8 @@ namespace Halomux::Grabber
     {
       ensureConnection();
 
-      std::string senderName(strdup(g_dbus_connection_get_unique_name(m_connection) + 1));
+      // The unique name without its leading colon, owned by the connection
+      std::string senderName(g_dbus_connection_get_unique_name(m_connection) + 1);
       std::replace_if(senderName.begin(), senderName.end(), [](char c) { return c == '.'; }, '_');
 
       return senderName;
@@ -189,7 +207,9 @@ namespace Halomux::Grabber
 
         std::string interfaceName = "org.freedesktop.portal.ScreenCast";
 
-        m_screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_NONE, NULL, BusName, ObjectPath, interfaceName.c_str(), NULL, &error);
+        // Shared by the captures: its own signals would be dispatched to the context of the
+        // thread creating it, which ends with its capture. Only its cached properties are used.
+        m_screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, BusName, ObjectPath, interfaceName.c_str(), NULL, &error);
 
         if(error){
           Core::Logger::warn("error retrieving D-Bus proxy: ", std::string(error->message));
@@ -237,57 +257,45 @@ namespace Halomux::Grabber
     }
 
 
-    void XdgDesktopPortal::onCancelledCallback(
-      GCancellable* /*cancellable*/,
-      void* data
-    )
-    {
-      DbusCallData* call = static_cast<DbusCallData*>(data);
-
-      Core::Logger::log("Request cancelled");
-
-      std::string interfaceName = "org.freedesktop.portal.Request";
-
-      g_dbus_connection_call(portalGetDbusConnection(), BusName, call->requestPath.c_str(), interfaceName.c_str(), "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
-
-      dbusCallDataFree(call);
-    }
-
-
-    XdgDesktopPortal::DbusCallData* XdgDesktopPortal::subscribeToSignal(
+    void XdgDesktopPortal::subscribeToResponse(
       Capture* capture,
-      const char* path,
+      const std::string& path,
       GDBusSignalCallback callback
     )
     {
-      DbusCallData* call = new DbusCallData();
-      call->capture = capture;
-      call->requestPath = std::string(path);
-      call->cancelledId = g_signal_connect(capture->cancellable, "cancelled", G_CALLBACK(onCancelledCallback), call);
-      std::string interfaceName = "org.freedesktop.portal.Request";
-      call->signalId = g_dbus_connection_signal_subscribe(portalGetDbusConnection(), BusName, interfaceName.c_str(), "Response", call->requestPath.c_str(), NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, callback, call, NULL);
+      unsubscribeResponse(capture);
 
-      return call;
+      // The capture outlives the subscription: it's removed in the portal thread, before the
+      // grabber ends, and nothing is dispatched once that thread stopped
+      capture->requestPath = path;
+      std::string interfaceName = "org.freedesktop.portal.Request";
+      capture->responseSignalId = g_dbus_connection_signal_subscribe(portalGetDbusConnection(), BusName, interfaceName.c_str(), "Response", capture->requestPath.c_str(), NULL, G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE, callback, capture, NULL);
     }
 
 
-    void XdgDesktopPortal::dbusCallDataFree(
-      DbusCallData* call
+    void XdgDesktopPortal::unsubscribeResponse(
+      Capture* capture
     )
     {
-      if(!call){
+      if(capture->responseSignalId != 0){
+        g_dbus_connection_signal_unsubscribe(portalGetDbusConnection(), capture->responseSignalId);
+        capture->responseSignalId = 0;
+      }
+    }
+
+
+    void XdgDesktopPortal::closeRequest(
+      Capture* capture
+    )
+    {
+      if(capture->responseSignalId == 0){
         return;
       }
 
-      if(call->signalId){
-        g_dbus_connection_signal_unsubscribe(portalGetDbusConnection(), call->signalId);
-      }
-
-      if(call->cancelledId > 0){
-        g_signal_handler_disconnect(call->capture->cancellable, call->cancelledId);
-      }
-
-      delete call;
+      // A request still awaiting its Response, such as an open screen selection dialog
+      std::string interfaceName = "org.freedesktop.portal.Request";
+      g_dbus_connection_call(portalGetDbusConnection(), BusName, capture->requestPath.c_str(), interfaceName.c_str(), "Close", NULL, NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+      unsubscribeResponse(capture);
     }
 
 
@@ -312,7 +320,7 @@ namespace Halomux::Grabber
       }
 
       int fdIndex;
-      g_variant_get(result, "(h)", &fdIndex, &error);
+      g_variant_get(result, "(h)", &fdIndex);
 
       int pwFd = g_unix_fd_list_get(fdList, fdIndex, &error);
       if(error){
@@ -350,10 +358,8 @@ namespace Halomux::Grabber
       void* userData
     )
     {
-      DbusCallData* call = static_cast<DbusCallData*>(userData);
-      Capture* capture = call->capture;
-
-      g_clear_pointer(&call, dbusCallDataFree);
+      Capture* capture = static_cast<Capture*>(userData);
+      unsubscribeResponse(capture);
 
       uint32_t response;
       g_autoptr(GVariant) result = NULL;
@@ -413,15 +419,18 @@ namespace Halomux::Grabber
       void* userData
     )
     {
-      DbusCallData* call = static_cast<DbusCallData*>(userData);
-      Capture* capture = call->capture;
+      Capture* capture = static_cast<Capture*>(userData);
 
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;
       if(error){
+        // Cancelled: the capture is being torn down or aborted
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
-          Core::Logger::error("error selecting screencast source: ", std::string(error->message));
+          Core::Logger::error("error starting the screencast: ", std::string(error->message));
+
+          // No Response signal will follow a failed call
+          unsubscribeResponse(capture);
           resolveCapture(capture, false);
         }
         return;
@@ -435,13 +444,13 @@ namespace Halomux::Grabber
     {
       try{
         StringPair pathAndToken = portalCreatePath(CreatePathTokenType::Request);
-        DbusCallData* call = subscribeToSignal(capture, pathAndToken.first.c_str(), onStartResponseReceivedCallback);
+        subscribeToResponse(capture, pathAndToken.first, onStartResponseReceivedCallback);
 
         GVariantBuilder builder;
         g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
         g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(pathAndToken.second.c_str()));
 
-        g_dbus_proxy_call(getScreencastPortalProxy(), "Start", g_variant_new("(osa{sv})", capture->sessionHandle, "", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onStartedCallback, call);
+        g_dbus_proxy_call(getScreencastPortalProxy(), "Start", g_variant_new("(osa{sv})", capture->sessionHandle, "", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onStartedCallback, capture);
       }
       catch(const std::exception& e){
         Core::Logger::error(e.what());
@@ -460,10 +469,8 @@ namespace Halomux::Grabber
       void* userData
     )
     {
-      DbusCallData* call = static_cast<DbusCallData*>(userData);
-
-      Capture* capture = call->capture;
-      g_clear_pointer(&call, dbusCallDataFree);
+      Capture* capture = static_cast<Capture*>(userData);
+      unsubscribeResponse(capture);
 
       uint32_t response;
       g_autoptr(GVariant) ret = NULL;
@@ -489,14 +496,13 @@ namespace Halomux::Grabber
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;
       if(error){
-        // On cancellation, the call data has already been released by onCancelledCallback
+        // Cancelled: the capture is being torn down or aborted
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error selecting screencast source: ", std::string(error->message));
 
           // No Response signal will follow a failed call
-          DbusCallData* call = static_cast<DbusCallData*>(userData);
-          Capture* capture = call->capture;
-          dbusCallDataFree(call);
+          Capture* capture = static_cast<Capture*>(userData);
+          unsubscribeResponse(capture);
           resolveCapture(capture, false);
         }
 
@@ -510,7 +516,7 @@ namespace Halomux::Grabber
     )
     {
       StringPair pathAndToken = portalCreatePath(CreatePathTokenType::Request);
-      DbusCallData* call = subscribeToSignal(capture, pathAndToken.first.c_str(), onSelectSourceResponseReceivedCallback);
+      subscribeToResponse(capture, pathAndToken.first, onSelectSourceResponseReceivedCallback);
 
       GVariantBuilder builder;
       g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
@@ -550,7 +556,7 @@ namespace Halomux::Grabber
         g_variant_builder_add(&builder, "{sv}", "persist_mode", g_variant_new_uint32(2));
       }
 
-      g_dbus_proxy_call(getScreencastPortalProxy(), "SelectSources", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSourceSelectedCallback, call);
+      g_dbus_proxy_call(getScreencastPortalProxy(), "SelectSources", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSourceSelectedCallback, capture);
     }
 
 
@@ -564,9 +570,8 @@ namespace Halomux::Grabber
       void* userData
     )
     {
-      DbusCallData* call = static_cast<DbusCallData*>(userData);
-      Capture* capture = call->capture;
-      g_clear_pointer(&call, dbusCallDataFree);
+      Capture* capture = static_cast<Capture*>(userData);
+      unsubscribeResponse(capture);
 
       uint32_t response;
       g_autoptr(GVariant) result = NULL;
@@ -596,14 +601,13 @@ namespace Halomux::Grabber
       (void)result;
 
       if(error){
-        // On cancellation, the call data has already been released by onCancelledCallback
+        // Cancelled: the capture is being torn down or aborted
         if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
           Core::Logger::error("error creating screencast session: ", std::string(error->message));
 
           // No Response signal will follow a failed call
-          DbusCallData* call = static_cast<DbusCallData*>(userData);
-          Capture* capture = call->capture;
-          dbusCallDataFree(call);
+          Capture* capture = static_cast<Capture*>(userData);
+          unsubscribeResponse(capture);
           resolveCapture(capture, false);
         }
 

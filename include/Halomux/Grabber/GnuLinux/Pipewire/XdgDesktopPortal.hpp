@@ -75,8 +75,14 @@ namespace Halomux::Grabber
     struct Capture
     {
       CaptureType captureType;
+      // The portal thread's own GLib context: replies and signals of this capture are only
+      // dispatched there, never to another capture's thread
+      GMainContext* context{nullptr};
       GCancellable* cancellable{nullptr};
       char* sessionHandle{nullptr};
+      // Pending portal request, whose Response signal is awaited (portal thread)
+      std::string requestPath;
+      guint responseSignalId{0};
       std::vector<PortalStream> streams;
       // Ignores the saved restore token, so the desktop asks for the monitors again
       bool askForMonitors{false};
@@ -86,18 +92,11 @@ namespace Halomux::Grabber
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
       bool fdReadyResolved{false};
-      std::atomic<bool> updateXdgContext{true};
+      // The portal thread runs until the grabber stops, so that teardown happens in it
+      std::atomic<bool> running{true};
       Core::Config* config;
     };
 
-
-    struct DbusCallData
-    {
-      Capture* capture;
-      std::string requestPath;
-      guint signalId;
-      gulong cancelledId;
-    };
 
     // Public methods
     static void createSession(
@@ -125,6 +124,19 @@ namespace Halomux::Grabber
       bool succeeded
     );
 
+    /**
+     * @brief Gives up the screen selection: closes the pending request (and its dialog), fails the capture (portal thread)
+     *
+     */
+    static void abort(
+      Capture* capture
+    );
+
+
+    /**
+     * @brief Closes the pending request and the session, cancels the calls in flight (portal thread)
+     *
+     */
     static void screencastPortalCaptureDestroy(
       Capture* capture
     );
@@ -150,19 +162,21 @@ namespace Halomux::Grabber
 
     static uint32_t getScreencastVersion();
 
-    static void onCancelledCallback(
-      GCancellable* cancellable,
-      void* data
-    );
-
-    static DbusCallData* subscribeToSignal(
+    // Awaits the Response signal of a request, replacing the former one
+    static void subscribeToResponse(
       Capture* capture,
-      const char* path,
+      const std::string& path,
       GDBusSignalCallback callback
     );
 
-    static void dbusCallDataFree(
-      DbusCallData* call
+    static void unsubscribeResponse(
+      Capture* capture
+    );
+
+
+    // Closes the pending request, if any, and stops awaiting its Response
+    static void closeRequest(
+      Capture* capture
     );
 
     static void onPipewireRemoteOpenedCallback(

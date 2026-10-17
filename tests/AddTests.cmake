@@ -319,6 +319,9 @@ if(APP_COMPILE_DEFINITIONS)
 endif()
 target_link_libraries(TestGrabberCancel PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
 
+target_compile_options(TestGrabberCancel PRIVATE -fsanitize=address,undefined)
+target_link_options(TestGrabberCancel PRIVATE -fsanitize=address,undefined)
+
 add_test(NAME GrabberCancel COMMAND TestGrabberCancel)
 
 

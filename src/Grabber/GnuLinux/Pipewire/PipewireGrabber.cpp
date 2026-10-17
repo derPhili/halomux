@@ -87,6 +87,8 @@ namespace Halomux::Grabber
     std::promise<bool> fdReadyPromise;
     auto fdReadyFuture = fdReadyPromise.get_future();
     m_capture.fdReadyPromise = std::move(fdReadyPromise);
+    // Created before the portal thread: sources may be attached to it from here at once
+    m_capture.context = g_main_context_new();
     m_xdgThread.emplace(_initCapture, &m_capture);
 
     // The screen selection dialog may stay open: a stop request closes it
@@ -94,10 +96,10 @@ namespace Halomux::Grabber
     {
       std::stop_callback abortOnStop(stopToken, [this, &abortSource](){
         // Runs in the thread requesting the stop (or right here if it already was): the abort
-        // itself runs in the portal thread, which owns the default GLib context
+        // itself runs in the portal thread, through its context
         abortSource = g_idle_source_new();
         g_source_set_callback(abortSource, _onAbortCapture, &m_capture, nullptr);
-        g_source_attach(abortSource, nullptr);
+        g_source_attach(abortSource, m_capture.context);
       });
 
       fdReadyFuture.wait();
@@ -744,11 +746,20 @@ namespace Halomux::Grabber
     Core::Logger::log("Screen selection aborted");
 
     // Closes the pending portal request, and with it the dialog
-    if(capture->cancellable){
-      g_cancellable_cancel(capture->cancellable);
-    }
+    XdgDesktopPortal::abort(capture);
+    return G_SOURCE_REMOVE;
+  }
 
-    XdgDesktopPortal::resolveCapture(capture, false);
+
+  gboolean PipewireGrabber::_onDestroyCapture(
+    void* userData
+  )
+  {
+    auto* capture = static_cast<XdgDesktopPortal::Capture*>(userData);
+
+    // In the portal thread, like every callback of the capture
+    XdgDesktopPortal::screencastPortalCaptureDestroy(capture);
+    capture->running = false;
     return G_SOURCE_REMOVE;
   }
 
@@ -757,17 +768,18 @@ namespace Halomux::Grabber
     XdgDesktopPortal::Capture* capture
   )
   {
+    // Replies and signals of the portal calls made here are dispatched to this context only
+    g_main_context_push_thread_default(capture->context);
+
     XdgDesktopPortal::screencastPortalDesktopCaptureCreate(capture, XdgDesktopPortal::CaptureType::Monitor, true);
 
-    GMainLoop* gmain = g_main_loop_new(NULL, FALSE);
-
-    // Block until an event is dispatched: the portal dialog may stay open for a long time.
-    // _stop() wakes the context up after clearing updateXdgContext.
-    while(capture->updateXdgContext){
-      g_main_context_iteration(g_main_loop_get_context(gmain), TRUE);
+    // Runs until the grabber stops (see _onDestroyCapture()): the portal dialog may stay open
+    // for a long time, and the session is closed from here
+    while(capture->running){
+      g_main_context_iteration(capture->context, TRUE);
     }
 
-    g_main_loop_unref(gmain);
+    g_main_context_pop_thread_default(capture->context);
   }
 
 
@@ -1171,13 +1183,20 @@ namespace Halomux::Grabber
     // Stop Pipewire session
     _teardownPipewire();
 
-    // Stop XdgPortal
-    m_capture.updateXdgContext = false; // Making sure
-    g_main_context_wakeup(nullptr);
-    XdgDesktopPortal::screencastPortalCaptureDestroy(&m_capture);
+    // Stop XdgPortal: closed in its thread, which then ends
     if(m_xdgThread.has_value()){
+      GSource* destroySource = g_idle_source_new();
+      g_source_set_callback(destroySource, _onDestroyCapture, &m_capture, nullptr);
+      g_source_attach(destroySource, m_capture.context);
+      g_source_unref(destroySource);
+
       m_xdgThread.value().join();
       m_xdgThread.reset();
+    }
+
+    if(m_capture.context){
+      g_main_context_unref(m_capture.context);
+      m_capture.context = nullptr;
     }
   }
 }
