@@ -9,6 +9,7 @@
 
 #include <Halomux/Audio/AudioAnalyzer.hpp>
 #include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Core/ChannelStore.hpp>
 #include <Halomux/Core/Config.hpp>
 #include <Halomux/Core/MonitorSelection.hpp>
 #include <Halomux/Hue/Api/EntertainmentConfigurationSelector.hpp>
@@ -139,25 +140,6 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Finds the captured monitor of each channel, with m_channelsMutex held
-     *
-     * Active channels of profiles from before monitors per lamp follow the first monitor.
-     */
-    void _resolveChannelMonitors();
-
-
-    /**
-     * @brief Returns the horizontal center of a channel's region on the whole desktop, with m_channelsMutex held
-     *
-     * @param channel Channel
-     * @return float 0 at the left edge of the desktop, 1 at the right one, 0.5 if its monitor isn't captured
-     */
-    float _desktopCenterX(
-      const Hue::Api::Channel& channel
-    ) const;
-
-
-    /**
      * @brief Enables the selected entertainment configuration, recreates streamer  and loads related profile
      * 
      * @param entertainmentConfigurationId ID of the entertainment configuration to enable
@@ -205,12 +187,8 @@ namespace Halomux::Core
     std::mutex m_selectorMutex;
     std::unique_ptr<Hue::Api::EntertainmentConfigurationSelector> m_selector;
 
-    // Guards m_channels, m_channelStreams and m_monitors, shared between the streaming loop and the web UI threads
-    mutable std::mutex m_channelsMutex;
-    Hue::Api::Channels m_channels;
-    Hue::Api::ChannelStreams m_channelStreams;
-    // Captured monitors the channels' monitorIndex refers to
-    Grabber::Monitors m_monitors;
+    // Lamps, their streams and the captured monitors, shared with the web UI threads
+    ChannelStore m_channelStore;
     // Last check for monitors lost while capturing (streaming thread)
     std::chrono::steady_clock::time_point m_lastLostMonitorsCheck{};
 

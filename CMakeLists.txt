@@ -96,6 +96,7 @@ set(AUDIO_SOURCE
 )
 
 set(CORE_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/CoreService.cpp

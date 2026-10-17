@@ -239,10 +239,7 @@ namespace Halomux::Core
       }
     }
 
-    std::lock_guard lock(m_channelsMutex);
-    m_channels = std::move(channels);
-    m_channelStreams.clear();
-    _resolveChannelMonitors();
+    m_channelStore.replace(std::move(channels), grabber()->monitors());
   }
 
 
@@ -284,14 +281,14 @@ namespace Halomux::Core
 
       std::shared_ptr<Grabber::IGrabber> oldGrabber;
       {
-        std::lock_guard channelsLock(m_channelsMutex);
+        auto channels = m_channelStore.access();
         {
           std::lock_guard grabberLock(m_grabberMutex);
           oldGrabber = std::exchange(m_grabber, newGrabber);
         }
 
         // Channel monitor indices refer to the new monitors from now on
-        _resolveChannelMonitors();
+        channels.resolveMonitors(newGrabber->monitors());
         m_grabberReplaced = true;
       }
 
@@ -303,38 +300,6 @@ namespace Halomux::Core
     });
 
     return true;
-  }
-
-
-  void Runtime::_resolveChannelMonitors()
-  {
-    m_monitors = grabber()->monitors();
-
-    for(auto& [channelId, channel] : m_channels){
-      // Profiles from before monitors per lamp captured only one monitor: the first one
-      if(!channel.monitor.has_value() && channel.state == Hue::Api::Channel::State::Active && !m_monitors.empty()){
-        channel.monitor = Grabber::monitorRef(m_monitors.front());
-      }
-
-      // Lost monitors are never found
-      channel.monitorIndex = channel.monitor.has_value() ? Grabber::findMonitor(*channel.monitor, m_monitors) : std::nullopt;
-
-      if(channel.monitor.has_value() && !channel.monitorIndex.has_value()){
-        Logger::warn("The monitor of channel ", static_cast<int>(channelId), " isn't captured (", channel.monitor->name, " ", channel.monitor->geometry.width, "x", channel.monitor->geometry.height, "): it stays off while syncing");
-      }
-    }
-  }
-
-
-  float Runtime::_desktopCenterX(
-    const Hue::Api::Channel& channel
-  ) const
-  {
-    if(!channel.monitorIndex.has_value() || *channel.monitorIndex >= m_monitors.size()){
-      return 0.5f;
-    }
-
-    return Grabber::desktopCenterX(channel.uvs, m_monitors[*channel.monitorIndex].geometry, Grabber::desktopBounds(m_monitors));
   }
 
 
@@ -410,7 +375,9 @@ namespace Halomux::Core
 
     const Audio::AudioAnalyzer::Triggers soundTriggers = m_audioAnalyzer ? m_audioAnalyzer->takeTriggers() : Audio::AudioAnalyzer::Triggers{0.f, 0.f};
 
-    std::lock_guard channelsLock(m_channelsMutex);
+    auto access = m_channelStore.access();
+    auto& channels = access.channels;
+    auto& channelStreams = access.streams;
 
     // Taken under the channels lock, like the replacement of a screen selection: the regions sent
     // below always reach the grabber that m_grabberReplaced refers to. Kept alive for this update.
@@ -427,13 +394,13 @@ namespace Halomux::Core
     if(now - m_lastLostMonitorsCheck >= std::chrono::seconds(1)){
       m_lastLostMonitorsCheck = now;
 
-      const auto monitors = grabber->monitors();
-      const bool lostChanged = monitors.size() != m_monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
-        return monitors[i].lost != m_monitors[i].lost;
+      auto monitors = grabber->monitors();
+      const bool lostChanged = monitors.size() != access.monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
+        return monitors[i].lost != access.monitors[i].lost;
       });
 
       if(lostChanged){
-        _resolveChannelMonitors();
+        access.resolveMonitors(std::move(monitors));
       }
     }
 
@@ -442,7 +409,7 @@ namespace Halomux::Core
       grabber->setPaused(m_capturePaused);
 
       // A jump between the static colors and the screen is no highlight
-      for(auto& [channelId, channel] : m_channels){
+      for(auto& [channelId, channel] : channels){
         channel.hasPreviousMeasuredBrightness = false;
       }
     }
@@ -451,7 +418,7 @@ namespace Halomux::Core
 
     // The grabber averages the regions of the active channels on each captured frame
     Grabber::IGrabber::ChannelRegions regions;
-    for(const auto& [channelId, channel] : m_channels){
+    for(const auto& [channelId, channel] : channels){
       // Channels whose monitor isn't captured stay off while syncing
       if(channel.state == Hue::Api::Channel::State::Active && channel.monitorIndex.has_value()){
         regions.push_back({channelId, *channel.monitorIndex, channel.uvs});
@@ -483,7 +450,7 @@ namespace Halomux::Core
       return;
     }
 
-    for(auto& [channelId, channel] : m_channels){
+    for(auto& [channelId, channel] : channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
         continue;
       }
@@ -502,12 +469,12 @@ namespace Halomux::Core
       // Streams are only created once a channel has been active, so channels
       // that were never enabled are left untouched on the bridge. Shut down
       // channels keep being streamed as black.
-      auto streamIt = std::find_if(m_channelStreams.begin(), m_channelStreams.end(), [channelId](const auto& stream){
+      auto streamIt = std::find_if(channelStreams.begin(), channelStreams.end(), [channelId](const auto& stream){
         return stream.id == channelId;
       });
 
-      if(streamIt == m_channelStreams.end()){
-        streamIt = m_channelStreams.insert(m_channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
+      if(streamIt == channelStreams.end()){
+        streamIt = channelStreams.insert(channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
       }
 
       auto& channelStream = *streamIt;
@@ -524,7 +491,7 @@ namespace Halomux::Core
       }
       else{
         // Horizontal position of the lamp's region on the whole desktop, 0 = left, 1 = right
-        const float pan = _desktopCenterX(channel);
+        const float pan = access.desktopCenterX(channel);
 
         Imaging::Color color;
         if(previewing){
@@ -594,13 +561,13 @@ namespace Halomux::Core
     {
       std::lock_guard lock(m_streamerMutex);
       if(m_streamer.get()){
-        m_streamer->streamChannels(m_channelStreams);
+        m_streamer->streamChannels(channelStreams);
       }
     }
 
     {
       std::lock_guard lock(m_currentColorsMutex);
-      m_currentColorsSnapshot = m_channelStreams;
+      m_currentColorsSnapshot = channelStreams;
     }
   }
 

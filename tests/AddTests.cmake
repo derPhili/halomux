@@ -393,3 +393,32 @@ target_compile_options(TestProfile PRIVATE -fsanitize=address,undefined)
 target_link_options(TestProfile PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME Profile COMMAND TestProfile)
+
+
+# TestChannelStore: the lamps' settings as the light manager edits them
+add_executable(TestChannelStore
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelStore.cpp
+)
+
+set_target_properties(TestChannelStore PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestChannelStore PUBLIC
+  include
+)
+
+target_link_libraries(TestChannelStore PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+target_compile_options(TestChannelStore PRIVATE -fsanitize=address,undefined)
+target_link_options(TestChannelStore PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME ChannelStore COMMAND TestChannelStore)
