@@ -152,7 +152,7 @@ If the import fails, Halomux falls back to shared memory and the CPU (`Capture p
 The configuration lives in `~/.config/halomux/`. A configuration of Huenicorn or of a former name of Halomux (Lightspill, Hue Desktop Sync) is taken over on the first start.
 
 * `config.json`: bridge, credentials and settings
-* `profile.json`: the lamps' screen regions for an entertainment area
+* `profile.json`: the lamps' screen regions, for each entertainment area
 
 ### config.json
 
@@ -178,8 +178,10 @@ Most values are changed from the light manager. All of them can be edited by han
 
 ### profile.json
 
-* **entertainmentConfigurationId**: (string) UUID of the entertainment area
-* **channels**: (array) the lamps of the area, each with **channelId**, **active**, **devices**, **gammaFactor**, **uvs** (top left **uvA** and bottom right **uvB** corner of its screen region, from 0 to 1) and **monitor**: the monitor the region is on, by its position and size on the desktop (**x**, **y**, **width**, **height**) and its connector **name**. A lamp without it follows the first captured monitor; a lamp whose monitor isn't captured stays off while syncing
+* **entertainmentConfigurationId**: (string) UUID of the entertainment area selected when the profile was saved
+* **areas**: (object) for each entertainment area by its UUID, its **channels**: (array) the lamps of the area, each with **channelId**, **active**, **devices**, **gammaFactor**, **uvs** (top left **uvA** and bottom right **uvB** corner of its screen region, from 0 to 1) and **monitor**: the monitor the region is on, by its position and size on the desktop (**x**, **y**, **width**, **height**) and its connector **name**. A lamp without it follows the first captured monitor; a lamp whose monitor isn't captured stays off while syncing
+
+Profiles of former versions, with a single **channels** array, are taken over for their entertainment area.
 
 ## Troubleshooting
 

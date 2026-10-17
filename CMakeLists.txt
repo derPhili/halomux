@@ -103,6 +103,7 @@ set(CORE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Runtime.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Profile.cpp
 )
 
 

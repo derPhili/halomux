@@ -367,3 +367,29 @@ target_link_libraries(TestConfigFile PUBLIC
 )
 
 add_test(NAME ConfigFile COMMAND TestConfigFile)
+
+
+# TestProfile: lamp settings kept per entertainment area
+add_executable(TestProfile
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Profile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestProfile.cpp
+)
+
+set_target_properties(TestProfile PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestProfile PUBLIC
+  include
+)
+
+target_link_libraries(TestProfile PUBLIC
+  nlohmann_json::nlohmann_json
+)
+
+target_compile_options(TestProfile PRIVATE -fsanitize=address,undefined)
+target_link_options(TestProfile PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME Profile COMMAND TestProfile)

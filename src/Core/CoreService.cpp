@@ -21,6 +21,7 @@
 #include <Halomux/Serialization/Credentials.hpp>
 #include <Halomux/Core/Notice.hpp>
 #include <Halomux/Core/PreviewSequence.hpp>
+#include <Halomux/Core/Profile.hpp>
 #include <Halomux/Core/Scenes.hpp>
 #include <Halomux/Core/Runtime.hpp>
 #include <Halomux/Network/Http/Server/SetupBackend.hpp>
@@ -636,13 +637,8 @@ namespace Halomux::Core
       return;
     }
 
-    Serialization::Json profile;
-    if(m_runtime.m_selector->validSelection()){
-      profile = Serialization::Json{
-        {"entertainmentConfigurationId", m_runtime.m_selector->currentEntertainmentConfigurationId().value()},
-        {"channels", m_runtime.m_channels}
-      };
-    }
+    // The other areas' lamp settings are kept
+    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), m_runtime.m_selector->currentEntertainmentConfigurationId().value(), Serialization::Json(m_runtime.m_channels));
 
     if(!m_config.profileName().has_value()){
       m_config.setProfileName("profile");

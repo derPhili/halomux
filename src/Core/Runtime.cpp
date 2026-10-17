@@ -10,6 +10,7 @@
 
 #include <glm/common.hpp>
 
+#include <Halomux/Core/Profile.hpp>
 #include <Halomux/Network/Http/Client/Client.hpp>
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Platform/Selector.hpp>
@@ -155,15 +156,7 @@ namespace Halomux::Core
 
     m_selector = std::make_unique<Hue::Api::EntertainmentConfigurationSelector>(credentials, bridgeAddress);
 
-    std::string entertainmentConfigurationId = {};
-    auto optJsonProfile = m_coreService->getProfile();
-
-    if(optJsonProfile.has_value()){
-      const auto& jsonProfile = optJsonProfile.value();
-      if(jsonProfile.contains("entertainmentConfigurationId")){
-        entertainmentConfigurationId = jsonProfile.at("entertainmentConfigurationId");
-      }
-    }
+    const std::string entertainmentConfigurationId = Profile::currentArea(m_coreService->getProfile().value_or(Serialization::Json()));
 
     _enableEntertainmentConfiguration(entertainmentConfigurationId);
 
@@ -364,12 +357,8 @@ namespace Halomux::Core
       m_streamer = std::move(streamer);
     }
 
-    Serialization::Json jsonChannels = Serialization::Json::object();
-
-    auto optJsonProfile = m_coreService->getProfile();
-    if(optJsonProfile.has_value() && optJsonProfile->contains("channels")){
-      jsonChannels = optJsonProfile->at("channels");
-    }
+    // The lamp settings saved for this area only: channel ids repeat across areas
+    const Serialization::Json jsonChannels = Profile::channelsForArea(m_coreService->getProfile().value_or(Serialization::Json()), m_selector->currentEntertainmentConfigurationId().value());
 
     _initChannels(jsonChannels);
 
