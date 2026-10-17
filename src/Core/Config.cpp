@@ -12,6 +12,11 @@ namespace Halomux::Core
 {
   using namespace Serialization;
 
+  namespace
+  {
+    constexpr std::filesystem::perms OwnerOnly = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write;
+  }
+
   Config::Config(
     const std::filesystem::path& settingsRoot
   ):
@@ -385,6 +390,12 @@ namespace Halomux::Core
       return false;
     }
 
+    // Files written by former versions were readable by every user
+    std::error_code permissionsError;
+    if((std::filesystem::status(m_configFilePath).permissions() & ~OwnerOnly) != std::filesystem::perms::none){
+      std::filesystem::permissions(m_configFilePath, OwnerOnly, std::filesystem::perm_options::replace, permissionsError);
+    }
+
     try{
       jsonConfig = Json::parse(std::ifstream(m_configFilePath));
       m_configData = jsonConfig.get<Data>();
@@ -437,6 +448,8 @@ namespace Halomux::Core
 
     {
       std::ofstream configFile(tmpPath);
+      // It holds the bridge credentials: readable by its owner only, before anything is written
+      std::filesystem::permissions(tmpPath, OwnerOnly, std::filesystem::perm_options::replace);
       configFile << Json(m_configData.value()).dump(2) << "\n";
       if(!configFile){
         Logger::error("Failed to write configuration file ", tmpPath.string());

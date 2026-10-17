@@ -342,3 +342,28 @@ target_compile_options(TestHostCheck PRIVATE -fsanitize=address,undefined)
 target_link_options(TestHostCheck PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME HostCheck COMMAND TestHostCheck)
+
+
+# TestConfigFile: how the configuration, which holds the bridge credentials, is stored
+add_executable(TestConfigFile
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestConfigFile.cpp
+)
+
+set_target_properties(TestConfigFile PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestConfigFile PUBLIC
+  include
+)
+
+target_link_libraries(TestConfigFile PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+add_test(NAME ConfigFile COMMAND TestConfigFile)
