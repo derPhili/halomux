@@ -5,6 +5,7 @@
 #include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Hue/Api/BridgeDiscovery.hpp>
 #include <Halomux/Hue/Api/BridgeTls.hpp>
+#include <Halomux/Hue/Api/ClipParsing.hpp>
 #include <Halomux/Hue/Auth/Credentials.hpp>
 #include <Halomux/Network/Http/Client/Client.hpp>
 #include <Halomux/Platform/Selector.hpp>
@@ -17,7 +18,7 @@ namespace Halomux::Hue::Api
 {
   namespace ApiTools
   {
-    EntertainmentConfigurations loadEntertainmentConfigurations(
+    std::optional<EntertainmentConfigurations> loadEntertainmentConfigurations(
       const std::string& username,
       const std::string& bridgeAddress
     )
@@ -30,7 +31,12 @@ namespace Halomux::Hue::Api
       std::string entConfUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
       auto entConfResponse = Network::Http::Client::sendRequest(entConfUrl, "GET", "", headers, bridgeTls(bridgeAddress));
 
-      if(entConfResponse.has_value()){
+      // Unreachable bridge, as opposed to a bridge without areas
+      if(!entConfResponse.has_value()){
+        return std::nullopt;
+      }
+
+      {
         // Listing entertainment configurations
 
         auto jsonEntConfs = entConfResponse.value().asJson();
@@ -152,7 +158,7 @@ namespace Halomux::Hue::Api
     }
 
 
-    void setStreamingState(
+    bool setStreamingState(
       const EntertainmentConfigurationEntry& entertainmentConfigurationEntry,
       const std::string& username,
       const std::string& bridgeAddress,
@@ -168,11 +174,21 @@ namespace Halomux::Hue::Api
 
       std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
 
-      Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers, bridgeTls(bridgeAddress));
+      const auto response = Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers, bridgeTls(bridgeAddress));
+      if(!response.has_value()){
+        return false;
+      }
+
+      try{
+        return ClipParsing::succeeded(response->asJson());
+      }
+      catch(const std::exception&){
+        return false;
+      }
     }
 
 
-    bool streamingActive(
+    std::optional<bool> streamingActive(
       const EntertainmentConfigurationEntry& entertainmentConfigurationEntry,
       const std::string& username,
       const std::string& bridgeAddress
@@ -180,16 +196,19 @@ namespace Halomux::Hue::Api
     {
       using namespace Network::Http::Client;
 
-      std::string status;
-
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
       std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
       auto entConfResponse = Network::Http::Client::sendRequest(url, "GET", "", headers, bridgeTls(bridgeAddress));
-      if(entConfResponse.has_value()){
-        status = entConfResponse.value().asJson().at("data").front().at("status");
+      if(!entConfResponse.has_value()){
+        return std::nullopt;
       }
 
-      return status == "active";
+      try{
+        return ClipParsing::streamingActive(entConfResponse->asJson());
+      }
+      catch(const std::exception&){
+        return std::nullopt;
+      }
     }
   }
 

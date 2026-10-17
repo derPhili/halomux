@@ -115,6 +115,7 @@ set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeAddress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeDiscovery.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeTls.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ClipParsing.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/EntertainmentConfigurationSelector.cpp
 )

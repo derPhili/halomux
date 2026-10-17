@@ -147,7 +147,7 @@ namespace Halomux::Core
     }
 
     try{
-      for(const auto& [id, area] : Hue::Api::ApiTools::loadEntertainmentConfigurations(credentials->username(), bridgeAddress.value())){
+      for(const auto& [id, area] : Hue::Api::ApiTools::loadEntertainmentConfigurations(credentials->username(), bridgeAddress.value()).value_or(Hue::Api::EntertainmentConfigurations{})){
         jsonAreas.push_back({{"name", area.name}, {"lamps", area.devices.size()}});
       }
     }

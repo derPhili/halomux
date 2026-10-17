@@ -30,7 +30,7 @@ namespace Halomux::Hue::Api
      * @param bridgeAddress Address of the Hue bridge
      * @return EntertainmentConfigurations List of entertainment configurations
      */
-    EntertainmentConfigurations loadEntertainmentConfigurations(
+    std::optional<EntertainmentConfigurations> loadEntertainmentConfigurations(
       const std::string& username,
       const std::string& bridgeAddress
     );
@@ -79,7 +79,7 @@ namespace Halomux::Hue::Api
      * @param bridgeAddress Address of the Hue bridge
      * @param active True for active, false for inactive
      */
-    void setStreamingState(
+    bool setStreamingState(
       const EntertainmentConfigurationEntry& entertainmentConfigurationEntry,
       const std::string& username,
       const std::string& bridgeAddress,
@@ -95,7 +95,7 @@ namespace Halomux::Hue::Api
      * @return true Streaming is active
      * @return false Streaming is inactive
      */
-    bool streamingActive(
+    std::optional<bool> streamingActive(
       const EntertainmentConfigurationEntry& entertainmentConfigurationEntry,
       const std::string& username,
       const std::string& bridgeAddress

@@ -14,7 +14,7 @@ namespace Halomux::Hue::Api
   m_credentials(credentials),
   m_bridgeAddress(bridgeAddress)
   {
-    m_entertainmentConfigurations = ApiTools::loadEntertainmentConfigurations(m_credentials.username(), m_bridgeAddress);
+    m_entertainmentConfigurations = ApiTools::loadEntertainmentConfigurations(m_credentials.username(), m_bridgeAddress).value_or(EntertainmentConfigurations{});
   }
 
 
@@ -74,7 +74,7 @@ namespace Halomux::Hue::Api
     m_currentEntertainmentConfiguration = selection;
 
     // Disable previous configuration
-    if(ApiTools::streamingActive(*m_currentEntertainmentConfiguration, m_credentials.username(), m_bridgeAddress)){
+    if(ApiTools::streamingActive(*m_currentEntertainmentConfiguration, m_credentials.username(), m_bridgeAddress).value_or(false)){
       disableStreaming();
     }
 

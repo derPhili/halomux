@@ -422,3 +422,29 @@ target_compile_options(TestChannelStore PRIVATE -fsanitize=address,undefined)
 target_link_options(TestChannelStore PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME ChannelStore COMMAND TestChannelStore)
+
+
+# TestClipParsing: reading the bridge's CLIP v2 answers, which may be empty or errors
+add_executable(TestClipParsing
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ClipParsing.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestClipParsing.cpp
+)
+
+set_target_properties(TestClipParsing PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestClipParsing PUBLIC
+  include
+)
+
+target_link_libraries(TestClipParsing PUBLIC
+  nlohmann_json::nlohmann_json
+)
+
+target_compile_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
+target_link_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME ClipParsing COMMAND TestClipParsing)
