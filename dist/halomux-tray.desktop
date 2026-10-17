@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Lightspill (tray)
+Name=Halomux (tray)
 Comment=Tray icon to switch sync and scenes
-Exec=lightspill-gui --tray
-Icon=lightspill
+Exec=halomux-gui --tray
+Icon=halomux
 Terminal=false
 NoDisplay=true
 X-KDE-autostart-phase=2

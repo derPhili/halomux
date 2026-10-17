@@ -61,11 +61,11 @@ namespace Huenicorn::Audio
       PW_KEY_MEDIA_CATEGORY, "Capture",
       PW_KEY_MEDIA_ROLE, "Music",
       PW_KEY_STREAM_CAPTURE_SINK, "true",
-      PW_KEY_NODE_NAME, "LightspillAudio",
+      PW_KEY_NODE_NAME, "HalomuxAudio",
       NULL
     );
 
-    m_stream = pw_stream_new_simple(pw_main_loop_get_loop(m_loop), "LightspillAudio", props, &streamEvents, this);
+    m_stream = pw_stream_new_simple(pw_main_loop_get_loop(m_loop), "HalomuxAudio", props, &streamEvents, this);
 
     uint8_t buffer[1024];
 #pragma GCC diagnostic push

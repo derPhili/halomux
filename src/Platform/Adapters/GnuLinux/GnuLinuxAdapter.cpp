@@ -28,7 +28,7 @@ namespace Huenicorn::Platform
 
     // Take over the configuration of a former name of the application once, the most recent
     // first, keeping the original
-    for(const char* legacyName : {"hue-desktop-sync", "huenicorn"}){
+    for(const char* legacyName : {"lightspill", "hue-desktop-sync", "huenicorn"}){
       const std::filesystem::path legacyConfigPath = configRoot / legacyName;
       if(!std::filesystem::exists(configPath) && std::filesystem::is_directory(legacyConfigPath)){
         std::filesystem::copy(legacyConfigPath, configPath, std::filesystem::copy_options::recursive);

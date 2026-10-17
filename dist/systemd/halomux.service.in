@@ -1,6 +1,6 @@
 [Unit]
-Description=Lightspill
-Documentation=file://@LIGHTSPILL_FULL_DOCDIR@/README.md
+Description=Halomux
+Documentation=file://@HALOMUX_FULL_DOCDIR@/README.md
 # Needs the Wayland session, Pipewire and the screencast portal
 PartOf=graphical-session.target
 After=graphical-session.target pipewire.service xdg-desktop-portal.service
@@ -8,7 +8,7 @@ Wants=xdg-desktop-portal.service
 
 [Service]
 Type=simple
-ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/lightspill
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/halomux
 # SIGTERM lets it close the DTLS session and stop streaming on the bridge
 KillSignal=SIGTERM
 TimeoutStopSec=15

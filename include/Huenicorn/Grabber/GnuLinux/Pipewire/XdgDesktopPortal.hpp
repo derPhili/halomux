@@ -4,7 +4,7 @@
 //
 // Adapted from xdg-dp-start by metamuffin (https://codeberg.org/metamuffin/xdg-dp-start), which is
 // licensed under the GNU Affero General Public License version 3 only: see LICENSE-AGPL-3.0.txt.
-// The rest of Lightspill is under the GNU General Public License version 3 (LICENSE.txt), whose
+// The rest of Halomux is under the GNU General Public License version 3 (LICENSE.txt), whose
 // section 13 allows this combination.
 
 #include <atomic>

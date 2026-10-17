@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Lightspill erfasst mehrere Monitore gleichzeitig. Jede Lampe folgt einem Bereich auf einem davon. Die App zeigt die Monitore mit Namen und lässt sie zur Laufzeit neu wählen.
+**Goal:** Halomux erfasst mehrere Monitore gleichzeitig. Jede Lampe folgt einem Bereich auf einem davon. Die App zeigt die Monitore mit Namen und lässt sie zur Laufzeit neu wählen.
 
 **Architecture:**
 - Das Portal liefert einen Stream pro angehaktem Monitor. Der `PipewireGrabber` verarbeitet sie alle auf einem gemeinsamen Pipewire-Core, mit einem `pw_stream` pro Monitor.
@@ -21,7 +21,7 @@
 - **Ein Monitor:** Die Oberfläche sieht aus wie heute.
 - **Ungenutzte Monitore:** Ein Monitor ohne aktive Lampe ist pausiert (`pw_stream_set_active(false)`).
 - **GPU-Pfad:**
-  - `LIGHTSPILL_DISABLE_GPU=1` erzwingt weiter den CPU-Pfad.
+  - `HALOMUX_DISABLE_GPU=1` erzwingt weiter den CPU-Pfad.
   - Der GPU-Pfad bleibt der bevorzugte.
 - **Texte:**
   - Neue UI-Texte stehen auf Englisch im Code und bekommen einen deutschen Eintrag in `webroot/I18n.js`.
@@ -37,7 +37,7 @@
 - **Live-Tests:**
   - Der Dienst wird gestoppt, bevor ein Test-Binary läuft (Port 8215, Bridge-Stream).
   - Ein Test-Binary aus der Shell löst den KDE-Portaldialog aus. Er wird **nie** stellvertretend bestätigt; der Nutzer bestätigt ihn selbst.
-  - Danach wird `lightspill.service` wieder gestartet.
+  - Danach wird `halomux.service` wieder gestartet.
 - **Testsystem:**
   - DP-3 mit 2560×1440 an Position 1920,0
   - DP-1 mit 1920×1080 an Position 0,249
@@ -190,7 +190,7 @@
 
 - [ ] **Step 1: Implement.** Alle bisherigen Nutzer von `capture->pwNode` bekommen in Task 4 `streams`. Bis dahin baut Task 3 nur, wenn `PipewireGrabber` übergangsweise `streams.front().node` nimmt und den Token nach erfolgreichem Start selbst speichert. Das gehört in diesen Commit, damit jeder Commit baut.
 - [ ] **Step 2: Build and verify live.**
-  - Dienst stoppen, `build/lightspill` starten.
+  - Dienst stoppen, `build/halomux` starten.
   - Erwartet: kein Dialog, weil der Token noch für einen Monitor gilt, und im Log `Capture path: GPU`.
   - Danach den Dienst wieder starten.
 - [ ] **Step 3: Commit** mit der Nachricht „Let the portal return several monitors“.
@@ -237,7 +237,7 @@
 
 - [ ] **Step 1: Refactor.** Ziel: ein Stream verhält sich exakt wie vorher.
 - [ ] **Step 2: Build and run tests.** Erwartet: alle Unit-Tests PASS, `TestGpuDownscale` PASS.
-- [ ] **Step 3: Verify live with one monitor.** Dienst stoppen, `build/lightspill` starten. Erwartet:
+- [ ] **Step 3: Verify live with one monitor.** Dienst stoppen, `build/halomux` starten. Erwartet:
   - kein Dialog
   - Lampen folgen DP-3 wie vorher
   - `perf stat -e task-clock -p <pid> -- sleep 20` liegt bei etwa 2–3,5 % eines Kerns, wie vorher
@@ -245,7 +245,7 @@
   - `restoreToken` aus der Config vorübergehend entfernen (vorher sichern). Der Nutzer hakt im Dialog beide Monitore an.
   - Erwartet: zwei `Capture path`-Zeilen. `TestGrabber` bzw. ein Debug-Log zeigt pro Stream Farben, sobald dort eine Region liegt.
   - Danach den gesicherten Token zurückschreiben, falls der Nutzer bei einem Monitor bleiben will. Sonst den neuen behalten.
-- [ ] **Step 5: Verify live with `LIGHTSPILL_DISABLE_GPU=1`.** Erwartet: beide Streams `CPU (shared memory)`, Farben korrekt.
+- [ ] **Step 5: Verify live with `HALOMUX_DISABLE_GPU=1`.** Erwartet: beide Streams `CPU (shared memory)`, Farben korrekt.
 - [ ] **Step 6: Commit** mit der Nachricht „Capture every selected monitor in its own stream“.
 
 ### Task 5: Monitor pro Kanal in Runtime und Profil
@@ -289,7 +289,7 @@
 - [ ] **Step 3: Implement** alles oben Genannte.
 - [ ] **Step 4: Run the tests.** Erwartet: alle Tests PASS.
 - [ ] **Step 5: Verify live.**
-  - Mit dem bestehenden Profil starten. Danach `POST /api/saveProfile`, dann `jq '.channels[].monitor' ~/.config/lightspill/profile.json` (Pfad laut `profileName`).
+  - Mit dem bestehenden Profil starten. Danach `POST /api/saveProfile`, dann `jq '.channels[].monitor' ~/.config/halomux/profile.json` (Pfad laut `profileName`).
   - Erwartet: beide Lampen haben DP-3 als Monitor, die Lampen verhalten sich wie vorher.
 - [ ] **Step 6: Commit** mit der Nachricht „Remember the monitor each lamp follows“.
 
@@ -397,7 +397,7 @@
   |---|---|
   | `Source: ` | `Quelle: ` |
   | `Monitors…` | `Monitore…` |
-  | Tooltip: `Opens the system dialog to choose which monitors Lightspill captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.` | `Öffnet den Systemdialog, in dem du wählst, welche Monitore Lightspill erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.` |
+  | Tooltip: `Opens the system dialog to choose which monitors Halomux captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.` | `Öffnet den Systemdialog, in dem du wählst, welche Monitore Halomux erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.` |
   | `Waiting for the screen selection…` | `Warte auf die Bildschirmauswahl…` |
   | `Selection cancelled, nothing changed` | `Auswahl abgebrochen, nichts geändert` |
   | `Monitor not captured – lamp is off` | `Monitor nicht erfasst – Lampe aus` |
@@ -405,7 +405,7 @@
   | Tooltip der Bereichs-Karte, erweitert um: `With several monitors, drag a region onto another monitor to make the lamp follow it.` | `Bei mehreren Monitoren: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt.` |
 
 - [ ] **Step 1: Implement.**
-- [ ] **Step 2: Verify in the app** (`lightspill-gui` vom Build bzw. DevTools-Capture, nie Screenshot des Desktops):
+- [ ] **Step 2: Verify in the app** (`halomux-gui` vom Build bzw. DevTools-Capture, nie Screenshot des Desktops):
   1. Beide Monitore erscheinen in der realen Anordnung: DP-1 links und 249 px tiefer, DP-3 rechts.
   2. Die Kopfzeile zeigt beide Namen.
   3. Lampe „links“ auf DP-1 ziehen. Erwartet: Sie folgt DP-1. Im Profil steht nach dem Speichern `DP-1`.
@@ -422,8 +422,8 @@
 - Modify: `README.md`, `README.de.md`: Abschnitt „Light manager“ und „First start“, Konfigurationsfeld `monitor` in `profile.json`, Troubleshooting „Choosing another screen“ ersetzt durch den Knopf „Monitors…“
 
 **Texte:**
-- **Setup**, englisch: `The desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered.`
-- **Setup**, deutsch: `Der Desktop fragt, welche Bildschirme Lightspill erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird.`
+- **Setup**, englisch: `The desktop asks which screens Halomux may capture. Tick every monitor a lamp should follow, and allow it to be remembered.`
+- **Setup**, deutsch: `Der Desktop fragt, welche Bildschirme Halomux erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird.`
 - **README, Profilfeld:**
   - englisch: `**monitor**: (object) the monitor the lamp follows: its position and size on the desktop (**x**, **y**, **width**, **height**) and its connector **name**. A lamp without it follows the first captured monitor`
   - deutsch: sinngemäß.

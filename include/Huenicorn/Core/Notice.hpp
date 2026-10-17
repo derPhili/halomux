@@ -10,5 +10,5 @@ namespace Huenicorn::Core
    * warranty or liability (webroot/Notice.js). Increase this number whenever its text changes:
    * users who accepted an older version are asked to accept the new one.
    */
-  inline constexpr unsigned NoticeVersion = 1;
+  inline constexpr unsigned NoticeVersion = 2;
 }

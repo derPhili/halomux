@@ -36,7 +36,7 @@ namespace
 int main()
 {
   // No portal to reach: the selection fails right away
-  setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/lightspill-test-bus", 1);
+  setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/halomux-test-bus", 1);
 
   // The running grabber's Pipewire thread
   pw_main_loop* loop = nullptr;
@@ -58,7 +58,7 @@ int main()
     std::this_thread::sleep_for(1ms);
   }
 
-  Core::Config config(std::filesystem::temp_directory_path() / "lightspill-test-cancel");
+  Core::Config config(std::filesystem::temp_directory_path() / "halomux-test-cancel");
   bool cancelled = false;
   try{
     Grabber::PipewireGrabber grabber(&config, true);

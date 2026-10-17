@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
   const int seconds = argc >= 2 ? std::atoi(argv[1]) : 10;
 
-  Config config(std::filesystem::temp_directory_path() / "lightspill-test");
+  Config config(std::filesystem::temp_directory_path() / "halomux-test");
   config.setSubsampleWidth(160);
 
   auto grabber = Platform::adapter.getGrabber(&config);

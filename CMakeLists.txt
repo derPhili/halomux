@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(Lightspill VERSION 1.2.0)
+project(Halomux VERSION 1.2.0)
 
 # Without a build type, nothing is optimized
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -152,7 +152,7 @@ set(TIMING_SOURCE
 
 
 # Declare executable
-add_executable(lightspill
+add_executable(halomux
   ${APP_SOURCE}
   ${AUDIO_SOURCE}
   ${CORE_SOURCE}
@@ -168,10 +168,10 @@ add_executable(lightspill
   ${EMBEDDED_WEBROOT_HEADER}
 )
 
-add_dependencies(lightspill generate_version_header generate_webroot_header)
+add_dependencies(halomux generate_version_header generate_webroot_header)
 
 # Adapter
-target_sources(lightspill PRIVATE
+target_sources(halomux PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Platform/Adapters/GnuLinux/GnuLinuxAdapter.cpp
 )
 
@@ -205,7 +205,7 @@ add_library(wayland_protocols STATIC ${PROTOCOLS_DIR}/xdg-output-unstable-v1-pro
 target_include_directories(wayland_protocols PUBLIC ${PROTOCOLS_DIR} ${WAYLAND_INCLUDE_DIRS})
 target_link_libraries(wayland_protocols PUBLIC ${WAYLAND_LIBRARIES})
 
-target_sources(lightspill PRIVATE
+target_sources(halomux PRIVATE
   ${PROTOCOLS_DIR}/xdg-output-unstable-v1-client-protocol.h
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/WaylandOutputs.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
@@ -213,14 +213,14 @@ target_sources(lightspill PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
 )
 
-target_include_directories(lightspill PUBLIC
+target_include_directories(halomux PUBLIC
   ${LIB_PIPEWIRE_INCLUDE_DIRS}
   ${GIO_INCLUDE_DIRS}
   ${GLIB_INCLUDE_DIRS}
   ${GPU_INCLUDE_DIRS}
 )
 
-target_link_libraries(lightspill PUBLIC
+target_link_libraries(halomux PUBLIC
   wayland_protocols
   GIO::GIO
   ${LIB_PIPEWIRE_LIBRARIES}
@@ -228,16 +228,16 @@ target_link_libraries(lightspill PUBLIC
   ${GPU_LIBRARIES}
 )
 
-set_target_properties(lightspill PROPERTIES CXX_STANDARD 20)
+set_target_properties(halomux PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(lightspill PUBLIC
+target_include_directories(halomux PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR} # For adapters and grabbers
   ${OpenCV_INCLUDE_DIRS}
   include
   ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
-target_link_libraries(lightspill PUBLIC
+target_link_libraries(halomux PUBLIC
   ${OpenCV_LIBS}
   ${CURL_LIBRARIES}
   ${MBEDTLS_LIBS}
@@ -249,7 +249,7 @@ target_link_libraries(lightspill PUBLIC
 )
 
 
-target_compile_options(lightspill PRIVATE
+target_compile_options(halomux PRIVATE
   -Werror
   -Wall
   -Wextra
@@ -263,56 +263,56 @@ target_compile_options(lightspill PRIVATE
 if(${BUILD_GUI})
   find_package(Qt6 REQUIRED COMPONENTS Widgets Network WebEngineWidgets)
 
-  add_executable(lightspill-gui
+  add_executable(halomux-gui
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/DesktopApp.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/MainWindow.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/gui/resources.qrc
   )
 
-  add_dependencies(lightspill-gui generate_version_header)
+  add_dependencies(halomux-gui generate_version_header)
 
-  set_target_properties(lightspill-gui PROPERTIES
+  set_target_properties(halomux-gui PROPERTIES
     CXX_STANDARD 20
     AUTOMOC ON
     AUTORCC ON
   )
 
-  target_include_directories(lightspill-gui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/include)
+  target_include_directories(halomux-gui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/include)
 
-  target_link_libraries(lightspill-gui PRIVATE
+  target_link_libraries(halomux-gui PRIVATE
     Qt6::Widgets
     Qt6::Network
     Qt6::WebEngineWidgets
   )
 
-  target_compile_options(lightspill-gui PRIVATE
+  target_compile_options(halomux-gui PRIVATE
     -Werror
     -Wall
     -Wextra
     -pedantic
   )
 
-  install(TARGETS lightspill-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-  install(FILES dist/lightspill.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-  install(FILES dist/lightspill-tray.desktop DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart)
+  install(TARGETS halomux-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(FILES dist/halomux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+  install(FILES dist/halomux-tray.desktop DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart)
 endif()
 
 
 # Installation
-set(LIGHTSPILL_DOCDIR ${CMAKE_INSTALL_DATADIR}/doc/lightspill)
-set(LIGHTSPILL_FULL_DOCDIR ${CMAKE_INSTALL_FULL_DATADIR}/doc/lightspill)
+set(HALOMUX_DOCDIR ${CMAKE_INSTALL_DATADIR}/doc/halomux)
+set(HALOMUX_FULL_DOCDIR ${CMAKE_INSTALL_FULL_DATADIR}/doc/halomux)
 
 configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/dist/systemd/lightspill.service.in
-  ${CMAKE_CURRENT_BINARY_DIR}/lightspill.service
+  ${CMAKE_CURRENT_SOURCE_DIR}/dist/systemd/halomux.service.in
+  ${CMAKE_CURRENT_BINARY_DIR}/halomux.service
   @ONLY
 )
 
-install(TARGETS lightspill RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/lightspill.service DESTINATION lib/systemd/user)
-install(FILES assets/logo.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps RENAME lightspill.svg)
-install(FILES README.md DESTINATION ${LIGHTSPILL_DOCDIR})
+install(TARGETS halomux RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/halomux.service DESTINATION lib/systemd/user)
+install(FILES assets/logo.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps RENAME halomux.svg)
+install(FILES README.md DESTINATION ${HALOMUX_DOCDIR})
 
 
 if(${BUILD_TESTS})

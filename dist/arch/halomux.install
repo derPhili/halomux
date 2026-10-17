@@ -1,10 +1,10 @@
 post_install() {
   echo "Enable the service for your user (no sudo):"
-  echo "  systemctl --user enable --now lightspill.service"
+  echo "  systemctl --user enable --now halomux.service"
   echo "The tray icon starts with the next Plasma login, or now from the application menu."
 }
 
 post_upgrade() {
   echo "Restart the service to use the new version (no sudo):"
-  echo "  systemctl --user restart lightspill.service"
+  echo "  systemctl --user restart halomux.service"
 }
