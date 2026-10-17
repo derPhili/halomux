@@ -448,3 +448,34 @@ target_compile_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
 target_link_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME ClipParsing COMMAND TestClipParsing)
+
+
+# TestAreaSession: selecting the entertainment area and recovering when the bridge stopped streaming
+add_executable(TestAreaSession
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AreaSession.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestAreaSession.cpp
+)
+
+set_target_properties(TestAreaSession PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestAreaSession PUBLIC
+  include
+  ${CMAKE_CURRENT_BINARY_DIR}/include
+)
+
+add_dependencies(TestAreaSession generate_version_header)
+
+target_link_libraries(TestAreaSession PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+target_compile_options(TestAreaSession PRIVATE -fsanitize=address,undefined)
+target_link_options(TestAreaSession PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME AreaSession COMMAND TestAreaSession)
