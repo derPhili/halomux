@@ -1,9 +1,9 @@
-#include <Huenicorn/Network/Http/Server/HttpServer.hpp>
+#include <Halomux/Network/Http/Server/HttpServer.hpp>
 
-#include <Huenicorn/Network/Http/Server/Impl/HttpLibServerImpl.hpp>
+#include <Halomux/Network/Http/Server/Impl/HttpLibServerImpl.hpp>
 
 
-namespace Huenicorn::Network::Http::Server
+namespace Halomux::Network::Http::Server
 {
   HttpServer::HttpServer()
   {

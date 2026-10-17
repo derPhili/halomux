@@ -1,7 +1,7 @@
-#include <Huenicorn/Hue/Auth/Credentials.hpp>
+#include <Halomux/Hue/Auth/Credentials.hpp>
 
 
-namespace Huenicorn::Hue::Auth
+namespace Halomux::Hue::Auth
 {
   inline std::vector<unsigned char> hexStringToBytes(
     const std::string& hexString

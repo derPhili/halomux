@@ -1,14 +1,14 @@
-#include <Huenicorn/Network/Http/Server/SetupBackend.hpp>
+#include <Halomux/Network/Http/Server/SetupBackend.hpp>
 
-#include <Huenicorn/Core/CoreService.hpp>
-#include <Huenicorn/Hue/Api/ApiTools.hpp>
-#include <Huenicorn/Serialization/Credentials.hpp>
+#include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Hue/Api/ApiTools.hpp>
+#include <Halomux/Serialization/Credentials.hpp>
 
 
-namespace Huenicorn::Network::Http::Server
+namespace Halomux::Network::Http::Server
 {
   SetupBackend::SetupBackend(
-    Huenicorn::Core::CoreService* coreService
+    Halomux::Core::CoreService* coreService
   ):
   m_coreService(coreService)
   {

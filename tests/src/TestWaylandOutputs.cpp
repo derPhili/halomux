@@ -1,7 +1,7 @@
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Grabber/GnuLinux/WaylandOutputs.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 /**

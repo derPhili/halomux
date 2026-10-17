@@ -1,4 +1,4 @@
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
 #include <algorithm>
 #include <array>
@@ -9,11 +9,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
-#include <Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp>
-#include <Huenicorn/Imaging/ImageProcessing.hpp>
-#include <Huenicorn/Core/Config.hpp>
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
+#include <Halomux/Grabber/GnuLinux/WaylandOutputs.hpp>
+#include <Halomux/Imaging/ImageProcessing.hpp>
+#include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 #if defined(__clang__)
   #pragma clang diagnostic push
@@ -71,7 +71,7 @@ namespace
 }
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   PipewireGrabber::PipewireGrabber(
     Core::Config* config,

@@ -1,4 +1,4 @@
-#include <Huenicorn/Hue/Api/BridgeDiscovery.hpp>
+#include <Halomux/Hue/Api/BridgeDiscovery.hpp>
 
 #include <algorithm>
 #include <array>
@@ -12,10 +12,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Hue::Api
+namespace Halomux::Hue::Api
 {
   namespace
   {

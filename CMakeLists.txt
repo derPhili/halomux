@@ -29,7 +29,7 @@ find_package(glm REQUIRED)
 
 
 # Generate version header
-set(VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/Huenicorn/Version.hpp")
+set(VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/Halomux/Version.hpp")
 
 add_custom_target(generate_version_header DEPENDS ${VERSION_HEADER})
 
@@ -66,7 +66,7 @@ embed_directory("${CMAKE_SOURCE_DIR}/webroot")
 embed_directory("${CMAKE_SOURCE_DIR}/assets")
 
 
-set(EMBEDDED_WEBROOT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/Huenicorn/EmbeddedWebrootFiles.hpp")
+set(EMBEDDED_WEBROOT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/Halomux/EmbeddedWebrootFiles.hpp")
 
 
 # Custom command to ensure re-running when files change

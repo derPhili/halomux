@@ -1,17 +1,17 @@
-#include <Huenicorn/Network/Http/Server/WebUIBackend.hpp>
+#include <Halomux/Network/Http/Server/WebUIBackend.hpp>
 
 #include <filesystem>
 
-#include <Huenicorn/Core/CoreService.hpp>
-#include <Huenicorn/Core/Scenes.hpp>
-#include <Huenicorn/Serialization/Channel.hpp>
-#include <Huenicorn/Serialization/Config.hpp>
-#include <Huenicorn/Serialization/Json.hpp>
-#include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
-#include <Huenicorn/Stream/Streamer.hpp>
+#include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Core/Scenes.hpp>
+#include <Halomux/Serialization/Channel.hpp>
+#include <Halomux/Serialization/Config.hpp>
+#include <Halomux/Serialization/Json.hpp>
+#include <Halomux/Serialization/EntertainmentConfiguration.hpp>
+#include <Halomux/Stream/Streamer.hpp>
 
 
-namespace Huenicorn::Network::Http::Server
+namespace Halomux::Network::Http::Server
 {
   using namespace Serialization;
 
@@ -47,7 +47,7 @@ namespace Huenicorn::Network::Http::Server
 
 
   WebUIBackend::WebUIBackend(
-    Huenicorn::Core::CoreService* coreService
+    Halomux::Core::CoreService* coreService
   ):
   m_coreService(coreService)
   {

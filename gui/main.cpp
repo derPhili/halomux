@@ -8,12 +8,12 @@
 #include <QTimer>
 #include <QUrl>
 
-#include <Huenicorn/Version.hpp>
+#include <Halomux/Version.hpp>
 
 #include "DesktopApp.hpp"
 #include "Texts.hpp"
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 namespace

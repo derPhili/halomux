@@ -1,8 +1,8 @@
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Core/PreviewSequence.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Core/PreviewSequence.hpp>
 
-using namespace Huenicorn;
-using namespace Huenicorn::Core;
+using namespace Halomux;
+using namespace Halomux::Core;
 
 
 namespace

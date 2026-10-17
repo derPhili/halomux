@@ -1,4 +1,4 @@
-#include <Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp>
+#include <Halomux/Grabber/GnuLinux/WaylandOutputs.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -8,10 +8,10 @@
 #include <wayland-client.h>
 #include <xdg-output-unstable-v1-client-protocol.h>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   namespace
   {

@@ -1,10 +1,10 @@
 #include <chrono>
 #include <memory>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Stream/Streamer.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Stream/Streamer.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 using namespace std::chrono_literals;
 
 

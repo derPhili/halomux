@@ -1,13 +1,13 @@
-#include <Huenicorn/Stream/Streamer.hpp>
+#include <Halomux/Stream/Streamer.hpp>
 
 #include <algorithm>
 #include <chrono>
 
-#include <Huenicorn/Stream/DtlsClient.hpp>
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Stream/DtlsClient.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Stream
+namespace Halomux::Stream
 {
   namespace
   {

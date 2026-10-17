@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace Huenicorn
+namespace Halomux
 {
   inline const std::string Version = "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@";
 

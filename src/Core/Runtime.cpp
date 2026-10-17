@@ -1,4 +1,4 @@
-#include <Huenicorn/Core/Runtime.hpp>
+#include <Halomux/Core/Runtime.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -10,20 +10,20 @@
 
 #include <glm/common.hpp>
 
-#include <Huenicorn/Network/Http/Client/Client.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Platform/Selector.hpp>
+#include <Halomux/Network/Http/Client/Client.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Platform/Selector.hpp>
 
-#include <Huenicorn/Serialization/Channel.hpp>
-#include <Huenicorn/Serialization/Credentials.hpp>
+#include <Halomux/Serialization/Channel.hpp>
+#include <Halomux/Serialization/Credentials.hpp>
 
-#include <Huenicorn/Imaging/UV.hpp>
+#include <Halomux/Imaging/UV.hpp>
 
-#include <Huenicorn/Core/CoreService.hpp>
-#include <Huenicorn/Core/PreviewSequence.hpp>
-#include <Huenicorn/Hue/Api/Channel.hpp>
+#include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Core/PreviewSequence.hpp>
+#include <Halomux/Hue/Api/Channel.hpp>
 
-#include <Huenicorn/Hue/Api/ApiTools.hpp>
+#include <Halomux/Hue/Api/ApiTools.hpp>
 
 
 using namespace std::chrono_literals;
@@ -32,14 +32,14 @@ using namespace std::chrono_literals;
 namespace
 {
   // Shown by lamps without a static color yet: warm white
-  const Huenicorn::Imaging::Color DefaultStaticColor{255, 180, 110};
+  const Halomux::Imaging::Color DefaultStaticColor{255, 180, 110};
 
   // Time constant of the fade between static colors [s]
   constexpr float StaticFadeTimeConstant = 0.35f;
 }
 
 
-namespace Huenicorn::Core
+namespace Halomux::Core
 {
   Runtime::Runtime(
     const std::string& version,

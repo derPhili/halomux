@@ -2,12 +2,12 @@
 #include <filesystem>
 #include <thread>
 
-#include <Huenicorn/Core/Config.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Platform/Selector.hpp>
+#include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Platform/Selector.hpp>
 
-using namespace Huenicorn;
-using namespace Huenicorn::Core;
+using namespace Halomux;
+using namespace Halomux::Core;
 using namespace std::chrono_literals;
 
 

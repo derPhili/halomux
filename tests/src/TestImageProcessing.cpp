@@ -2,12 +2,12 @@
 #include <filesystem>
 #include <unordered_map>
 
-#include <Huenicorn/Imaging/ImageProcessing.hpp>
-#include <Huenicorn/Imaging/ImageData.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Timing/Definitions.hpp>
+#include <Halomux/Imaging/ImageProcessing.hpp>
+#include <Halomux/Imaging/ImageData.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Timing/Definitions.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 /**

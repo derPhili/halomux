@@ -1,9 +1,9 @@
-#include <Huenicorn/Imaging/ImageProcessing.hpp>
+#include <Halomux/Imaging/ImageProcessing.hpp>
 
 #include <algorithm>
 
 
-namespace Huenicorn::Imaging
+namespace Halomux::Imaging
 {
   namespace ImageProcessing
   {

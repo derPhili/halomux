@@ -2,10 +2,10 @@
 #include <string>
 #include <vector>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Hue/Api/BridgeDiscovery.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Api/BridgeDiscovery.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 namespace

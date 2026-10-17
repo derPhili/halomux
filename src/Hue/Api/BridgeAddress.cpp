@@ -1,7 +1,7 @@
 #include <string>
 
 
-namespace Huenicorn::Hue::Api
+namespace Halomux::Hue::Api
 {
   namespace
   {

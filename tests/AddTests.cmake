@@ -132,7 +132,7 @@ add_test(NAME TransientDetector COMMAND TestTransientDetector)
 
 # TestPreviewSequence: synthetic content of the settings preview
 add_executable(TestPreviewSequence
-  #Huenicorn
+  # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test

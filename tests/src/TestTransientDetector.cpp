@@ -1,9 +1,9 @@
 #include <cmath>
 
-#include <Huenicorn/Audio/TransientDetector.hpp>
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Audio/TransientDetector.hpp>
+#include <Halomux/Core/Logger.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 namespace

@@ -1,9 +1,9 @@
-#include <Huenicorn/Timing/LoopRegulator.hpp>
+#include <Halomux/Timing/LoopRegulator.hpp>
 
 #include <thread>
 
 
-namespace Huenicorn::Timing
+namespace Halomux::Timing
 {
   LoopRegulator::LoopRegulator(
     Duration tickInterval

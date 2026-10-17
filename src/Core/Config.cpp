@@ -1,14 +1,14 @@
-#include <Huenicorn/Core/Config.hpp>
+#include <Halomux/Core/Config.hpp>
 
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Serialization/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Serialization/Config.hpp>
 
 
-namespace Huenicorn::Core
+namespace Halomux::Core
 {
   using namespace Serialization;
 

@@ -69,13 +69,13 @@
 ### Task 1: Monitor-Modell und reine Hilfsfunktionen
 
 **Files:**
-- Create: `include/Huenicorn/Grabber/Monitors.hpp`, `src/Grabber/Monitors.cpp`
+- Create: `include/Halomux/Grabber/Monitors.hpp`, `src/Grabber/Monitors.cpp`
 - Create: `tests/src/TestMonitors.cpp`
 - Modify: `tests/AddTests.cmake` (neues Target `TestMonitors` mit `src/Grabber/Monitors.cpp`, `src/Core/Logger.cpp`, ASan/UBSan wie `TestBridgeDiscovery`, `add_test(NAME Monitors …)`)
 - Modify: `CMakeLists.txt` (`src/Grabber/Monitors.cpp` zu den App-Quellen)
 
 **Interfaces:**
-- Produces (namespace `Huenicorn::Grabber`):
+- Produces (namespace `Halomux::Grabber`):
   ```cpp
   struct MonitorGeometry { int x{0}; int y{0}; int width{0}; int height{0}; bool operator==(const MonitorGeometry&) const = default; };
   struct MonitorRef { MonitorGeometry geometry; std::string name; bool operator==(const MonitorRef&) const = default; };   // persisted per channel
@@ -138,7 +138,7 @@
 ### Task 2: Wayland-Ausgaben lesen
 
 **Files:**
-- Create: `include/Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp`, `src/Grabber/GnuLinux/WaylandOutputs.cpp`
+- Create: `include/Halomux/Grabber/GnuLinux/WaylandOutputs.hpp`, `src/Grabber/GnuLinux/WaylandOutputs.cpp`
 - Modify: `CMakeLists.txt`:
   - `pkg_check_modules(WAYLAND REQUIRED wayland-client)` und `pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)`.
   - Der `wayland-scanner` erzeugt `xdg-output-unstable-v1-client-protocol.h` und `…-protocol.c` aus `${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-output/xdg-output-unstable-v1.xml` ins Build-Verzeichnis.
@@ -148,7 +148,7 @@
 
 **Interfaces:**
 - Consumes: `WaylandOutput`, `MonitorGeometry` aus Task 1.
-- Produces: `std::vector<Huenicorn::Grabber::WaylandOutput> listWaylandOutputs();`
+- Produces: `std::vector<Halomux::Grabber::WaylandOutput> listWaylandOutputs();`
   - Verbindet sich mit `wl_display_connect(nullptr)`, bindet `wl_output` (min(version, 4)) und `zxdg_output_manager_v1` (min(version, 3)).
   - Danach zwei Roundtrips: Globals, dann Output-Events.
   - Die Felder kommen aus diesen Events:
@@ -168,7 +168,7 @@
 ### Task 3: Portal mit mehreren Streams
 
 **Files:**
-- Modify: `include/Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp`
+- Modify: `include/Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp`
 - Modify: `src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp`:
   - `selectSource` um 486-525
   - `onStartResponseReceivedCallback` um 335-382
@@ -198,10 +198,10 @@
 ### Task 4: Grabber mit einem Stream pro Monitor
 
 **Files:**
-- Modify: `include/Huenicorn/Grabber/IGrabber.hpp`
-- Modify: `include/Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp`, `src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp`
-- Modify: `include/Huenicorn/Platform/IAdapter.hpp:98` und die GnuLinux-Adapter-Quelle: `getGrabber(Core::Config*, bool askForMonitors = false)` gibt jetzt `std::shared_ptr<Grabber::IGrabber>` zurück.
-- Modify: `include/Huenicorn/Core/Runtime.hpp:187` und alle `m_grabber`-Nutzer in `src/Core/Runtime.cpp` und `src/Core/CoreService.cpp`: mechanische Anpassung auf den neuen Typ. Das echte Monitor-Mapping kommt in Task 5.
+- Modify: `include/Halomux/Grabber/IGrabber.hpp`
+- Modify: `include/Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp`, `src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp`
+- Modify: `include/Halomux/Platform/IAdapter.hpp:98` und die GnuLinux-Adapter-Quelle: `getGrabber(Core::Config*, bool askForMonitors = false)` gibt jetzt `std::shared_ptr<Grabber::IGrabber>` zurück.
+- Modify: `include/Halomux/Core/Runtime.hpp:187` und alle `m_grabber`-Nutzer in `src/Core/Runtime.cpp` und `src/Core/CoreService.cpp`: mechanische Anpassung auf den neuen Typ. Das echte Monitor-Mapping kommt in Task 5.
 - Modify: `tests/src/TestGrabber.cpp` auf die neue Region-Struktur.
 
 **Interfaces:**
@@ -251,8 +251,8 @@
 ### Task 5: Monitor pro Kanal in Runtime und Profil
 
 **Files:**
-- Modify: `include/Huenicorn/Hue/Api/Channel.hpp`: neues Feld `std::optional<Grabber::MonitorRef> monitor;` plus transient `std::optional<size_t> monitorIndex;`. `nullopt` bedeutet „Monitor fehlt“.
-- Modify: `include/Huenicorn/Serialization/Channel.hpp`:
+- Modify: `include/Halomux/Hue/Api/Channel.hpp`: neues Feld `std::optional<Grabber::MonitorRef> monitor;` plus transient `std::optional<size_t> monitorIndex;`. `nullopt` bedeutet „Monitor fehlt“.
+- Modify: `include/Halomux/Serialization/Channel.hpp`:
   - `to_json` schreibt `"monitor": {"x","y","width","height","name"}`, wenn gesetzt.
   - Neu ist `std::optional<Grabber::MonitorRef> monitorRefFromJson(const Json& jsonChannel)`. Es liefert `nullopt` bei fehlendem oder fehlerhaftem Feld.
 - Modify: `src/Core/Runtime.cpp`:
@@ -296,8 +296,8 @@
 ### Task 6: Monitore zur Laufzeit neu wählen
 
 **Files:**
-- Modify: `include/Huenicorn/Core/Runtime.hpp`, `src/Core/Runtime.cpp`
-- Modify: `include/Huenicorn/Core/CoreService.hpp`, `src/Core/CoreService.cpp`
+- Modify: `include/Halomux/Core/Runtime.hpp`, `src/Core/Runtime.cpp`
+- Modify: `include/Halomux/Core/CoreService.hpp`, `src/Core/CoreService.cpp`
 
 **Interfaces:**
 - Consumes: `Platform::adapter.getGrabber(config, true)` (Task 4); `_resolveChannelMonitors()` (Task 5).
@@ -339,7 +339,7 @@
 
 **Files:**
 - Modify: `src/Network/Http/Server/WebUIBackend.cpp`: `displayInfo` 112-141, Kanal-Routen 79-93, neue Routen
-- Modify: `include/Huenicorn/Serialization/Channel.hpp` (Web-Variante) oder die Kanal-Routen direkt
+- Modify: `include/Halomux/Serialization/Channel.hpp` (Web-Variante) oder die Kanal-Routen direkt
 
 **Interfaces:**
 - Consumes: `CoreService::monitors()`, `setChannelMonitor` (Task 5); `reselectMonitors()`, `monitorSelection()` (Task 6).

@@ -10,11 +10,11 @@
 #include <pipewire/pipewire.h>
 #pragma GCC diagnostic pop
 
-#include <Huenicorn/Core/Config.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
+#include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 using namespace std::chrono_literals;
 
 

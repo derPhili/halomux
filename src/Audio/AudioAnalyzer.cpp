@@ -1,13 +1,13 @@
-#include <Huenicorn/Audio/AudioAnalyzer.hpp>
+#include <Halomux/Audio/AudioAnalyzer.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <future>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Audio
+namespace Halomux::Audio
 {
   AudioAnalyzer::AudioAnalyzer()
   {

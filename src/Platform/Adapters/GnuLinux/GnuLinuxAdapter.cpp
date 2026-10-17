@@ -1,15 +1,15 @@
-#include <Huenicorn/Platform/Adapters/GnuLinux/GnuLinuxAdapter.hpp>
+#include <Halomux/Platform/Adapters/GnuLinux/GnuLinuxAdapter.hpp>
 
 #include <pwd.h>
 #include <unistd.h>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Version.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Version.hpp>
 
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
 
-namespace Huenicorn::Platform
+namespace Halomux::Platform
 {
   std::filesystem::path GnuLinuxAdapter::getConfigFilePath() const
   {

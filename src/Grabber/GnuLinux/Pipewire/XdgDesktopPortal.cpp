@@ -11,7 +11,7 @@
   As I spent days to do try to achieve the same result in a less concise way, I feel more confident using this one and give it some personnal changes
 */
 
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
 
 #include <algorithm>
 #include <future>
@@ -20,10 +20,10 @@
 
 #include <gio/gunixfdlist.h>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   GDBusConnection* XdgDesktopPortal::m_connection = nullptr;
   GDBusProxy* XdgDesktopPortal::m_screencastProxy = nullptr;

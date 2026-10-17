@@ -1,11 +1,11 @@
-#include <Huenicorn/Hue/Api/EntertainmentConfigurationSelector.hpp>
+#include <Halomux/Hue/Api/EntertainmentConfigurationSelector.hpp>
 
-#include <Huenicorn/Hue/Api/ApiTools.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Version.hpp>
+#include <Halomux/Hue/Api/ApiTools.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Version.hpp>
 
 
-namespace Huenicorn::Hue::Api
+namespace Halomux::Hue::Api
 {
   EntertainmentConfigurationSelector::EntertainmentConfigurationSelector(
     const Hue::Auth::Credentials& credentials,
@@ -51,7 +51,7 @@ namespace Huenicorn::Hue::Api
   )
   {
     if(m_entertainmentConfigurations.size() == 0){
-      Core::Logger::error("No entertainment configuration could be found yet. Please register one through the official Philips Hue application in order to power it with ", Huenicorn::AppName);
+      Core::Logger::error("No entertainment configuration could be found yet. Please register one through the official Philips Hue application in order to power it with ", Halomux::AppName);
       return false;
     }
 
