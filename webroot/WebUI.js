@@ -547,7 +547,7 @@ class WebUI
 
     for(let entertainmentConfiguration of entertainmentConfigurations){
       let newOption = document.createElement("option");
-      newOption.innerHTML = entertainmentConfiguration.name;
+      newOption.textContent = entertainmentConfiguration.name;
       newOption.value = entertainmentConfiguration.entertainmentConfigurationId;
       this.entertainmentConfigurationsSelectNode.appendChild(newOption);
     }

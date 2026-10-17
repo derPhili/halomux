@@ -7,7 +7,7 @@ function getVersion()
     let versionSection = document.getElementById("versionSection");
     let text = `Version ${data.version}`;
     log("Halomux", text);
-    versionSection.innerHTML = text;
+    versionSection.textContent = text;
   });
   versionPromise.catch((error) => {log(error);});
 }
