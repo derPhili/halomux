@@ -93,6 +93,7 @@ set(APP_SOURCE
 
 set(AUDIO_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Audio/AudioAnalyzer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Pipewire/LoopThread.cpp
 )
 
 set(CORE_SOURCE

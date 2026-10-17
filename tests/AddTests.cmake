@@ -481,3 +481,59 @@ target_compile_options(TestAreaSession PRIVATE -fsanitize=address,undefined)
 target_link_options(TestAreaSession PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME AreaSession COMMAND TestAreaSession)
+
+
+# TestAudioLifecycle: starting and stopping the sound analysis, which quits a Pipewire loop from another thread
+add_executable(TestAudioLifecycle
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Audio/AudioAnalyzer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Pipewire/LoopThread.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestAudioLifecycle.cpp
+)
+
+set_target_properties(TestAudioLifecycle PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestAudioLifecycle PUBLIC
+  include
+  ${LIB_PIPEWIRE_INCLUDE_DIRS}
+)
+
+target_link_libraries(TestAudioLifecycle PUBLIC
+  ${LIB_PIPEWIRE_LIBRARIES}
+)
+
+target_compile_options(TestAudioLifecycle PRIVATE -fsanitize=address,undefined)
+target_link_options(TestAudioLifecycle PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME AudioLifecycle COMMAND TestAudioLifecycle)
+
+
+# TestLoopThread: starting and stopping Pipewire loop threads in every order
+add_executable(TestLoopThread
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Pipewire/LoopThread.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestLoopThread.cpp
+)
+
+set_target_properties(TestLoopThread PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestLoopThread PUBLIC
+  include
+  ${LIB_PIPEWIRE_INCLUDE_DIRS}
+)
+
+target_link_libraries(TestLoopThread PUBLIC
+  ${LIB_PIPEWIRE_LIBRARIES}
+)
+
+target_compile_options(TestLoopThread PRIVATE -fsanitize=address,undefined)
+target_link_options(TestLoopThread PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME LoopThread COMMAND TestLoopThread)
+set_tests_properties(LoopThread AudioLifecycle PROPERTIES TIMEOUT 60)

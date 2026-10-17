@@ -5,6 +5,7 @@
 #include <optional>
 #include <thread>
 
+#include <Halomux/Pipewire/LoopThread.hpp>
 #include <Halomux/Audio/TransientDetector.hpp>
 
 #pragma GCC diagnostic push
@@ -56,8 +57,12 @@ namespace Halomux::Audio
 
 
   private:
-    // Methods
-    void _run();
+    // Methods, in the loop thread
+    bool _connect(
+      pw_main_loop* loop
+    );
+
+    void _disconnect();
 
     static void _onStreamParamChanged(
       void* userData,
@@ -71,8 +76,6 @@ namespace Halomux::Audio
 
 
     // Attributes
-    std::optional<std::thread> m_thread;
-    pw_main_loop* m_loop{nullptr};
     pw_stream* m_stream{nullptr};
 
     // Pipewire thread only
@@ -82,5 +85,8 @@ namespace Halomux::Audio
 
     // Shared with the consumer
     std::array<std::atomic<float>, 2> m_triggers{};
+
+    // Declared last: stopped before the state its callbacks use goes away
+    std::optional<Pipewire::LoopThread> m_loopThread;
   };
 }
