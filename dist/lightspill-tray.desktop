@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Lightspill (tray)
-Comment=Tray icon to switch sync and scenes
-Exec=lightspill-gui --tray
-Icon=lightspill
-Terminal=false
-NoDisplay=true
-X-KDE-autostart-phase=2

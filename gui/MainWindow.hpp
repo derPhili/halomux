@@ -4,7 +4,7 @@
 #include <QWebEngineView>
 
 
-namespace Huenicorn::Gui
+namespace Halomux::Gui
 {
   /**
    * @brief Window showing the web UI of the service, without a browser

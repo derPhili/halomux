@@ -102,13 +102,13 @@ I18n.Translations = {
       "Wo die aufgenommenen Bilder verarbeitet werden.\nGPU (grün): Die Bilder bleiben im Grafikspeicher (DMA-BUF), geringste CPU-Last.\nCPU (orange): Ausweichweg über Shared Memory.",
     "Capture paused · static scene" : "Aufnahme pausiert · statische Szene",
     "Source code" : "Quellcode",
-    "Source code of Lightspill: free software under the GPLv3, the screen capture request under the AGPLv3":
-      "Quellcode von Lightspill: freie Software unter der GPLv3, die Anfrage zur Bildschirmaufnahme unter der AGPLv3",
+    "Source code of Halomux: free software under the GPLv3, the screen capture request under the AGPLv3":
+      "Quellcode von Halomux: freie Software unter der GPLv3, die Anfrage zur Bildschirmaufnahme unter der AGPLv3",
     "The monitors whose picture the lamps follow" : "Die Monitore, deren Bild die Lampen folgen",
     "Source: " : "Quelle: ",
     "Monitors…" : "Monitore…",
-    "Opens the system dialog to choose which monitors Lightspill captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.":
-      "Öffnet den Systemdialog, in dem du wählst, welche Monitore Lightspill erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.",
+    "Opens the system dialog to choose which monitors Halomux captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.":
+      "Öffnet den Systemdialog, in dem du wählst, welche Monitore Halomux erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.",
     "Waiting for the screen selection…" : "Warte auf die Bildschirmauswahl…",
     "Selection cancelled, nothing changed" : "Auswahl abgebrochen, nichts geändert",
 
@@ -256,22 +256,22 @@ I18n.Translations = {
     "Save profile" : "Profil speichern",
     "Stops the service: the lamps go back to their state from before. The desktop application can start it again" : "Beendet den Dienst: Die Lampen kehren in ihren vorherigen Zustand zurück. Die Desktop-Anwendung kann ihn wieder starten",
     "Shut down" : "Beenden",
-    "Do you really want to stop Lightspill?" : "Lightspill wirklich beenden?",
+    "Do you really want to stop Halomux?" : "Halomux wirklich beenden?",
     "Stops the service now" : "Beendet den Dienst jetzt",
     "Keeps the service running" : "Lässt den Dienst weiterlaufen",
     "Cancel" : "Abbrechen",
-    "Lightspill is now off" : "Lightspill ist jetzt beendet",
+    "Halomux is now off" : "Halomux ist jetzt beendet",
     "Language of the application. System language follows the desktop, English if it's neither German nor English" : "Sprache der Anwendung. „Systemsprache“ folgt dem Desktop, Englisch, wenn er weder Deutsch noch Englisch ist",
     "System language" : "Systemsprache",
 
     // Setup
     "Welcome" : "Willkommen",
-    "Lightspill makes your Philips Hue lamps follow your screen. The setup takes about two minutes. You need:" : "Lightspill lässt deine Philips-Hue-Lampen deinem Bildschirm folgen. Die Einrichtung dauert etwa zwei Minuten. Du brauchst:",
+    "Halomux makes your Philips Hue lamps follow your screen. The setup takes about two minutes. You need:" : "Halomux lässt deine Philips-Hue-Lampen deinem Bildschirm folgen. Die Einrichtung dauert etwa zwei Minuten. Du brauchst:",
     "A Hue bridge in the same network as this computer" : "Eine Hue Bridge im selben Netzwerk wie dieser Computer",
     "Access to the bridge, to press its button" : "Zugang zur Bridge, um ihren Knopf zu drücken",
     "The Hue app, to set up an entertainment area with your lamps" : "Die Hue-App, um einen Entertainment-Bereich mit deinen Lampen einzurichten",
     "AI-assisted project, no warranty, no liability" : "KI-gestütztes Projekt, keine Gewähr, keine Haftung",
-    "Lightspill is developed with the help of AI: its changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) and were tested only on a few setups." : "Lightspill wird mit Hilfe von KI entwickelt: Seine Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) geschrieben, getestet sind sie nur auf wenigen Systemen.",
+    "Halomux is developed with the help of AI: its changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) and were tested only on a few setups." : "Halomux wird mit Hilfe von KI entwickelt: Seine Änderungen seit dem Fork von Huenicorn hat überwiegend eine KI (Claude von Anthropic) geschrieben, getestet sind sie nur auf wenigen Systemen.",
     "The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use." : "Der Maintainer ist nicht verantwortlich für den Code, seine Richtigkeit oder Sicherheit und nicht für die Folgen seiner Nutzung.",
     "Accept and continue" : "Zustimmen und fortfahren",
     "Use it at your own risk. It is provided \"as is\", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes." : "Die Nutzung erfolgt auf eigenes Risiko. Die Software wird ohne jede Gewährleistung bereitgestellt, und soweit gesetzlich zulässig übernimmt der Maintainer keine Haftung für Schäden oder sonstige Folgen ihrer Nutzung. Es besteht keine Pflicht zu Support, Wartung, Updates oder Fehlerbehebungen.",
@@ -315,7 +315,7 @@ I18n.Translations = {
     "This page checks again every few seconds." : "Diese Seite prüft alle paar Sekunden erneut.",
     "Check again" : "Erneut prüfen",
     "Ready" : "Fertig",
-    "Next, the desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start." : "Als Nächstes fragt der Desktop, welche Bildschirme Lightspill erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt.",
+    "Next, the desktop asks which screens Halomux may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start." : "Als Nächstes fragt der Desktop, welche Bildschirme Halomux erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird, damit die Frage nicht bei jedem Start kommt.",
     "Then, in the light manager:" : "Danach in der Lichtsteuerung:",
     "Drag your lamps from Available to Active." : "Ziehe deine Lampen von „Verfügbar“ nach „Aktiv“.",
     "Select a lamp and adjust the part of the screen it follows." : "Wähle eine Lampe und passe den Bildschirmbereich an, dem sie folgt.",

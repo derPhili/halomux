@@ -1,4 +1,4 @@
-#include <Huenicorn/Network/Http/Client/Client.hpp>
+#include <Halomux/Network/Http/Client/Client.hpp>
 
 #include <array>
 #include <memory>
@@ -8,10 +8,10 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Network::Http::Client
+namespace Halomux::Network::Http::Client
 {
   class CurlDeleter
   {

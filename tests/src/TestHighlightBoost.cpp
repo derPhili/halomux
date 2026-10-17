@@ -1,9 +1,9 @@
 #include <cmath>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Hue/Api/Channel.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Api/Channel.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 namespace

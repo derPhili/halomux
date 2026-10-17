@@ -1,0 +1,3 @@
+# Mechanical renames, skipped by git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs) and GitHub
+# Rename the code namespace and include directory to Halomux
+8d0c57b446c9bc542ade653c23f647a37bca3cba

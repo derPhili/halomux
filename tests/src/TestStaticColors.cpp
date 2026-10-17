@@ -1,9 +1,9 @@
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Core/Scenes.hpp>
-#include <Huenicorn/Serialization/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Core/Scenes.hpp>
+#include <Halomux/Serialization/Config.hpp>
 
-using namespace Huenicorn;
-using namespace Huenicorn::Core;
+using namespace Halomux;
+using namespace Halomux::Core;
 
 
 namespace

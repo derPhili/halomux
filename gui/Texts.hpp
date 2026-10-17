@@ -5,7 +5,7 @@
 #include <QString>
 
 
-namespace Huenicorn::Gui::Texts
+namespace Halomux::Gui::Texts
 {
   /**
    * @brief Language the texts are shown in

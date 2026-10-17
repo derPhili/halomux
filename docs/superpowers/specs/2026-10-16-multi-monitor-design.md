@@ -4,9 +4,9 @@ Stand: 2026-10-16
 
 ## Absicht
 
-Lightspill ist ein Open-Source-Projekt. Der Maintainer nutzt selbst nur seinen Hauptmonitor, andere Nutzer haben aber mehrere Monitore und Lampen, die zu verschiedenen Monitoren gehören. Ein Beispiel: Ein Play hinter dem linken Monitor soll dem linken Bild folgen, ein Play hinter dem rechten dem rechten.
+Halomux ist ein Open-Source-Projekt. Der Maintainer nutzt selbst nur seinen Hauptmonitor, andere Nutzer haben aber mehrere Monitore und Lampen, die zu verschiedenen Monitoren gehören. Ein Beispiel: Ein Play hinter dem linken Monitor soll dem linken Bild folgen, ein Play hinter dem rechten dem rechten.
 
-Heute erfasst Lightspill genau einen Monitor. Welcher das ist, sieht man in der App nicht. Ändern lässt er sich nur, indem man `restoreToken` aus der Konfiguration löscht und den Dienst neu startet.
+Heute erfasst Halomux genau einen Monitor. Welcher das ist, sieht man in der App nicht. Ändern lässt er sich nur, indem man `restoreToken` aus der Konfiguration löscht und den Dienst neu startet.
 
 ## Ziele
 
@@ -138,7 +138,7 @@ Diese Skizze ist eine Richtung, keine Vorgabe. Der Builder darf abweichen, wenn 
   4. Alle Lampen auf einen Monitor: Der andere Stream ist pausiert, die CPU-Last ist wie bei einem Monitor.
   5. „Monitore…“ und dann Abbrechen: Alles läuft weiter wie vorher.
   6. Dienst neu starten: kein Dialog, beide Monitore wieder da.
-  7. Mit `LIGHTSPILL_DISABLE_GPU=1`: Der CPU-Pfad läuft mit zwei Monitoren.
+  7. Mit `HALOMUX_DISABLE_GPU=1`: Der CPU-Pfad läuft mit zwei Monitoren.
 - **Nicht testbar hier:** einen Monitor im Betrieb abstecken. Das wird über einen Unit-Test der Zuordnung plus Code-Review abgedeckt.
 
 ## Offen für den Builder

@@ -1,9 +1,9 @@
 #include <string>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Serialization/Channel.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Serialization/Channel.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 namespace

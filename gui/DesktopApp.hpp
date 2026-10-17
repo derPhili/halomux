@@ -14,7 +14,7 @@
 #include "MainWindow.hpp"
 
 
-namespace Huenicorn::Gui
+namespace Halomux::Gui
 {
   /**
    * @brief Desktop front end of the service: a tray icon for quick switches and a window with the web UI

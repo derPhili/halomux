@@ -1,9 +1,9 @@
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 #include <iostream>
 
 
-namespace Huenicorn::Core
+namespace Halomux::Core
 {
   namespace Logger
   {

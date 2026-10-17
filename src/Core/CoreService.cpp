@@ -8,25 +8,25 @@
 
 #include <glm/common.hpp>
 
-#include <Huenicorn/Version.hpp>
-#include <Huenicorn/Core/CoreService.hpp>
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Version.hpp>
+#include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Core/Logger.hpp>
 
-#include <Huenicorn/Hue/Api/ApiTools.hpp>
-#include <Huenicorn/Hue/Api/BridgeAddress.hpp>
-#include <Huenicorn/Hue/Api/BridgeTls.hpp>
-#include <Huenicorn/Serialization/Json.hpp>
-#include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
-#include <Huenicorn/Serialization/JsonSerializer.hpp>
-#include <Huenicorn/Serialization/Credentials.hpp>
-#include <Huenicorn/Core/Notice.hpp>
-#include <Huenicorn/Core/PreviewSequence.hpp>
-#include <Huenicorn/Core/Scenes.hpp>
-#include <Huenicorn/Core/Runtime.hpp>
-#include <Huenicorn/Network/Http/Server/SetupBackend.hpp>
+#include <Halomux/Hue/Api/ApiTools.hpp>
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
+#include <Halomux/Hue/Api/BridgeTls.hpp>
+#include <Halomux/Serialization/Json.hpp>
+#include <Halomux/Serialization/EntertainmentConfiguration.hpp>
+#include <Halomux/Serialization/JsonSerializer.hpp>
+#include <Halomux/Serialization/Credentials.hpp>
+#include <Halomux/Core/Notice.hpp>
+#include <Halomux/Core/PreviewSequence.hpp>
+#include <Halomux/Core/Scenes.hpp>
+#include <Halomux/Core/Runtime.hpp>
+#include <Halomux/Network/Http/Server/SetupBackend.hpp>
 
 
-namespace Huenicorn::Core
+namespace Halomux::Core
 {
   CoreService::CoreService(Runtime& runtime, Config& config):
   m_runtime(runtime),
@@ -38,7 +38,7 @@ namespace Huenicorn::Core
 
   const std::string& CoreService::version() const
   {
-    return Huenicorn::Version;
+    return Halomux::Version;
   }
 
 

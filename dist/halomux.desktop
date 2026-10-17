@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Halomux
+GenericName=Screen sync for Philips Hue
+Comment=Sync Philips Hue lamps with the screen and sound, or show static scenes
+Exec=halomux-gui
+Icon=halomux
+Terminal=false
+Categories=Utility;
+Keywords=Hue;Philips;Ambient;Light;Lamp;Sync;Screen;
+StartupNotify=true
+StartupWMClass=halomux

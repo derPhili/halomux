@@ -2,7 +2,7 @@
 //
 // Adapted from xdg-dp-start by metamuffin (https://codeberg.org/metamuffin/xdg-dp-start), which is
 // licensed under the GNU Affero General Public License version 3 only: see LICENSE-AGPL-3.0.txt.
-// The rest of Lightspill is under the GNU General Public License version 3 (LICENSE.txt), whose
+// The rest of Halomux is under the GNU General Public License version 3 (LICENSE.txt), whose
 // section 13 allows this combination.
 
 /*
@@ -11,7 +11,7 @@
   As I spent days to do try to achieve the same result in a less concise way, I feel more confident using this one and give it some personnal changes
 */
 
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
 
 #include <algorithm>
 #include <future>
@@ -20,10 +20,10 @@
 
 #include <gio/gunixfdlist.h>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   GDBusConnection* XdgDesktopPortal::m_connection = nullptr;
   GDBusProxy* XdgDesktopPortal::m_screencastProxy = nullptr;
@@ -173,7 +173,7 @@ namespace Huenicorn::Grabber
 
       StringPair pathAndToken;
       std::ostringstream oss;
-      oss << "lightspill";
+      oss << "halomux";
       oss << ++count[static_cast<int>(createPathTokenType)];
       pathAndToken.second = oss.str();
       pathAndToken.first = std::string(ObjectPath) + '/' + type + '/' + getSenderName() + '/' + pathAndToken.second;

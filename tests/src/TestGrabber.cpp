@@ -2,12 +2,12 @@
 #include <filesystem>
 #include <thread>
 
-#include <Huenicorn/Core/Config.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Platform/Selector.hpp>
+#include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Platform/Selector.hpp>
 
-using namespace Huenicorn;
-using namespace Huenicorn::Core;
+using namespace Halomux;
+using namespace Halomux::Core;
 using namespace std::chrono_literals;
 
 
@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 {
   const int seconds = argc >= 2 ? std::atoi(argv[1]) : 10;
 
-  Config config(std::filesystem::temp_directory_path() / "lightspill-test");
+  Config config(std::filesystem::temp_directory_path() / "halomux-test");
   config.setSubsampleWidth(160);
 
   auto grabber = Platform::adapter.getGrabber(&config);

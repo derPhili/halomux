@@ -1,10 +1,10 @@
 # Builds the master branch from GitHub:
 #   cd dist/arch && makepkg -si
 # To build a local clone instead, e.g. to try changes before publishing them:
-#   LIGHTSPILL_SOURCE="git+file://$HOME/git/lightspill#branch=master" makepkg -si
+#   HALOMUX_SOURCE="git+file://$HOME/git/halomux#branch=master" makepkg -si
 # Needs cpp-httplib 0.46 or newer, installed from source (see README), so it isn't listed
 
-pkgname=lightspill
+pkgname=halomux
 pkgver=1.2.0
 pkgrel=1
 pkgdesc="Screen and sound sync for Philips Hue lamps on Linux (Wayland)"
@@ -26,18 +26,18 @@ depends=(
   'xdg-desktop-portal'
 )
 makedepends=('cmake' 'git' 'glm' 'nlohmann-json' 'wayland-protocols')
-install=lightspill.install
+install=halomux.install
 # Former name of the package
-provides=('hue-desktop-sync')
-conflicts=('hue-desktop-sync')
-replaces=('hue-desktop-sync')
-source=("$pkgname::${LIGHTSPILL_SOURCE:-git+https://github.com/derPhili/lightspill.git#branch=master}")
+provides=('lightspill' 'hue-desktop-sync')
+conflicts=('lightspill' 'hue-desktop-sync')
+replaces=('lightspill' 'hue-desktop-sync')
+source=("$pkgname::${HALOMUX_SOURCE:-git+https://github.com/derPhili/halomux.git#branch=master}")
 sha256sums=('SKIP')
 
 pkgver() {
   cd "$pkgname"
   local version
-  version=$(sed -n 's/^project(Lightspill VERSION \([0-9.]*\))$/\1/p' CMakeLists.txt)
+  version=$(sed -n 's/^project(Halomux VERSION \([0-9.]*\))$/\1/p' CMakeLists.txt)
   printf "%s.r%s.g%s" "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 

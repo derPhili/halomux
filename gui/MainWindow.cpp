@@ -7,12 +7,12 @@
 #include <QWebEngineNewWindowRequest>
 #include <QWebEnginePage>
 
-#include <Huenicorn/Version.hpp>
+#include <Halomux/Version.hpp>
 
 #include "Texts.hpp"
 
 
-namespace Huenicorn::Gui
+namespace Halomux::Gui
 {
   namespace
   {

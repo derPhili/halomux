@@ -1,4 +1,4 @@
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
 #include <algorithm>
 #include <array>
@@ -9,11 +9,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
-#include <Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp>
-#include <Huenicorn/Imaging/ImageProcessing.hpp>
-#include <Huenicorn/Core/Config.hpp>
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
+#include <Halomux/Grabber/GnuLinux/WaylandOutputs.hpp>
+#include <Halomux/Imaging/ImageProcessing.hpp>
+#include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 #if defined(__clang__)
   #pragma clang diagnostic push
@@ -71,7 +71,7 @@ namespace
 }
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   PipewireGrabber::PipewireGrabber(
     Core::Config* config,
@@ -796,10 +796,10 @@ namespace Huenicorn::Grabber
     pw->renegotiateEvent = pw_loop_add_event(pw_main_loop_get_loop(pw->loop), _onRenegotiate, pw);
 
     // The GL context lives in this thread, like every Pipewire callback using it
-    if(const char* disableGpu = std::getenv("LIGHTSPILL_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
-      Core::Logger::log("[gpu] Disabled by LIGHTSPILL_DISABLE_GPU");
+    if(const char* disableGpu = std::getenv("HALOMUX_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
+      Core::Logger::log("[gpu] Disabled by HALOMUX_DISABLE_GPU");
       auto lock = std::lock_guard(pw->processingInfoMutex);
-      pw->cpuReason = "GPU disabled by LIGHTSPILL_DISABLE_GPU, shared memory";
+      pw->cpuReason = "GPU disabled by HALOMUX_DISABLE_GPU, shared memory";
     }
     else{
       pw->gpu = std::make_unique<EglDownscaler>();
@@ -856,7 +856,7 @@ namespace Huenicorn::Grabber
         NULL
       );
 
-      const std::string streamName = "LightspillVideo" + std::to_string(stream->index + 1);
+      const std::string streamName = "HalomuxVideo" + std::to_string(stream->index + 1);
       stream->stream = pw_stream_new(core, streamName.c_str(), props);
       pw_stream_add_listener(stream->stream, &stream->listener, &streamEvents, stream.get());
 

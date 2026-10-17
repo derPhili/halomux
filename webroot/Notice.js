@@ -43,7 +43,7 @@ class Notice
 Notice.Title = "AI-assisted project, no warranty, no liability";
 
 Notice.Paragraphs = [
-  "Lightspill is developed with the help of AI: its changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) and were tested only on a few setups.",
+  "Halomux is developed with the help of AI: its changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) and were tested only on a few setups.",
   "The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use.",
   "Use it at your own risk. It is provided \"as is\", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes."
 ];

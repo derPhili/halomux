@@ -1,19 +1,19 @@
-#include <Huenicorn/Hue/Api/ApiTools.hpp>
+#include <Halomux/Hue/Api/ApiTools.hpp>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Version.hpp>
-#include <Huenicorn/Hue/Api/BridgeAddress.hpp>
-#include <Huenicorn/Hue/Api/BridgeDiscovery.hpp>
-#include <Huenicorn/Hue/Api/BridgeTls.hpp>
-#include <Huenicorn/Hue/Auth/Credentials.hpp>
-#include <Huenicorn/Network/Http/Client/Client.hpp>
-#include <Huenicorn/Platform/Selector.hpp>
-#include <Huenicorn/Serialization/Credentials.hpp>
-#include <Huenicorn/Serialization/Device.hpp>
-#include <Huenicorn/Serialization/EntertainmentConfiguration.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Version.hpp>
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
+#include <Halomux/Hue/Api/BridgeDiscovery.hpp>
+#include <Halomux/Hue/Api/BridgeTls.hpp>
+#include <Halomux/Hue/Auth/Credentials.hpp>
+#include <Halomux/Network/Http/Client/Client.hpp>
+#include <Halomux/Platform/Selector.hpp>
+#include <Halomux/Serialization/Credentials.hpp>
+#include <Halomux/Serialization/Device.hpp>
+#include <Halomux/Serialization/EntertainmentConfiguration.hpp>
 
 
-namespace Huenicorn::Hue::Api
+namespace Halomux::Hue::Api
 {
   namespace ApiTools
   {
@@ -222,7 +222,7 @@ namespace Huenicorn::Hue::Api
   std::optional<Network::Http::Client::Response> ApiTools::registerNewUser(const std::string& bridgeAddress)
   {
     std::string sessionUsername = Platform::adapter.getUsername();
-    std::string deviceType = std::string(Huenicorn::AppId) + "#" + sessionUsername;
+    std::string deviceType = std::string(Halomux::AppId) + "#" + sessionUsername;
 
     Serialization::Json request = {{"devicetype", deviceType}, {"generateclientkey", true}};
     return Network::Http::Client::sendRequest(HttpProtocol + bridgeAddress + "/api", "POST", request.dump(), {}, bridgeTls(bridgeAddress));

@@ -2,11 +2,11 @@
 
 #include <string>
 
-namespace Huenicorn
+namespace Halomux
 {
   inline const std::string Version = "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@";
 
   // Displayed name, and technical one (executable, service, configuration directory, bridge user)
-  inline constexpr const char* AppName = "Lightspill";
-  inline constexpr const char* AppId = "lightspill";
+  inline constexpr const char* AppName = "Halomux";
+  inline constexpr const char* AppId = "halomux";
 }

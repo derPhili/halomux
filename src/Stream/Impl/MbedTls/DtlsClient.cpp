@@ -1,4 +1,4 @@
-#include <Huenicorn/Stream/DtlsClient.hpp>
+#include <Halomux/Stream/DtlsClient.hpp>
 
 #include <memory>
 
@@ -9,13 +9,13 @@
 #error Mbed TLS 4.x or newer is required
 #endif
 
-#include <Huenicorn/Stream/Impl/MbedTls/MbedTlsClient4Impl.hpp>
+#include <Halomux/Stream/Impl/MbedTls/MbedTlsClient4Impl.hpp>
 
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Stream
+namespace Halomux::Stream
 {
   DtlsClient::DtlsClient(
     const DtlsConfig& dtlsConfig

@@ -1,26 +1,26 @@
-# Lightspill
+# Halomux
 
 Screen and sound sync for Philips Hue lamps on Linux
 
 > [!WARNING]
 > **AI-assisted project, no warranty, no liability.**
-> Lightspill is developed with the help of AI: the changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) under the maintainer's direction, and reviewed and tested only on the setup described below. The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use. Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes. See also sections 15 and 16 of the [GPLv3](LICENSE.txt).
+> Halomux is developed with the help of AI: the changes since the fork of Huenicorn were largely written by an AI (Claude by Anthropic) under the maintainer's direction, and reviewed and tested only on the setup described below. The maintainer is not responsible for the code, its correctness or its security, nor for the consequences of its use. Use it at your own risk. It is provided "as is", without any warranty, and to the extent permitted by law the maintainer accepts no liability for any damage or other consequences of its use. There is no obligation to provide support, maintenance, updates or fixes. See also sections 15 and 16 of the [GPLv3](LICENSE.txt).
 
 <p align="center">
-  <img src="assets/logo.svg" alt="Lightspill logo" width="192" height="192">
+  <img src="assets/logo.svg" alt="Halomux logo" width="192" height="192">
 </p>
 
 [Deutsche Version](README.de.md)
 
-Lightspill lets your Philips Hue lamps follow your screen in real time, like the official Hue Sync app does on Windows and macOS. Lamps flash with bright scenes and, optionally, with the sound of your computer. When you don't want them to follow the screen, they show static colors and scenes instead.
+Halomux lets your Philips Hue lamps follow your screen in real time, like the official Hue Sync app does on Windows and macOS. Lamps flash with bright scenes and, optionally, with the sound of your computer. When you don't want them to follow the screen, they show static colors and scenes instead.
 
-It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel. See [Origin and changes](#origin-and-changes).
+It began as a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel. See [Origin and changes](#origin-and-changes).
 
 | ![Screenshot](screenshots/WebUI.png) |
 |:--:|
 | *The light manager* |
 
-> Lightspill is an independent project. It is not affiliated with, endorsed or sponsored by Signify or Philips. Philips Hue and Hue Sync are trademarks of Signify Holding.
+> Halomux is an independent project. It is not affiliated with, endorsed or sponsored by Signify or Philips. Philips Hue and Hue Sync are trademarks of Signify Holding.
 
 ## Features
 
@@ -42,7 +42,7 @@ It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by Open
 
 ### Tested on
 
-Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU: this path is tested by forcing it with `LIGHTSPILL_DISABLE_GPU=1`, and takes about 8% of a core instead of about 3%. Several monitors are tested with two monitors of different sizes side by side: each monitor a lamp follows adds about 3% of a core on the GPU path. Reports about other setups are welcome.
+Halomux is developed and tested on CachyOS with KDE Plasma (Wayland) and an NVIDIA GPU (proprietary driver). The GPU path only uses vendor-neutral EGL extensions and should work with AMD and Intel GPUs (Mesa), but this hasn't been tested yet. Without a usable GPU, frames are processed on the CPU: this path is tested by forcing it with `HALOMUX_DISABLE_GPU=1`, and takes about 8% of a core instead of about 3%. Several monitors are tested with two monitors of different sizes side by side: each monitor a lamp follows adds about 3% of a core on the GPU path. Reports about other setups are welcome.
 
 ## Installation
 
@@ -51,16 +51,16 @@ Lightspill is developed and tested on CachyOS with KDE Plasma (Wayland) and an N
 `dist/arch/PKGBUILD` builds and installs a package:
 
 ```bash
-git clone https://github.com/derPhili/lightspill.git
-cd lightspill/dist/arch
+git clone https://github.com/derPhili/halomux.git
+cd halomux/dist/arch
 makepkg -si
-systemctl --user enable --now lightspill.service
+systemctl --user enable --now halomux.service
 ```
 
 The package contains:
 
-* `lightspill`: the service driving the lamps, with its systemd user unit
-* `lightspill-gui`: the desktop application, in the application menu as "Lightspill"
+* `halomux`: the service driving the lamps, with its systemd user unit
+* `halomux-gui`: the desktop application, in the application menu as "Halomux"
 * an autostart entry starting the tray icon at login
 
 ### Building from source
@@ -71,7 +71,7 @@ Dependencies on Arch based distributions:
 sudo pacman -S git cmake make gcc pkgconf curl opencv mbedtls pipewire glib2 nlohmann-json glm libglvnd libdrm wayland wayland-protocols qt6-base qt6-svg qt6-webengine
 ```
 
-Lightspill needs **Mbed TLS 4.x** and **[cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.46 or newer**. If your distribution ships older versions, build them from source. For cpp-httplib:
+Halomux needs **Mbed TLS 4.x** and **[cpp-httplib](https://github.com/yhirose/cpp-httplib) 0.46 or newer**. If your distribution ships older versions, build them from source. For cpp-httplib:
 
 ```bash
 git clone --branch v0.46.0 https://github.com/yhirose/cpp-httplib.git
@@ -79,11 +79,11 @@ cmake -S cpp-httplib -B cpp-httplib/build
 sudo cmake --install cpp-httplib/build
 ```
 
-Then build Lightspill:
+Then build Halomux:
 
 ```bash
-git clone https://github.com/derPhili/lightspill.git
-cd lightspill
+git clone https://github.com/derPhili/halomux.git
+cd halomux
 cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build -j
 sudo cmake --install build
@@ -98,19 +98,19 @@ Options:
 
 ### First start
 
-Start "Lightspill" from the application menu. As long as no bridge is paired, a setup wizard guides you through:
+Start "Halomux" from the application menu. As long as no bridge is paired, a setup wizard guides you through:
 
 1. **Notice**: confirm that you read the notice about AI assistance and the missing warranty
 2. **Finding the bridge**: it is searched automatically in the local network (mDNS), then through the discovery service of Philips if none answers, or you enter its IP address
 3. **Pairing**: press the round button on top of the bridge. The app retries every 2 seconds and pairs as soon as the button is pressed
 4. **Entertainment area**: the wizard checks that one exists and explains how to create it in the Hue app otherwise
-5. **Screen selection**: the desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start
+5. **Screen selection**: the desktop asks which screens Halomux may capture. Tick every monitor a lamp should follow, and allow it to be remembered, so you aren't asked again on every start
 
 Then, in the light manager, drag your lamps from "Available" to "Active", select a lamp to adjust the screen region it follows, and save the profile.
 
 ### Desktop application and service
 
-The lamps are driven by a service (systemd user unit `lightspill.service`). The desktop application shows its user interface:
+The lamps are driven by a service (systemd user unit `halomux.service`). The desktop application shows its user interface:
 
 * Left click on the tray icon: open or close the window
 * Right click: sync on/off, static scenes, preview, start the service if it isn't running
@@ -122,7 +122,7 @@ On desktops without a system tray (GNOME needs an extension such as AppIndicator
 Logs of the service:
 
 ```bash
-journalctl --user -u lightspill.service -f
+journalctl --user -u halomux.service -f
 ```
 
 ### Light manager
@@ -138,25 +138,25 @@ Every control explains itself in a tooltip.
 
 ### GPU processing
 
-The compositor delivers frames as DMA-BUF in video memory. Lightspill imports them through EGL without copying and computes the lamp colors on the GPU: a shader averages the frame down to the subsample resolution, two more passes average each lamp's region, and only one pixel per lamp is read back. The log shows the active path:
+The compositor delivers frames as DMA-BUF in video memory. Halomux imports them through EGL without copying and computes the lamp colors on the GPU: a shader averages the frame down to the subsample resolution, two more passes average each lamp's region, and only one pixel per lamp is read back. The log shows the active path:
 
 ```
 [gpu] Using EGL device /dev/dri/renderD128 (NVIDIA)
 Capture path: GPU (DMA-BUF, modifier 0x300000000cdb014)
 ```
 
-If the import fails, Lightspill falls back to shared memory and the CPU (`Capture path: CPU (shared memory)`). `LIGHTSPILL_DISABLE_GPU=1` forces the CPU path, for example to compare.
+If the import fails, Halomux falls back to shared memory and the CPU (`Capture path: CPU (shared memory)`). `HALOMUX_DISABLE_GPU=1` forces the CPU path, for example to compare.
 
 ## Configuration
 
-The configuration lives in `~/.config/lightspill/`. A configuration of Huenicorn or of a former name of Lightspill is taken over on the first start.
+The configuration lives in `~/.config/halomux/`. A configuration of Huenicorn or of a former name of Halomux (Lightspill, Hue Desktop Sync) is taken over on the first start.
 
 * `config.json`: bridge, credentials and settings
 * `profile.json`: the lamps' screen regions for an entertainment area
 
 ### config.json
 
-Most values are changed from the light manager. All of them can be edited by hand while Lightspill isn't running.
+Most values are changed from the light manager. All of them can be edited by hand while Halomux isn't running.
 
 * **boundBackendIP**: (string) address the light manager listens on. Default `127.0.0.1` (local access only). With `0.0.0.0` it's reachable from other devices, without any authentication
 * **bridgeAddress**: (string) address of the Hue bridge
@@ -169,7 +169,7 @@ Most values are changed from the light manager. All of them can be edited by han
 * **brightness**: (float) brightness of all lamps, from 0 to 1
 * **transitionSmoothing**: (float) how softly lamps move to a new color, from 0 (instant) to 0.97
 * **highlightBoost**: (float) strength of the flashes on sudden brightening, from 0 (off) to 1. A rise of the unsmoothed brightness of a lamp's region above 5% from one frame to the next triggers it, fully from 30%; it fades with a time constant of 250 ms
-* **audioReactive**: (boolean) whether loud moments of the computer's sound trigger the highlight boost too. Lightspill listens to the monitor of the default output through Pipewire (no microphone). A buffer more than 6 dB above the average of the last 0.5 s triggers, fully from 12 dB; sound below −50 dBFS never does. The left and right channels are spread over the lamps by their position
+* **audioReactive**: (boolean) whether loud moments of the computer's sound trigger the highlight boost too. Halomux listens to the monitor of the default output through Pipewire (no microphone). A buffer more than 6 dB above the average of the last 0.5 s triggers, fully from 12 dB; sound below −50 dBFS never does. The left and right channels are spread over the lamps by their position
 * **syncEnabled**: (boolean) whether the lamps follow the screen or show the static colors
 * **staticColors**: (object) static color per channel ID, as `#rrggbb`
 * **scenes**: (object) saved scenes: name → colors as in `staticColors`
@@ -185,7 +185,7 @@ Most values are changed from the light manager. All of them can be edited by han
 
 ### No entertainment area is shown
 
-The credentials may have become invalid. Stop Lightspill, delete `~/.config/lightspill/config.json` and start it again: the setup wizard pairs with the bridge again.
+The credentials may have become invalid. Stop Halomux, delete `~/.config/halomux/config.json` and start it again: the setup wizard pairs with the bridge again.
 
 ### Choosing other monitors
 
@@ -193,12 +193,12 @@ Click "Monitors…" in the header of the light manager and tick the monitors in 
 
 ### The lamps don't react
 
-* Another application may be streaming to the entertainment area (the Hue app or Hue Sync on another computer): the bridge accepts one stream at a time. Lightspill retries every 5 seconds
-* Check the log with `journalctl --user -u lightspill.service`
+* Another application may be streaming to the entertainment area (the Hue app or Hue Sync on another computer): the bridge accepts one stream at a time. Halomux retries every 5 seconds
+* Check the log with `journalctl --user -u halomux.service`
 
 ## Origin and changes
 
-Lightspill is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) 1.2.0 by OpenJowel and its contributors, whose history it keeps. The main changes since the fork:
+Halomux began as a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) 1.2.0 by OpenJowel and its contributors, whose history it keeps. Since then, most of its code has been rewritten or added, but it still builds on Huenicorn's streaming to the bridge, its networking and its core. The main changes since the fork:
 
 * Frames are processed on the GPU from DMA-BUFs, with the CPU as fallback; the CPU load dropped from about 45% to about 3% of a core
 * Highlight boost from the picture and the sound, brightness, smoothing presets, static colors and scenes, preview sequence
@@ -208,7 +208,7 @@ Lightspill is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn)
 
 ## License
 
-Lightspill is free software under the GNU General Public License version 3, like Huenicorn. See [LICENSE.txt](LICENSE.txt). You may use, study, share and modify it; modified versions you distribute must be under the same license, with their source code.
+Halomux is free software under the GNU General Public License version 3, like Huenicorn. See [LICENSE.txt](LICENSE.txt). You may use, study, share and modify it; modified versions you distribute must be under the same license, with their source code.
 
 The screen capture request to the desktop portal (`XdgDesktopPortal.hpp` and `XdgDesktopPortal.cpp`) is adapted from [xdg-dp-start](https://codeberg.org/metamuffin/xdg-dp-start) by metamuffin and remains under the GNU Affero General Public License version 3, see [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt). Section 13 of both licenses allows combining them. For that part, users interacting with a modified version over a network must be offered its source code: the light manager links to the source code in its footer, so keep that link pointing to the source of your version.
 

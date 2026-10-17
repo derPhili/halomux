@@ -13,11 +13,11 @@
 
 #include <thread>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
-#include <Huenicorn/Imaging/ImageProcessing.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
+#include <Halomux/Imaging/ImageProcessing.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 
 
 /**

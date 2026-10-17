@@ -1,10 +1,10 @@
-#include <Huenicorn/Stream/HuestreamHeader.hpp>
+#include <Halomux/Stream/HuestreamHeader.hpp>
 
 #include <cstring>
 #include <algorithm>
 
 
-namespace Huenicorn::Stream
+namespace Halomux::Stream
 {
   void HuestreamHeader::setColorSpace(
     char _colorSpace

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lightspill</title>
+    <title>Halomux</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
   </head>
@@ -11,7 +11,7 @@
   <body class="i18nPending">
     <header class="appHeader">
       <img src="logo.svg" class="appLogo" alt="">
-      <h1>Lightspill</h1>
+      <h1>Halomux</h1>
       <label class="toggle syncToggle" title="Sync on: the lamps follow the screen (and the sound, if enabled).&#10;Sync off: the lamps show the static scene and screen capture pauses.">
         <input type="checkbox" id="syncToggle"/>
         <span class="toggleTrack"></span>
@@ -23,7 +23,7 @@
       </div>
       <div class="headerMonitors">
         <span id="monitorInfo" title="The monitors whose picture the lamps follow">…</span>
-        <button type="button" id="reselectMonitorsButton" title="Opens the system dialog to choose which monitors Lightspill captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.">Monitors…</button>
+        <button type="button" id="reselectMonitorsButton" title="Opens the system dialog to choose which monitors Halomux captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.">Monitors…</button>
       </div>
     </header>
 
@@ -233,20 +233,20 @@
           <option value="de">Deutsch</option>
         </select>
       </label>
-      <a id="sourceLink" href="https://github.com/derPhili/lightspill" target="_blank" rel="noopener" title="Source code of Lightspill: free software under the GPLv3, the screen capture request under the AGPLv3">Source code</a>
+      <a id="sourceLink" href="https://github.com/derPhili/halomux" target="_blank" rel="noopener" title="Source code of Halomux: free software under the GPLv3, the screen capture request under the AGPLv3">Source code</a>
       <span id="versionSection"></span>
     </footer>
 
     <div id="overlay">
       <div class="overlayContent">
         <div id="confirmStopSection" style="display: none;">
-          <p>Do you really want to stop Lightspill?</p>
+          <p>Do you really want to stop Halomux?</p>
           <button class="danger" id="confirmStopButton" title="Stops the service now">Shut down</button>
           <button id="cancelStopButton" title="Keeps the service running">Cancel</button>
         </div>
 
         <div id="stoppedInfoSection" style="display: none;">
-          <p>Lightspill is now off</p>
+          <p>Halomux is now off</p>
         </div>
 
         <div id="noticeSection" style="display: none;">

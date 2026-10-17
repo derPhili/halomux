@@ -10,11 +10,11 @@
 #include <pipewire/pipewire.h>
 #pragma GCC diagnostic pop
 
-#include <Huenicorn/Core/Config.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
+#include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
-using namespace Huenicorn;
+using namespace Halomux;
 using namespace std::chrono_literals;
 
 
@@ -36,7 +36,7 @@ namespace
 int main()
 {
   // No portal to reach: the selection fails right away
-  setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/lightspill-test-bus", 1);
+  setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/halomux-test-bus", 1);
 
   // The running grabber's Pipewire thread
   pw_main_loop* loop = nullptr;
@@ -58,7 +58,7 @@ int main()
     std::this_thread::sleep_for(1ms);
   }
 
-  Core::Config config(std::filesystem::temp_directory_path() / "lightspill-test-cancel");
+  Core::Config config(std::filesystem::temp_directory_path() / "halomux-test-cancel");
   bool cancelled = false;
   try{
     Grabber::PipewireGrabber grabber(&config, true);

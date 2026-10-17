@@ -1,14 +1,14 @@
-#include <Huenicorn/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <string>
 
-#include <Huenicorn/Core/Logger.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   namespace
   {

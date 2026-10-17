@@ -1,4 +1,4 @@
-#include <Huenicorn/Hue/Api/BridgeTls.hpp>
+#include <Halomux/Hue/Api/BridgeTls.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -6,7 +6,7 @@
 #include <mutex>
 
 
-namespace Huenicorn::Hue::Api
+namespace Halomux::Hue::Api
 {
   namespace
   {

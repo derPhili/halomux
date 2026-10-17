@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Lightspill erfasst mehrere Monitore gleichzeitig. Jede Lampe folgt einem Bereich auf einem davon. Die App zeigt die Monitore mit Namen und lässt sie zur Laufzeit neu wählen.
+**Goal:** Halomux erfasst mehrere Monitore gleichzeitig. Jede Lampe folgt einem Bereich auf einem davon. Die App zeigt die Monitore mit Namen und lässt sie zur Laufzeit neu wählen.
 
 **Architecture:**
 - Das Portal liefert einen Stream pro angehaktem Monitor. Der `PipewireGrabber` verarbeitet sie alle auf einem gemeinsamen Pipewire-Core, mit einem `pw_stream` pro Monitor.
@@ -21,7 +21,7 @@
 - **Ein Monitor:** Die Oberfläche sieht aus wie heute.
 - **Ungenutzte Monitore:** Ein Monitor ohne aktive Lampe ist pausiert (`pw_stream_set_active(false)`).
 - **GPU-Pfad:**
-  - `LIGHTSPILL_DISABLE_GPU=1` erzwingt weiter den CPU-Pfad.
+  - `HALOMUX_DISABLE_GPU=1` erzwingt weiter den CPU-Pfad.
   - Der GPU-Pfad bleibt der bevorzugte.
 - **Texte:**
   - Neue UI-Texte stehen auf Englisch im Code und bekommen einen deutschen Eintrag in `webroot/I18n.js`.
@@ -37,7 +37,7 @@
 - **Live-Tests:**
   - Der Dienst wird gestoppt, bevor ein Test-Binary läuft (Port 8215, Bridge-Stream).
   - Ein Test-Binary aus der Shell löst den KDE-Portaldialog aus. Er wird **nie** stellvertretend bestätigt; der Nutzer bestätigt ihn selbst.
-  - Danach wird `lightspill.service` wieder gestartet.
+  - Danach wird `halomux.service` wieder gestartet.
 - **Testsystem:**
   - DP-3 mit 2560×1440 an Position 1920,0
   - DP-1 mit 1920×1080 an Position 0,249
@@ -69,13 +69,13 @@
 ### Task 1: Monitor-Modell und reine Hilfsfunktionen
 
 **Files:**
-- Create: `include/Huenicorn/Grabber/Monitors.hpp`, `src/Grabber/Monitors.cpp`
+- Create: `include/Halomux/Grabber/Monitors.hpp`, `src/Grabber/Monitors.cpp`
 - Create: `tests/src/TestMonitors.cpp`
 - Modify: `tests/AddTests.cmake` (neues Target `TestMonitors` mit `src/Grabber/Monitors.cpp`, `src/Core/Logger.cpp`, ASan/UBSan wie `TestBridgeDiscovery`, `add_test(NAME Monitors …)`)
 - Modify: `CMakeLists.txt` (`src/Grabber/Monitors.cpp` zu den App-Quellen)
 
 **Interfaces:**
-- Produces (namespace `Huenicorn::Grabber`):
+- Produces (namespace `Halomux::Grabber`):
   ```cpp
   struct MonitorGeometry { int x{0}; int y{0}; int width{0}; int height{0}; bool operator==(const MonitorGeometry&) const = default; };
   struct MonitorRef { MonitorGeometry geometry; std::string name; bool operator==(const MonitorRef&) const = default; };   // persisted per channel
@@ -138,7 +138,7 @@
 ### Task 2: Wayland-Ausgaben lesen
 
 **Files:**
-- Create: `include/Huenicorn/Grabber/GnuLinux/WaylandOutputs.hpp`, `src/Grabber/GnuLinux/WaylandOutputs.cpp`
+- Create: `include/Halomux/Grabber/GnuLinux/WaylandOutputs.hpp`, `src/Grabber/GnuLinux/WaylandOutputs.cpp`
 - Modify: `CMakeLists.txt`:
   - `pkg_check_modules(WAYLAND REQUIRED wayland-client)` und `pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)`.
   - Der `wayland-scanner` erzeugt `xdg-output-unstable-v1-client-protocol.h` und `…-protocol.c` aus `${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-output/xdg-output-unstable-v1.xml` ins Build-Verzeichnis.
@@ -148,7 +148,7 @@
 
 **Interfaces:**
 - Consumes: `WaylandOutput`, `MonitorGeometry` aus Task 1.
-- Produces: `std::vector<Huenicorn::Grabber::WaylandOutput> listWaylandOutputs();`
+- Produces: `std::vector<Halomux::Grabber::WaylandOutput> listWaylandOutputs();`
   - Verbindet sich mit `wl_display_connect(nullptr)`, bindet `wl_output` (min(version, 4)) und `zxdg_output_manager_v1` (min(version, 3)).
   - Danach zwei Roundtrips: Globals, dann Output-Events.
   - Die Felder kommen aus diesen Events:
@@ -168,7 +168,7 @@
 ### Task 3: Portal mit mehreren Streams
 
 **Files:**
-- Modify: `include/Huenicorn/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp`
+- Modify: `include/Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp`
 - Modify: `src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp`:
   - `selectSource` um 486-525
   - `onStartResponseReceivedCallback` um 335-382
@@ -190,7 +190,7 @@
 
 - [ ] **Step 1: Implement.** Alle bisherigen Nutzer von `capture->pwNode` bekommen in Task 4 `streams`. Bis dahin baut Task 3 nur, wenn `PipewireGrabber` übergangsweise `streams.front().node` nimmt und den Token nach erfolgreichem Start selbst speichert. Das gehört in diesen Commit, damit jeder Commit baut.
 - [ ] **Step 2: Build and verify live.**
-  - Dienst stoppen, `build/lightspill` starten.
+  - Dienst stoppen, `build/halomux` starten.
   - Erwartet: kein Dialog, weil der Token noch für einen Monitor gilt, und im Log `Capture path: GPU`.
   - Danach den Dienst wieder starten.
 - [ ] **Step 3: Commit** mit der Nachricht „Let the portal return several monitors“.
@@ -198,10 +198,10 @@
 ### Task 4: Grabber mit einem Stream pro Monitor
 
 **Files:**
-- Modify: `include/Huenicorn/Grabber/IGrabber.hpp`
-- Modify: `include/Huenicorn/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp`, `src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp`
-- Modify: `include/Huenicorn/Platform/IAdapter.hpp:98` und die GnuLinux-Adapter-Quelle: `getGrabber(Core::Config*, bool askForMonitors = false)` gibt jetzt `std::shared_ptr<Grabber::IGrabber>` zurück.
-- Modify: `include/Huenicorn/Core/Runtime.hpp:187` und alle `m_grabber`-Nutzer in `src/Core/Runtime.cpp` und `src/Core/CoreService.cpp`: mechanische Anpassung auf den neuen Typ. Das echte Monitor-Mapping kommt in Task 5.
+- Modify: `include/Halomux/Grabber/IGrabber.hpp`
+- Modify: `include/Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp`, `src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp`
+- Modify: `include/Halomux/Platform/IAdapter.hpp:98` und die GnuLinux-Adapter-Quelle: `getGrabber(Core::Config*, bool askForMonitors = false)` gibt jetzt `std::shared_ptr<Grabber::IGrabber>` zurück.
+- Modify: `include/Halomux/Core/Runtime.hpp:187` und alle `m_grabber`-Nutzer in `src/Core/Runtime.cpp` und `src/Core/CoreService.cpp`: mechanische Anpassung auf den neuen Typ. Das echte Monitor-Mapping kommt in Task 5.
 - Modify: `tests/src/TestGrabber.cpp` auf die neue Region-Struktur.
 
 **Interfaces:**
@@ -237,7 +237,7 @@
 
 - [ ] **Step 1: Refactor.** Ziel: ein Stream verhält sich exakt wie vorher.
 - [ ] **Step 2: Build and run tests.** Erwartet: alle Unit-Tests PASS, `TestGpuDownscale` PASS.
-- [ ] **Step 3: Verify live with one monitor.** Dienst stoppen, `build/lightspill` starten. Erwartet:
+- [ ] **Step 3: Verify live with one monitor.** Dienst stoppen, `build/halomux` starten. Erwartet:
   - kein Dialog
   - Lampen folgen DP-3 wie vorher
   - `perf stat -e task-clock -p <pid> -- sleep 20` liegt bei etwa 2–3,5 % eines Kerns, wie vorher
@@ -245,14 +245,14 @@
   - `restoreToken` aus der Config vorübergehend entfernen (vorher sichern). Der Nutzer hakt im Dialog beide Monitore an.
   - Erwartet: zwei `Capture path`-Zeilen. `TestGrabber` bzw. ein Debug-Log zeigt pro Stream Farben, sobald dort eine Region liegt.
   - Danach den gesicherten Token zurückschreiben, falls der Nutzer bei einem Monitor bleiben will. Sonst den neuen behalten.
-- [ ] **Step 5: Verify live with `LIGHTSPILL_DISABLE_GPU=1`.** Erwartet: beide Streams `CPU (shared memory)`, Farben korrekt.
+- [ ] **Step 5: Verify live with `HALOMUX_DISABLE_GPU=1`.** Erwartet: beide Streams `CPU (shared memory)`, Farben korrekt.
 - [ ] **Step 6: Commit** mit der Nachricht „Capture every selected monitor in its own stream“.
 
 ### Task 5: Monitor pro Kanal in Runtime und Profil
 
 **Files:**
-- Modify: `include/Huenicorn/Hue/Api/Channel.hpp`: neues Feld `std::optional<Grabber::MonitorRef> monitor;` plus transient `std::optional<size_t> monitorIndex;`. `nullopt` bedeutet „Monitor fehlt“.
-- Modify: `include/Huenicorn/Serialization/Channel.hpp`:
+- Modify: `include/Halomux/Hue/Api/Channel.hpp`: neues Feld `std::optional<Grabber::MonitorRef> monitor;` plus transient `std::optional<size_t> monitorIndex;`. `nullopt` bedeutet „Monitor fehlt“.
+- Modify: `include/Halomux/Serialization/Channel.hpp`:
   - `to_json` schreibt `"monitor": {"x","y","width","height","name"}`, wenn gesetzt.
   - Neu ist `std::optional<Grabber::MonitorRef> monitorRefFromJson(const Json& jsonChannel)`. Es liefert `nullopt` bei fehlendem oder fehlerhaftem Feld.
 - Modify: `src/Core/Runtime.cpp`:
@@ -289,15 +289,15 @@
 - [ ] **Step 3: Implement** alles oben Genannte.
 - [ ] **Step 4: Run the tests.** Erwartet: alle Tests PASS.
 - [ ] **Step 5: Verify live.**
-  - Mit dem bestehenden Profil starten. Danach `POST /api/saveProfile`, dann `jq '.channels[].monitor' ~/.config/lightspill/profile.json` (Pfad laut `profileName`).
+  - Mit dem bestehenden Profil starten. Danach `POST /api/saveProfile`, dann `jq '.channels[].monitor' ~/.config/halomux/profile.json` (Pfad laut `profileName`).
   - Erwartet: beide Lampen haben DP-3 als Monitor, die Lampen verhalten sich wie vorher.
 - [ ] **Step 6: Commit** mit der Nachricht „Remember the monitor each lamp follows“.
 
 ### Task 6: Monitore zur Laufzeit neu wählen
 
 **Files:**
-- Modify: `include/Huenicorn/Core/Runtime.hpp`, `src/Core/Runtime.cpp`
-- Modify: `include/Huenicorn/Core/CoreService.hpp`, `src/Core/CoreService.cpp`
+- Modify: `include/Halomux/Core/Runtime.hpp`, `src/Core/Runtime.cpp`
+- Modify: `include/Halomux/Core/CoreService.hpp`, `src/Core/CoreService.cpp`
 
 **Interfaces:**
 - Consumes: `Platform::adapter.getGrabber(config, true)` (Task 4); `_resolveChannelMonitors()` (Task 5).
@@ -339,7 +339,7 @@
 
 **Files:**
 - Modify: `src/Network/Http/Server/WebUIBackend.cpp`: `displayInfo` 112-141, Kanal-Routen 79-93, neue Routen
-- Modify: `include/Huenicorn/Serialization/Channel.hpp` (Web-Variante) oder die Kanal-Routen direkt
+- Modify: `include/Halomux/Serialization/Channel.hpp` (Web-Variante) oder die Kanal-Routen direkt
 
 **Interfaces:**
 - Consumes: `CoreService::monitors()`, `setChannelMonitor` (Task 5); `reselectMonitors()`, `monitorSelection()` (Task 6).
@@ -397,7 +397,7 @@
   |---|---|
   | `Source: ` | `Quelle: ` |
   | `Monitors…` | `Monitore…` |
-  | Tooltip: `Opens the system dialog to choose which monitors Lightspill captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.` | `Öffnet den Systemdialog, in dem du wählst, welche Monitore Lightspill erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.` |
+  | Tooltip: `Opens the system dialog to choose which monitors Halomux captures. Tick every monitor a lamp should follow. Until you confirm, everything keeps running as before.` | `Öffnet den Systemdialog, in dem du wählst, welche Monitore Halomux erfasst. Hake alle Monitore an, denen Lampen folgen sollen. Bis du bestätigst, läuft alles weiter wie bisher.` |
   | `Waiting for the screen selection…` | `Warte auf die Bildschirmauswahl…` |
   | `Selection cancelled, nothing changed` | `Auswahl abgebrochen, nichts geändert` |
   | `Monitor not captured – lamp is off` | `Monitor nicht erfasst – Lampe aus` |
@@ -405,7 +405,7 @@
   | Tooltip der Bereichs-Karte, erweitert um: `With several monitors, drag a region onto another monitor to make the lamp follow it.` | `Bei mehreren Monitoren: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt.` |
 
 - [ ] **Step 1: Implement.**
-- [ ] **Step 2: Verify in the app** (`lightspill-gui` vom Build bzw. DevTools-Capture, nie Screenshot des Desktops):
+- [ ] **Step 2: Verify in the app** (`halomux-gui` vom Build bzw. DevTools-Capture, nie Screenshot des Desktops):
   1. Beide Monitore erscheinen in der realen Anordnung: DP-1 links und 249 px tiefer, DP-3 rechts.
   2. Die Kopfzeile zeigt beide Namen.
   3. Lampe „links“ auf DP-1 ziehen. Erwartet: Sie folgt DP-1. Im Profil steht nach dem Speichern `DP-1`.
@@ -422,8 +422,8 @@
 - Modify: `README.md`, `README.de.md`: Abschnitt „Light manager“ und „First start“, Konfigurationsfeld `monitor` in `profile.json`, Troubleshooting „Choosing another screen“ ersetzt durch den Knopf „Monitors…“
 
 **Texte:**
-- **Setup**, englisch: `The desktop asks which screens Lightspill may capture. Tick every monitor a lamp should follow, and allow it to be remembered.`
-- **Setup**, deutsch: `Der Desktop fragt, welche Bildschirme Lightspill erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird.`
+- **Setup**, englisch: `The desktop asks which screens Halomux may capture. Tick every monitor a lamp should follow, and allow it to be remembered.`
+- **Setup**, deutsch: `Der Desktop fragt, welche Bildschirme Halomux erfassen darf. Hake alle Monitore an, denen Lampen folgen sollen, und erlaube, dass die Auswahl gespeichert wird.`
 - **README, Profilfeld:**
   - englisch: `**monitor**: (object) the monitor the lamp follows: its position and size on the desktop (**x**, **y**, **width**, **height**) and its connector **name**. A lamp without it follows the first captured monitor`
   - deutsch: sinngemäß.

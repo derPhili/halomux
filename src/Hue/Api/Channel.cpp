@@ -1,11 +1,11 @@
-#include <Huenicorn/Hue/Api/Channel.hpp>
+#include <Halomux/Hue/Api/Channel.hpp>
 
 #include <glm/common.hpp>
 
-#include <Huenicorn/Serialization/Channel.hpp>
+#include <Halomux/Serialization/Channel.hpp>
 
 
-namespace Huenicorn::Hue::Api
+namespace Halomux::Hue::Api
 {
   Channel::Channel(
     bool active,

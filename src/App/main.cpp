@@ -6,11 +6,11 @@
 
 #include <pthread.h>
 
-#include <Huenicorn/App/CommandLine.hpp>
-#include <Huenicorn/Core/Runtime.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Platform/Selector.hpp>
-#include <Huenicorn/Version.hpp>
+#include <Halomux/App/CommandLine.hpp>
+#include <Halomux/Core/Runtime.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Platform/Selector.hpp>
+#include <Halomux/Version.hpp>
 
 
 /**
@@ -24,10 +24,10 @@ public:
   {
     try{
       std::lock_guard lock(m_coreMutex);
-      m_core = std::make_unique<Huenicorn::Core::Runtime>(Huenicorn::Version, Huenicorn::Platform::adapter.getConfigFilePath());
+      m_core = std::make_unique<Halomux::Core::Runtime>(Halomux::Version, Halomux::Platform::adapter.getConfigFilePath());
     }
     catch(const std::exception& e){
-      Huenicorn::Core::Logger::error(e.what());
+      Halomux::Core::Logger::error(e.what());
       return false;
     }
 
@@ -37,7 +37,7 @@ public:
         m_core->start();
       }
       catch(const std::exception& e){
-        Huenicorn::Core::Logger::error(e.what());
+        Halomux::Core::Logger::error(e.what());
         succeeded = false;
       }
     });
@@ -47,7 +47,7 @@ public:
 
     std::lock_guard lock(m_coreMutex);
     m_core.reset();
-    Huenicorn::Platform::adapter.releaseGrabber();
+    Halomux::Platform::adapter.releaseGrabber();
 
     return succeeded;
   }
@@ -66,7 +66,7 @@ public:
 
 private:
   std::mutex m_coreMutex;
-  std::unique_ptr<Huenicorn::Core::Runtime> m_core;
+  std::unique_ptr<Halomux::Core::Runtime> m_core;
   std::optional<std::thread> m_applicationThread;
 };
 
@@ -79,13 +79,13 @@ int main(
   char* argv[]
 )
 {
-  Huenicorn::App::CommandLine::Params params;
-  Huenicorn::App::CommandLine::getOpt(argc, argv, params);
+  Halomux::App::CommandLine::Params params;
+  Halomux::App::CommandLine::getOpt(argc, argv, params);
   if(params.shouldStop){
     return 0;
   }
 
-  Huenicorn::Core::Logger::log("Starting ", Huenicorn::AppName, " ", Huenicorn::Version, " for ", Huenicorn::Platform::adapter.getPlatformName());
+  Halomux::Core::Logger::log("Starting ", Halomux::AppName, " ", Halomux::Version, " for ", Halomux::Platform::adapter.getPlatformName());
 
   // Termination signals are handled synchronously by a dedicated thread, so stopping
   // the application doesn't run (non async-signal-safe) code inside a signal handler.
@@ -105,7 +105,7 @@ int main(
         return;
       }
 
-      Huenicorn::Core::Logger::log("Closing application");
+      Halomux::Core::Logger::log("Closing application");
       app.stop();
     }
   });
@@ -116,11 +116,11 @@ int main(
   signalThread.join();
 
   if(!succeeded){
-    Huenicorn::Core::Logger::error(Huenicorn::AppName, " terminated because of an error");
+    Halomux::Core::Logger::error(Halomux::AppName, " terminated because of an error");
     return 1;
   }
 
-  Huenicorn::Core::Logger::log(Huenicorn::AppName, " terminated properly");
+  Halomux::Core::Logger::log(Halomux::AppName, " terminated properly");
 
   return 0;
 }

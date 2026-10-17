@@ -1,10 +1,10 @@
 #include <sstream>
-#include <Huenicorn/App/CommandLine.hpp>
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Version.hpp>
+#include <Halomux/App/CommandLine.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Version.hpp>
 
 
-namespace Huenicorn::App::CommandLine
+namespace Halomux::App::CommandLine
 {
   void showHelp(
     Params& params
@@ -33,7 +33,7 @@ namespace Huenicorn::App::CommandLine
     Params& params
   )
   {
-    Huenicorn::Core::Logger::log("Usage:");
+    Halomux::Core::Logger::log("Usage:");
 
     for(const auto& option : options){
       std::stringstream names;
@@ -43,7 +43,7 @@ namespace Huenicorn::App::CommandLine
           names << ", ";
         }
       }
-      Huenicorn::Core::Logger::log("\t", names.str(), "\t", option.description);
+      Halomux::Core::Logger::log("\t", names.str(), "\t", option.description);
     }
 
     params.shouldStop = true;
@@ -54,7 +54,7 @@ namespace Huenicorn::App::CommandLine
     Params& params
   )
   {
-    Huenicorn::Core::Logger::log(Huenicorn::AppName, " ", Huenicorn::Version);
+    Halomux::Core::Logger::log(Halomux::AppName, " ", Halomux::Version);
     params.shouldStop = true;
   }
 
@@ -81,7 +81,7 @@ namespace Huenicorn::App::CommandLine
     for(int i = 1; i < argc && !params.shouldStop; i++){
       auto* option = findOption(argv[i]);
       if(!option){
-        Huenicorn::Core::Logger::log(Huenicorn::AppId, ": Invalid parameter '", argv[i], "'");
+        Halomux::Core::Logger::log(Halomux::AppId, ": Invalid parameter '", argv[i], "'");
         showHelp(params);
         return;
       }

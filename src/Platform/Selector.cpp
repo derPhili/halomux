@@ -1,7 +1,7 @@
-#include <Huenicorn/Platform/Selector.hpp>
+#include <Halomux/Platform/Selector.hpp>
 
 
-namespace Huenicorn::Platform
+namespace Halomux::Platform
 {
   Adapter adapter;
 }

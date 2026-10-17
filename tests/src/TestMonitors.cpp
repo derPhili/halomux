@@ -2,11 +2,11 @@
 #include <string>
 #include <vector>
 
-#include <Huenicorn/Core/Logger.hpp>
-#include <Huenicorn/Grabber/Monitors.hpp>
+#include <Halomux/Core/Logger.hpp>
+#include <Halomux/Grabber/Monitors.hpp>
 
-using namespace Huenicorn;
-using namespace Huenicorn::Grabber;
+using namespace Halomux;
+using namespace Halomux::Grabber;
 
 
 namespace

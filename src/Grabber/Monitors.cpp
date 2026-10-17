@@ -1,10 +1,10 @@
-#include <Huenicorn/Grabber/Monitors.hpp>
+#include <Halomux/Grabber/Monitors.hpp>
 
 #include <algorithm>
 #include <cmath>
 
 
-namespace Huenicorn::Grabber
+namespace Halomux::Grabber
 {
   std::optional<size_t> findMonitor(
     const MonitorRef& ref,
