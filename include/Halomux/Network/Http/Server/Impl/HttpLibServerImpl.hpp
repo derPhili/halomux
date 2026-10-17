@@ -6,6 +6,7 @@
 
 #include <httplib.h>
 
+#include <Halomux/Network/Http/Server/HostCheck.hpp>
 #include <Halomux/Network/Http/Server/HttpDataStructs.hpp>
 
 
@@ -41,6 +42,13 @@ namespace Halomux::Network::Http::Server
     static httplib::Server::Handler _wrapHandler(Handler handler, HttpMethod method)
     {
       return [handler = std::move(handler), method](const httplib::Request& req, httplib::Response& res){
+        if(!isAllowedHost(req.get_header_value("Host"))){
+          // A page of another site whose name resolves to this machine (DNS rebinding)
+          res.status = 403;
+          res.set_content("{\"succeeded\": false, \"error\": \"unknown host\"}", "application/json");
+          return;
+        }
+
         if(method != HttpMethod::Get && !_isSameOrigin(req)){
           // Prevents other web pages open in the user's browser from driving the API (CSRF)
           res.status = 403;

@@ -320,3 +320,25 @@ endif()
 target_link_libraries(TestGrabberCancel PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
 
 add_test(NAME GrabberCancel COMMAND TestGrabberCancel)
+
+
+# TestHostCheck: which Host headers the light manager answers, against DNS rebinding
+add_executable(TestHostCheck
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HostCheck.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestHostCheck.cpp
+)
+
+set_target_properties(TestHostCheck PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestHostCheck PUBLIC
+  include
+)
+
+target_compile_options(TestHostCheck PRIVATE -fsanitize=address,undefined)
+target_link_options(TestHostCheck PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME HostCheck COMMAND TestHostCheck)
