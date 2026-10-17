@@ -373,6 +373,7 @@ add_test(NAME ConfigFile COMMAND TestConfigFile)
 add_executable(TestProfile
   # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Profile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test
@@ -387,6 +388,7 @@ target_include_directories(TestProfile PUBLIC
 
 target_link_libraries(TestProfile PUBLIC
   nlohmann_json::nlohmann_json
+  glm::glm
 )
 
 target_compile_options(TestProfile PRIVATE -fsanitize=address,undefined)

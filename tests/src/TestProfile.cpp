@@ -1,5 +1,6 @@
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Core/Profile.hpp>
+#include <Halomux/Hue/Api/BridgeApi.hpp>
 
 using namespace Halomux;
 using Serialization::Json;
@@ -57,6 +58,25 @@ int main()
   expect("Malformed channels ignored", channelsForArea(Json{{"areas", {{"pc", {{"channels", "x"}}}}}}, "pc").empty());
   expect("Malformed current area ignored", currentArea(Json{{"entertainmentConfigurationId", 5}}).empty());
   expect("Saving into a malformed profile", channelsForArea(withArea(Json{{"areas", 3}}, "pc", pcChannels), "pc") == pcChannels);
+
+  // Lamps of an area from its saved settings
+  {
+    const Hue::Api::ChannelMembers members{{0, {}}, {1, {}}, {2, {}}};
+    const Json saved = Json::array({
+      lamp(0, 0.5),
+      {{"channelId", 1}, {"active", "yes"}, {"uvs", 3}, {"gammaFactor", 0.0}},
+      {{"channelId", 7}, {"active", true}, {"gammaFactor", 0.0}, {"uvs", lamp(0, 1.0).at("uvs")}},
+      "garbage"
+    });
+
+    const auto channels = channelsFromProfile(members, saved);
+    expect("Every lamp of the area", channels.size() == 3);
+    expect("Saved lamp restored", channels.at(0).state == Hue::Api::Channel::State::Active && channels.at(0).uvs.max.x == 0.5f);
+    expect("Malformed lamp falls back to the defaults", channels.at(1).state == Hue::Api::Channel::State::Inactive);
+    expect("Lamp without settings inactive", channels.at(2).state == Hue::Api::Channel::State::Inactive);
+    expect("Settings of a lamp not in the area ignored", !channels.contains(7));
+    expect("No profile at all", channelsFromProfile(members, Json()).size() == 3);
+  }
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

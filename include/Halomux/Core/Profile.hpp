@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <Halomux/Hue/Api/BridgeApi.hpp>
+#include <Halomux/Hue/Api/Channel.hpp>
 #include <Halomux/Serialization/Json.hpp>
 
 
@@ -50,5 +52,21 @@ namespace Halomux::Core::Profile
     const Serialization::Json& profile,
     const std::string& areaId,
     const Serialization::Json& channels
+  );
+
+
+  /**
+   * @brief Builds the lamps of an area from their saved settings
+   *
+   * Every channel of the area becomes a lamp; a lamp without saved settings, or with malformed
+   * ones (such as a hand-edited profile), is inactive with the default settings.
+   *
+   * @param members Lamps of each channel of the area, from the bridge
+   * @param profileChannels Saved channels of the area (see channelsForArea())
+   * @return Hue::Api::Channels Lamps of the area
+   */
+  Hue::Api::Channels channelsFromProfile(
+    const Hue::Api::ChannelMembers& members,
+    const Serialization::Json& profileChannels
   );
 }
