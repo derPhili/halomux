@@ -14,7 +14,7 @@ Screen and sound sync for Philips Hue lamps on Linux
 
 Halomux lets your Philips Hue lamps follow your screen in real time, like the official Hue Sync app does on Windows and macOS. Lamps flash with bright scenes and, optionally, with the sound of your computer. When you don't want them to follow the screen, they show static colors and scenes instead.
 
-It is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel. See [Origin and changes](#origin-and-changes).
+It began as a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) by OpenJowel. See [Origin and changes](#origin-and-changes).
 
 | ![Screenshot](screenshots/WebUI.png) |
 |:--:|
@@ -198,7 +198,7 @@ Click "Monitors…" in the header of the light manager and tick the monitors in 
 
 ## Origin and changes
 
-Halomux is a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) 1.2.0 by OpenJowel and its contributors, whose history it keeps. The main changes since the fork:
+Halomux began as a fork of [Huenicorn](https://gitlab.com/openjowelsofts/huenicorn) 1.2.0 by OpenJowel and its contributors, whose history it keeps. Since then, most of its code has been rewritten or added, but it still builds on Huenicorn's streaming to the bridge, its networking and its core. The main changes since the fork:
 
 * Frames are processed on the GPU from DMA-BUFs, with the CPU as fallback; the CPU load dropped from about 45% to about 3% of a core
 * Highlight boost from the picture and the sound, brightness, smoothing presets, static colors and scenes, preview sequence
