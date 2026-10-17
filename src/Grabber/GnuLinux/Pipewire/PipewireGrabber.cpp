@@ -134,7 +134,10 @@ namespace Halomux::Grabber
     }
 
     auto configDataReadyFuture = m_pwData.screenDataReadyPromise.get_future();
-    m_pipewireThread.emplace(_pipewireThread, &m_capture, &m_pwData);
+    m_loopThread.emplace(
+      [this](pw_main_loop* loop){return _startCapture(&m_capture, &m_pwData, loop);},
+      [this](pw_main_loop*){_stopCapture(&m_pwData);}
+    );
 
     // A stream that never negotiates must neither hang a screen selection nor the shutdown
     static constexpr auto StreamsTimeout = std::chrono::seconds(15);
@@ -768,17 +771,20 @@ namespace Halomux::Grabber
   }
 
 
-  void PipewireGrabber::_pipewireThread(
+  bool PipewireGrabber::_startCapture(
     XdgDesktopPortal::Capture* capture,
-    PipewireData* pw
+    PipewireData* pw,
+    pw_main_loop* loop
   )
   {
-    pw_init(NULL, NULL);
-    pw->pwInitialized = true;
-    pw_core_events coreEvents = {};
-    coreEvents.version = PW_VERSION_CORE_EVENTS;
-    coreEvents.info = _onCoreInfoCallback;
-    coreEvents.error = _onCoreErrorCallback;
+    // Registered as listeners: outlive the core and the streams
+    static const pw_core_events coreEvents = [] {
+      pw_core_events events = {};
+      events.version = PW_VERSION_CORE_EVENTS;
+      events.info = _onCoreInfoCallback;
+      events.error = _onCoreErrorCallback;
+      return events;
+    }();
 
     static const pw_stream_events streamEvents = [] {
       pw_stream_events events = {};
@@ -791,9 +797,10 @@ namespace Halomux::Grabber
       return events;
     }();
 
-    pw->loop = pw_main_loop_new(NULL);
-    pw->context = pw_context_new(pw_main_loop_get_loop(pw->loop), NULL, 0);
-    pw->renegotiateEvent = pw_loop_add_event(pw_main_loop_get_loop(pw->loop), _onRenegotiate, pw);
+    // Read by the other threads once the ready promise is set
+    pw->loop = loop;
+    pw->context = pw_context_new(pw_main_loop_get_loop(loop), NULL, 0);
+    pw->renegotiateEvent = pw_loop_add_event(pw_main_loop_get_loop(loop), _onRenegotiate, pw);
 
     // The GL context lives in this thread, like every Pipewire callback using it
     if(const char* disableGpu = std::getenv("HALOMUX_DISABLE_GPU"); disableGpu && std::string(disableGpu) == "1"){
@@ -824,28 +831,21 @@ namespace Halomux::Grabber
       }
     }
 
-    auto core = pw_context_connect_fd(pw->context, fcntl(static_cast<int>(capture->pwFd), F_DUPFD_CLOEXEC, 5), NULL, 0);
+    pw->core = pw_context_connect_fd(pw->context, fcntl(static_cast<int>(capture->pwFd), F_DUPFD_CLOEXEC, 5), NULL, 0);
 
-    if(core == nullptr){
+    if(pw->core == nullptr){
       Core::Logger::error("[pipewire] Failed to connect to Pipewire");
       if(!pw->promiseSetAlready){
         pw->screenDataReadyPromise.set_value(false);
         pw->promiseSetAlready = true;
       }
-      pw->gpu.reset();
-      pw_loop_destroy_source(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
-      pw->renegotiateEvent = nullptr;
-      pw_context_destroy(pw->context);
-      pw->context = nullptr;
-      pw_main_loop_destroy(pw->loop);
-      pw->loop = nullptr;
-      return;
+      return false;
     }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-    pw_core_add_listener(core, &pw->coreListener, &coreEvents, pw);
+    pw_core_add_listener(pw->core, &pw->coreListener, &coreEvents, pw);
 
     // One stream per captured monitor, on the same connection
     for(auto& stream : pw->streams){
@@ -857,7 +857,7 @@ namespace Halomux::Grabber
       );
 
       const std::string streamName = "HalomuxVideo" + std::to_string(stream->index + 1);
-      stream->stream = pw_stream_new(core, streamName.c_str(), props);
+      stream->stream = pw_stream_new(pw->core, streamName.c_str(), props);
       pw_stream_add_listener(stream->stream, &stream->listener, &streamEvents, stream.get());
 
       std::array<uint8_t, 8192> buffer;
@@ -871,25 +871,39 @@ namespace Halomux::Grabber
     }
 #pragma GCC diagnostic pop
 
-    pw_main_loop_run(pw->loop);
+    return true;
+  }
 
+
+  void PipewireGrabber::_stopCapture(
+    PipewireData* pw
+  )
+  {
     // Releases the buffers, and with them the imported DMA-BUFs, while the GL context still exists
     // Disconnecting isn't a monitor lost while capturing
     pw->stopping = true;
     for(auto& stream : pw->streams){
-      pw_stream_disconnect(stream->stream);
-      spa_hook_remove(&stream->listener);
-      g_clear_pointer(&stream->stream, pw_stream_destroy);
+      if(stream->stream){
+        pw_stream_disconnect(stream->stream);
+        spa_hook_remove(&stream->listener);
+        g_clear_pointer(&stream->stream, pw_stream_destroy);
+      }
     }
 
     pw->gpu.reset();
-    pw_loop_destroy_source(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
-    pw->renegotiateEvent = nullptr;
 
-    spa_hook_remove(&pw->coreListener);
-    pw_core_disconnect(core);
+    if(pw->renegotiateEvent){
+      pw_loop_destroy_source(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+      pw->renegotiateEvent = nullptr;
+    }
+
+    if(pw->core){
+      spa_hook_remove(&pw->coreListener);
+      pw_core_disconnect(pw->core);
+      pw->core = nullptr;
+    }
+
     g_clear_pointer(&pw->context, pw_context_destroy);
-    g_clear_pointer(&pw->loop, pw_main_loop_destroy);
   }
 
 
@@ -1142,26 +1156,12 @@ namespace Halomux::Grabber
 
   void PipewireGrabber::_teardownPipewire()
   {
-    if(m_pwData.loop){
-      // Quit the loop
-      pw_main_loop_quit(m_pwData.loop);
-    }
-
-    // Waiting for thread to finish
-    if(m_pipewireThread.has_value()){
-      m_pipewireThread.value().join();
-      m_pipewireThread.reset();
-    }
+    // Quits the loop safely and waits for its thread, which stops the streams
+    m_loopThread.reset();
 
     if(m_capture.pwFd > 0){
       close(static_cast<int>(m_capture.pwFd));
       m_capture.pwFd = 0;
-    }
-
-    // The thread is joined: the flag is stable
-    if(m_pwData.pwInitialized){
-      pw_deinit();
-      m_pwData.pwInitialized = false;
     }
   }
 
@@ -1178,12 +1178,6 @@ namespace Halomux::Grabber
     if(m_xdgThread.has_value()){
       m_xdgThread.value().join();
       m_xdgThread.reset();
-    }
-
-    // Waiting for thread to finish
-    if(m_pipewireThread.has_value()){
-      m_pipewireThread.value().join();
-      m_pipewireThread.reset();
     }
   }
 }

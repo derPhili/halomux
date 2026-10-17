@@ -3,6 +3,7 @@
 #include <atomic>
 
 #include <Halomux/Grabber/IGrabber.hpp>
+#include <Halomux/Pipewire/LoopThread.hpp>
 
 #include <memory>
 #include <mutex>
@@ -112,13 +113,11 @@ namespace Halomux::Grabber
       spa_hook coreListener;
       pw_main_loop* loop{nullptr};
       pw_context* context{nullptr};
+      pw_core* core{nullptr};
       std::vector<std::unique_ptr<StreamData>> streams;
       std::promise<bool> screenDataReadyPromise;
       bool promiseSetAlready{false};
       Core::Config* config;
-      // Whether the Pipewire thread called pw_init(): a grabber whose screen selection failed
-      // never did, and must not take back the reference of another one
-      bool pwInitialized{false};
 
       // Channel regions and their colors, shared between the Pipewire thread and the streaming loop
       mutable std::mutex channelsMutex;
@@ -410,10 +409,22 @@ namespace Halomux::Grabber
 
 
     /**
-     * Pipewire thread
-    */
-    static void _pipewireThread(
+     * @brief Connects to the portal's Pipewire remote and starts a stream per monitor (loop thread)
+     *
+     * @return true The capture started, the loop runs
+     */
+    static bool _startCapture(
       XdgDesktopPortal::Capture* capture,
+      PipewireData* pw,
+      pw_main_loop* loop
+    );
+
+
+    /**
+     * @brief Stops the streams and releases the GPU path (loop thread)
+     *
+     */
+    static void _stopCapture(
       PipewireData* pw
     );
 
@@ -432,7 +443,8 @@ namespace Halomux::Grabber
 
     // Attributes
     std::optional<std::thread> m_xdgThread;
-    std::optional<std::thread> m_pipewireThread;
+    // Its thread runs the streams; reset before the data it uses goes away (see _teardownPipewire())
+    std::optional<Pipewire::LoopThread> m_loopThread;
     XdgDesktopPortal::Capture m_capture;
     PipewireData m_pwData;
     // Captured monitors, known once every stream has its format
