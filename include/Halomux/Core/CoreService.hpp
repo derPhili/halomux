@@ -492,10 +492,12 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Saves the current state of a user-defined configuration as profile
-     * 
+     * @brief Saves the lamp settings of the current entertainment area in the profile
+     *
+     * @return true Saved
+     * @return false No area is selected, or the file couldn't be written
      */
-    void saveProfile();
+    bool saveProfile();
 
 
      /**

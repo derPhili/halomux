@@ -539,12 +539,12 @@ namespace Halomux::Core
   }
 
 
-  void CoreService::saveProfile()
+  bool CoreService::saveProfile()
   {
     const std::optional<std::string> areaId = currentEntertainmentConfigurationId();
     if(!areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
-      return;
+      return false;
     }
 
     // The other areas' lamp settings are kept
@@ -564,11 +564,18 @@ namespace Halomux::Core
       profileFile << profile.dump(2) << "\n";
       if(!profileFile){
         Logger::error("Failed to write profile ", std::quoted(tmpPath.string()));
-        return;
+        return false;
       }
     }
 
-    std::filesystem::rename(tmpPath, pp);
+    std::error_code error;
+    std::filesystem::rename(tmpPath, pp, error);
+    if(error){
+      Logger::error("Failed to write profile ", std::quoted(pp.string()), ": ", error.message());
+      return false;
+    }
+
+    return true;
   }
 
 

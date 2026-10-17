@@ -570,3 +570,30 @@ target_compile_options(TestDtlsClient PRIVATE -fsanitize=address,undefined)
 target_link_options(TestDtlsClient PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME DtlsClient COMMAND TestDtlsClient)
+
+
+# TestHttpErrors: malformed requests get 400, unknown resources 404, in one answer shape
+add_executable(TestHttpErrors
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HttpServer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HostCheck.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/RouteTools.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestHttpErrors.cpp
+)
+
+set_target_properties(TestHttpErrors PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestHttpErrors PUBLIC
+  include
+)
+
+target_link_libraries(TestHttpErrors PUBLIC
+  httplib::httplib
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+add_test(NAME HttpErrors COMMAND TestHttpErrors)

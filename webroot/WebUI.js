@@ -606,6 +606,11 @@ class WebUI
     promise.catch((error) => {
       log(error);
       this._showLoading(false);
+
+      // Back to the area actually streamed to
+      RequestUtils.get("/api/entertainmentConfigurations")
+      .then((data) => {this._entertainmentConfigurationsCallback(data);})
+      .catch((error) => {log(error);});
     });
   }
 

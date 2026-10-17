@@ -3,6 +3,7 @@
 #include <filesystem>
 
 #include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Network/Http/Server/RouteTools.hpp>
 #include <Halomux/Core/Scenes.hpp>
 #include <Halomux/Serialization/Channel.hpp>
 #include <Halomux/Serialization/Config.hpp>
@@ -110,11 +111,16 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/channel/:channelId", [this](const Request& req, Response& res){
-      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
+      const uint8_t channelId = channelIdOf(req);
 
-      std::string response = webChannel(m_coreService->channels().at(channelId)).dump();
+      const auto channels = m_coreService->channels();
+      const auto channelIt = channels.find(channelId);
+      if(channelIt == channels.end()){
+        throw HttpError(404, "unknown channel");
+      }
+
       res.contentType = "application/json";
-      res.body = response;
+      res.body = webChannel(channelIt->second).dump();
     });
 
 
@@ -254,13 +260,14 @@ namespace Halomux::Network::Http::Server
     // PUT METHODS
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setEntertainmentConfiguration", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      std::string entertainmentConfigurationId = Json::parse(data);
+      const std::string entertainmentConfigurationId = Json::parse(req.body).get<std::string>();
 
-      bool succeeded = m_coreService->setEntertainmentConfiguration(entertainmentConfigurationId);
+      if(!m_coreService->setEntertainmentConfiguration(entertainmentConfigurationId)){
+        throw HttpError(404, "unknown entertainment area, or its lamps couldn't be loaded");
+      }
 
       Json jsonResponse = {
-        {"succeeded", succeeded},
+        {"succeeded", true},
         {"entertainmentConfigurationId", entertainmentConfigurationId},
         {"channels", webChannels(m_coreService->channels())}
       };
@@ -272,22 +279,22 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelUV/:channelId", [this](const Request& req, Response& res){
-      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
+      const uint8_t channelId = channelIdOf(req);
 
       const std::string& data = req.body;
       Json jsonUV = Json::parse(data);
 
       float x = jsonUV.at("x");
       float y = jsonUV.at("y");
-      Imaging::UVCorner uvCorner = static_cast<Imaging::UVCorner>(jsonUV.at("type").get<int>());
+      const auto uvCorner = parseUVCorner(jsonUV.at("type").get<int>());
+      if(!uvCorner.has_value()){
+        throw HttpError(400, "unknown corner");
+      }
 
-      auto optClampedUVs = m_coreService->setChannelUV(channelId, {x, y}, uvCorner);
+      auto optClampedUVs = m_coreService->setChannelUV(channelId, {x, y}, *uvCorner);
 
       if(!optClampedUVs.has_value()){
-        res.status = 404;
-        res.contentType = "application/json";
-        res.body = Json{{"succeeded", false}, {"error", "invalid channel id"}}.dump();
-        return;
+        throw HttpError(404, "unknown channel");
       }
 
       const auto& clampedUVs = optClampedUVs.value();
@@ -305,47 +312,28 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelMonitor/:channelId", [this](const Request& req, Response& res){
-      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
-      res.contentType = "application/json";
-
-      size_t monitor = 0;
-      Imaging::UVs uvs;
-      try{
-        const Json jsonData = Json::parse(req.body);
-        monitor = jsonData.at("monitor").get<size_t>();
-        uvs = jsonData.at("uvs").get<Imaging::UVs>();
-      }
-      catch(const Json::exception&){
-        res.status = 400;
-        res.body = Json{{"succeeded", false}, {"error", "expected a monitor index and uvs"}}.dump();
-        return;
-      }
+      const uint8_t channelId = channelIdOf(req);
+      const Json jsonData = Json::parse(req.body);
+      const size_t monitor = jsonData.at("monitor").get<size_t>();
+      const Imaging::UVs uvs = jsonData.at("uvs").get<Imaging::UVs>();
 
       if(!m_coreService->setChannelMonitor(channelId, monitor, uvs).has_value()){
-        res.status = 400;
-        res.body = Json{{"succeeded", false}, {"error", "invalid channel id or monitor"}}.dump();
-        return;
+        throw HttpError(404, "unknown channel or monitor");
       }
 
+      res.contentType = "application/json";
       res.body = webChannel(m_coreService->channels().at(channelId)).dump();
     });
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelGammaFactor/:channelId", [this](const Request& req, Response& res){
-      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
+      const uint8_t channelId = channelIdOf(req);
       const std::string& data = req.body;
       Json jsonGammaFactorData = Json::parse(data);
       float gammaFactor = jsonGammaFactorData.at("gammaFactor");
 
       if(!m_coreService->setChannelGammaFactor(channelId, gammaFactor)){
-        std::string response = Json{
-          {"succeeded", false},
-          {"error", "invalid channel id"}
-        }.dump();
-
-        res.contentType = "application/json";
-        res.body = response;
-        return;
+        throw HttpError(404, "unknown channel");
       }
 
       Json jsonResponse = Json{
@@ -518,21 +506,14 @@ namespace Halomux::Network::Http::Server
 
     // POST METHODS
     m_httpServer.addRoute(HttpMethod::Post, "/api/setChannelActivity/:channelId", [this](const Request& req, Response& res){
-      uint8_t channelId = static_cast<uint8_t>(std::stoi(req.pathParams.at("channelId")));
+      const uint8_t channelId = channelIdOf(req);
 
       const std::string& data = req.body;
       Json jsonChannelData = Json::parse(data);
       bool active = jsonChannelData.at("active");
 
       if(!m_coreService->setChannelActivity(channelId, active)){
-        std::string response = Json{
-          {"succeeded", false},
-          {"error", "invalid channel id"}
-        }.dump();
-
-        res.contentType = "application/json";
-        res.body = response;
-        return;
+        throw HttpError(404, "unknown channel");
       }
 
       Json jsonResponse = Json{
@@ -563,7 +544,9 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Post, "/api/saveProfile", [this](const Request& /*req*/, Response& res){
-      m_coreService->saveProfile();
+      if(!m_coreService->saveProfile()){
+        throw HttpError(500, "the profile couldn't be saved");
+      }
 
       Json jsonResponse = {
         {"succeeded", true}

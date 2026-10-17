@@ -6,7 +6,11 @@
 
 #include <httplib.h>
 
+#include <nlohmann/json.hpp>
+
+#include <Halomux/Core/Logger.hpp>
 #include <Halomux/Network/Http/Server/HostCheck.hpp>
+#include <Halomux/Network/Http/Server/RouteTools.hpp>
 #include <Halomux/Network/Http/Server/HttpDataStructs.hpp>
 
 
@@ -36,6 +40,16 @@ namespace Halomux::Network::Http::Server
       const std::string host = req.get_header_value("Host");
 
       return !host.empty() && (origin == "http://" + host || origin == "https://" + host);
+    }
+
+
+    static Response _errorResponse(int status, const std::string& message)
+    {
+      return {
+        .status = status,
+        .contentType = "application/json",
+        .body = nlohmann::json{{"succeeded", false}, {"error", message}}.dump()
+      };
     }
 
 
@@ -71,7 +85,21 @@ namespace Halomux::Network::Http::Server
           r.queryParams[key] = value;
         }
 
-        handler(r, w);
+        try{
+          handler(r, w);
+        }
+        catch(const HttpError& e){
+          w = _errorResponse(e.status(), e.what());
+        }
+        catch(const nlohmann::json::exception& e){
+          // Malformed body: missing fields, wrong types, invalid JSON
+          w = _errorResponse(400, std::string("malformed request: ") + e.what());
+        }
+        catch(const std::exception& e){
+          // A bug rather than a bad request: logged, not disclosed
+          Core::Logger::error("Request ", req.method, " ", req.path, " failed: ", e.what());
+          w = _errorResponse(500, "internal error");
+        }
 
         res.status = w.status;
 
