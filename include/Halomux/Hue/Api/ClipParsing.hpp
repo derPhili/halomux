@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 
 #include <Halomux/Serialization/Json.hpp>
 
@@ -28,6 +29,30 @@ namespace Halomux::Hue::Api::ClipParsing
    * @return true The answer holds no error
    */
   bool succeeded(
+    const Serialization::Json& response
+  );
+
+
+  /**
+   * @brief Result of pairing with the bridge
+   *
+   */
+  struct Pairing
+  {
+    // {"username", "clientkey"} once the link button was pressed
+    std::optional<Serialization::Json> credentials;
+    // Why it failed, such as "link button not pressed"
+    std::string error;
+  };
+
+
+  /**
+   * @brief Reads the answer to POST /api, the v1 pairing request
+   *
+   * @param response Answer of the bridge
+   * @return Pairing Credentials, or the reason they're missing
+   */
+  Pairing pairing(
     const Serialization::Json& response
   );
 }

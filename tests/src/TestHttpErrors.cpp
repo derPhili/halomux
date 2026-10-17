@@ -1,3 +1,4 @@
+#include <chrono>
 #include <thread>
 
 #include <httplib.h>
@@ -108,6 +109,19 @@ int main()
 
   server.stop();
   listener.join();
+
+  // A stop requested before the server is bound, such as SIGTERM during startup, isn't lost
+  {
+    HttpServer early;
+    early.addRoute(HttpMethod::Get, "/", [](const Request&, Response&){});
+    early.stop();
+    expect("Bound after an early stop", early.bind("127.0.0.1", static_cast<unsigned>(port + 1)));
+
+    const auto start = std::chrono::steady_clock::now();
+    std::thread earlyListener([&early](){early.listen();});
+    earlyListener.join();
+    expect("Listening ends at once after an early stop", std::chrono::steady_clock::now() - start < std::chrono::seconds(2));
+  }
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

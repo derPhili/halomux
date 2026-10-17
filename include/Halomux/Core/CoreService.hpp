@@ -516,6 +516,14 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Tells whether the setup registered everything needed: bridge address and credentials
+     *
+     * @return true The setup can be finished
+     */
+    bool initialSetupComplete() const;
+
+
+    /**
      * @brief Aborts the initial setup if it is currently running
      *
      */

@@ -15,6 +15,7 @@
 #include <Halomux/Hue/Api/ApiTools.hpp>
 #include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Hue/Api/BridgeTls.hpp>
+#include <Halomux/Hue/Api/ClipParsing.hpp>
 #include <Halomux/Serialization/Json.hpp>
 #include <Halomux/Serialization/EntertainmentConfiguration.hpp>
 #include <Halomux/Serialization/JsonSerializer.hpp>
@@ -89,7 +90,12 @@ namespace Halomux::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    const std::string& bridgeAddress = m_config.bridgeAddress().value();
+    // The setup validates the address first
+    if(!m_config.bridgeAddress().has_value()){
+      return false;
+    }
+
+    const std::string bridgeAddress = m_config.bridgeAddress().value();
     const Network::Http::Client::Headers headers = {{"hue-application-key", credentials.username()}};
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/clip/v2/resource/bridge", "GET", "", headers, Hue::Api::bridgeTls(bridgeAddress));
     if(!response.has_value()){
@@ -116,19 +122,30 @@ namespace Halomux::Core
 
   Serialization::Json CoreService::registerNewUser()
   {
+    // The setup validates the address first
+    if(!m_config.bridgeAddress().has_value()){
+      return {{"succeeded", false}, {"error", "no bridge address yet"}};
+    }
+
     auto response = Hue::Api::ApiTools::registerNewUser(m_config.bridgeAddress().value());
 
     if(!response.has_value()){
       return {{"succeeded", false}, {"error", "unreachable bridge"}};
     }
 
-    auto jsonResponse = response.value().asJson();
-
-    if(jsonResponse.at(0).contains("error")){
-      return {{"succeeded", false}, {"error", jsonResponse.at(0).at("error").at("description")}};
+    Hue::Api::ClipParsing::Pairing pairing;
+    try{
+      pairing = Hue::Api::ClipParsing::pairing(response.value().asJson());
+    }
+    catch(const std::exception&){
+      return {{"succeeded", false}, {"error", "unexpected answer of the bridge"}};
     }
 
-    auto credentials = jsonResponse.at(0).at("success").get<Hue::Auth::Credentials>();
+    if(!pairing.credentials.has_value()){
+      return {{"succeeded", false}, {"error", pairing.error}};
+    }
+
+    auto credentials = pairing.credentials->get<Hue::Auth::Credentials>();
     m_config.setCredentials(credentials);
 
     return {{"succeeded", true}, {"username", credentials.username()}, {"clientkey", credentials.clientkey()}};
@@ -620,6 +637,12 @@ namespace Halomux::Core
     if(!verified){
       Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");
     }
+  }
+
+
+  bool CoreService::initialSetupComplete() const
+  {
+    return m_config.initialSetupOk();
   }
 
 
