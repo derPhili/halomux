@@ -159,16 +159,15 @@ namespace Halomux::Core
   }
 
 
-  const Hue::Api::EntertainmentConfigurations& CoreService::entertainmentConfigurations() const
+  Hue::Api::EntertainmentConfigurations CoreService::entertainmentConfigurations() const
   {
-    return m_runtime.m_selector->entertainmentConfigurations();
+    return m_runtime.m_areaSession ? m_runtime.m_areaSession->areas() : Hue::Api::EntertainmentConfigurations{};
   }
 
 
   std::optional<std::string> CoreService::currentEntertainmentConfigurationId() const
   {
-    std::lock_guard lock(m_runtime.m_selectorMutex);
-    return m_runtime.m_selector->currentEntertainmentConfigurationId();
+    return m_runtime.m_areaSession ? m_runtime.m_areaSession->currentAreaId() : std::nullopt;
   }
 
 
@@ -192,14 +191,6 @@ namespace Halomux::Core
     std::lock_guard lock(m_runtime.m_currentColorsMutex);
     return m_runtime.m_currentColorsSnapshot;
   }
-
-
-  const Hue::Api::EntertainmentConfiguration& CoreService::currentEntertainmentConfiguration() const
-  {
-    std::lock_guard lock(m_runtime.m_selectorMutex);
-    return m_runtime.m_selector->currentEntertainmentConfiguration();
-  }
-
 
 
   glm::ivec2 CoreService::displayResolution() const
@@ -330,8 +321,7 @@ namespace Halomux::Core
     const std::string& entertainmentConfigurationId
   )
   {
-    std::lock_guard lock(m_runtime.m_selectorMutex);
-    return m_runtime._enableEntertainmentConfiguration(entertainmentConfigurationId);
+    return m_runtime.m_areaSession && m_runtime.m_areaSession->select(entertainmentConfigurationId);
   }
 
 
@@ -551,15 +541,14 @@ namespace Halomux::Core
 
   void CoreService::saveProfile()
   {
-    std::lock_guard selectorLock(m_runtime.m_selectorMutex);
-
-    if(!m_runtime.m_selector->validSelection()){
+    const std::optional<std::string> areaId = currentEntertainmentConfigurationId();
+    if(!areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
       return;
     }
 
     // The other areas' lamp settings are kept
-    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), m_runtime.m_selector->currentEntertainmentConfigurationId().value(), Serialization::Json(m_runtime.m_channelStore.snapshot()));
+    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *areaId, Serialization::Json(m_runtime.m_channelStore.snapshot()));
 
     if(!m_config.profileName().has_value()){
       m_config.setProfileName("profile");

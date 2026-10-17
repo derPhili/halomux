@@ -74,9 +74,9 @@ namespace Halomux::Core
     /**
      * @brief Returns the list of available entertainment configurations
      * 
-     * @return const EntertainmentConfigurations& Available entertainment configurations
+     * @return EntertainmentConfigurations Available entertainment configurations, empty until the bridge answered
      */
-    const Hue::Api::EntertainmentConfigurations& entertainmentConfigurations() const;
+    Hue::Api::EntertainmentConfigurations entertainmentConfigurations() const;
 
 
     /**
@@ -85,15 +85,6 @@ namespace Halomux::Core
      * @return const std::string& Current entertainment configuration ID
      */
     std::optional<std::string> currentEntertainmentConfigurationId() const;
-
-
-
-    /**
-     * @brief Returns the current entertainment configuration
-     * 
-     * @return const EntertainmentConfiguration& Current entertainment configuration
-     */
-    const Hue::Api::EntertainmentConfiguration& currentEntertainmentConfiguration() const;
 
 
 

@@ -94,12 +94,13 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/entertainmentConfigurations", [this](const Request& /*req*/, Response& res){
-      const auto& entertainmentConfigurations = m_coreService->entertainmentConfigurations();
-      std::string currentEntertainmentConfigurationId = m_coreService->currentEntertainmentConfigurationId().value();
+      const auto entertainmentConfigurations = m_coreService->entertainmentConfigurations();
+      // None while the bridge is unreachable or has no area yet
+      const auto currentEntertainmentConfigurationId = m_coreService->currentEntertainmentConfigurationId();
 
       Json jsonResponse = {
         {"entertainmentConfigurations", entertainmentConfigurations},
-        {"currentEntertainmentConfigurationId", currentEntertainmentConfigurationId}
+        {"currentEntertainmentConfigurationId", currentEntertainmentConfigurationId.has_value() ? Json(*currentEntertainmentConfigurationId) : Json(nullptr)}
       };
 
       std::string response = jsonResponse.dump();

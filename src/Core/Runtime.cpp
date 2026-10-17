@@ -154,11 +154,21 @@ namespace Halomux::Core
     const auto& credentials = m_config.credentials().value();
     const std::string& bridgeAddress =  m_config.bridgeAddress().value();
 
-    m_selector = std::make_unique<Hue::Api::EntertainmentConfigurationSelector>(credentials, bridgeAddress);
+    // Selects the area of the profile, and keeps trying in the background if the bridge is offline
+    static constexpr auto AreaCheckInterval = std::chrono::seconds(5);
+    m_areaSession = std::make_unique<AreaSession>(
+      std::make_unique<Hue::Api::ClipBridgeApi>(credentials, bridgeAddress),
+      [credentials, bridgeAddress](const std::string& areaId) -> std::unique_ptr<Stream::IStreamer>{
+        // Connects in the background: replacing it doesn't hold the streaming loop
+        auto streamer = std::make_unique<Stream::Streamer>(credentials, bridgeAddress);
+        streamer->setEntertainmentConfigurationId(areaId);
+        return streamer;
+      },
+      [this](const std::string& areaId, const Hue::Api::ChannelMembers& members){_onAreaSelected(areaId, members);},
+      std::chrono::duration_cast<std::chrono::milliseconds>(AreaCheckInterval)
+    );
 
-    const std::string entertainmentConfigurationId = Profile::currentArea(m_coreService->getProfile().value_or(Serialization::Json()));
-
-    _enableEntertainmentConfiguration(entertainmentConfigurationId);
+    m_areaSession->start(Profile::currentArea(m_coreService->getProfile().value_or(Serialization::Json())));
 
     return true;
   }
@@ -204,42 +214,14 @@ namespace Halomux::Core
   }
 
 
-  void Runtime::_initChannels(
-    const Serialization::Json& jsonChannels
+  void Runtime::_onAreaSelected(
+    const std::string& areaId,
+    const Hue::Api::ChannelMembers& members
   )
   {
-    const auto& username = m_config.credentials().value().username();
-    const auto& bridgeAddress =  m_config.bridgeAddress().value();
-    auto devices = Hue::Api::ApiTools::loadDevices(username, bridgeAddress);
-    auto entertainmentConfigurationsChannels = Hue::Api::ApiTools::loadEntertainmentConfigurationsChannels(username, bridgeAddress);
-
-    Hue::Api::Channels channels;
-
-    for(const auto& [id, channel] : m_selector->currentEntertainmentConfiguration().channels){
-      bool found = false;
-      const auto& members = Hue::Api::ApiTools::matchDevices(entertainmentConfigurationsChannels.at(m_selector->currentEntertainmentConfigurationId().value()).at(id), devices);
-      for(const auto& jsonProfileChannel : jsonChannels){
-        if(jsonProfileChannel.at("channelId") == id){
-          bool active = jsonProfileChannel.at("active");
-          Serialization::Json jsonUVs = jsonProfileChannel.at("uvs");
-
-          Imaging::UVs uvs = jsonUVs.get<Imaging::UVs>();
-
-          float gammaFactor = jsonProfileChannel.at("gammaFactor");
-          auto& profileChannel = channels.emplace(id, Hue::Api::Channel{active, members, gammaFactor, uvs}).first->second;
-          profileChannel.monitor = Serialization::monitorRefFromJson(jsonProfileChannel);
-
-          found = true;
-          break;
-        }
-      }
-
-      if(!found){
-        channels.emplace(id, Hue::Api::Channel{false, members, 0.0f});
-      }
-    }
-
-    m_channelStore.replace(std::move(channels), grabber()->monitors());
+    // The lamp settings saved for this area only: channel ids repeat across areas
+    const auto profileChannels = Profile::channelsForArea(m_coreService->getProfile().value_or(Serialization::Json()), areaId);
+    m_channelStore.replace(Profile::channelsFromProfile(members, profileChannels), grabber()->monitors());
   }
 
 
@@ -298,34 +280,6 @@ namespace Halomux::Core
       // Stops the former capture, unless an update still uses it
       oldGrabber.reset();
     });
-
-    return true;
-  }
-
-
-  bool Runtime::_enableEntertainmentConfiguration(
-    const std::string& entertainmentConfigurationId
-  )
-  {
-    if(!m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return false;
-    }
-
-    const auto& credentials = m_config.credentials().value();
-
-    // The streamer connects in the background: replacing it doesn't hold the streaming loop
-    auto streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
-    streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
-
-    {
-      std::lock_guard lock(m_streamerMutex);
-      m_streamer = std::move(streamer);
-    }
-
-    // The lamp settings saved for this area only: channel ids repeat across areas
-    const Serialization::Json jsonChannels = Profile::channelsForArea(m_coreService->getProfile().value_or(Serialization::Json()), m_selector->currentEntertainmentConfigurationId().value());
-
-    _initChannels(jsonChannels);
 
     return true;
   }
@@ -558,11 +512,8 @@ namespace Halomux::Core
       }
     }
 
-    {
-      std::lock_guard lock(m_streamerMutex);
-      if(m_streamer.get()){
-        m_streamer->streamChannels(channelStreams);
-      }
+    if(m_areaSession){
+      m_areaSession->stream(channelStreams);
     }
 
     {
@@ -574,14 +525,9 @@ namespace Halomux::Core
 
   void Runtime::_shutdown()
   {
-    {
-      // Close the DTLS session before asking the bridge to stop streaming
-      std::lock_guard lock(m_streamerMutex);
-      m_streamer.reset();
+    if(m_areaSession){
+      m_areaSession->stop();
     }
-
-    std::lock_guard lock(m_selectorMutex);
-    m_selector->disableStreaming();
   }
 
 }

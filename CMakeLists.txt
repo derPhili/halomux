@@ -96,6 +96,7 @@ set(AUDIO_SOURCE
 )
 
 set(CORE_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AreaSession.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
 
@@ -114,10 +115,10 @@ set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ApiTools.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeAddress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeDiscovery.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeApi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeTls.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ClipParsing.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/EntertainmentConfigurationSelector.cpp
 )
 
 set(GRABBER_SOURCE

@@ -9,10 +9,10 @@
 
 #include <Halomux/Audio/AudioAnalyzer.hpp>
 #include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Core/AreaSession.hpp>
 #include <Halomux/Core/ChannelStore.hpp>
 #include <Halomux/Core/Config.hpp>
 #include <Halomux/Core/MonitorSelection.hpp>
-#include <Halomux/Hue/Api/EntertainmentConfigurationSelector.hpp>
 #include <Halomux/Grabber/IGrabber.hpp>
 #include <Halomux/Network/Http/Server/WebUIBackend.hpp>
 #include <Halomux/Stream/Streamer.hpp>
@@ -113,16 +113,6 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Initializes the channels based on the profile settings
-     * 
-     * @param jsonProfile Data from the user-defined profile
-     */
-    void _initChannels(
-      const Serialization::Json& jsonProfile
-    );
-
-
-    /**
      * @brief Returns the current grabber, which a screen selection may replace at any time
      *
      * @return std::shared_ptr<Grabber::IGrabber> Grabber, kept alive by the caller while used
@@ -140,14 +130,14 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Enables the selected entertainment configuration, recreates streamer  and loads related profile
-     * 
-     * @param entertainmentConfigurationId ID of the entertainment configuration to enable
-     * @return true The entertainment configuration was enabled
-     * @return false The entertainment configuration could not be selected
+     * @brief Loads the lamps of a newly selected area, with their saved settings
+     *
+     * @param areaId Entertainment area
+     * @param members Lamps of each of its channels
      */
-    bool _enableEntertainmentConfiguration(
-      const std::string& entertainmentConfigurationId
+    void _onAreaSelected(
+      const std::string& areaId,
+      const Hue::Api::ChannelMembers& members
     );
 
 
@@ -166,8 +156,8 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Disables streaming on current entertainment configuration
-     * 
+     * @brief Stops streaming to the entertainment area
+     *
      */
     void _shutdown();
 
@@ -182,23 +172,17 @@ namespace Halomux::Core
     bool m_openedSetup{false};
     std::unique_ptr<Timing::LoopRegulator> m_loopRegulator;
 
-    //  API structure wrapper
-    // Serializes entertainment configuration changes requested by the web UI threads
-    std::mutex m_selectorMutex;
-    std::unique_ptr<Hue::Api::EntertainmentConfigurationSelector> m_selector;
-
     // Lamps, their streams and the captured monitors, shared with the web UI threads
     ChannelStore m_channelStore;
+    // The entertainment area and the stream to it. Declared after the lamps, which its checks
+    // replace when they select an area: stopped first
+    std::unique_ptr<AreaSession> m_areaSession;
     // Last check for monitors lost while capturing (streaming thread)
     std::chrono::steady_clock::time_point m_lastLostMonitorsCheck{};
 
     // Current colors snapshot, for external consumers (e.g. REST API)
     mutable std::mutex m_currentColorsMutex;
     Hue::Api::ChannelStreams m_currentColorsSnapshot;
-
-    // Streamer
-    std::mutex m_streamerMutex;
-    std::unique_ptr<Stream::Streamer> m_streamer;
 
     // Service and flags
     ThreadedRestService m_webUIService;
