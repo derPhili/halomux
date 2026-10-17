@@ -537,3 +537,33 @@ target_link_options(TestLoopThread PRIVATE -fsanitize=address,undefined)
 
 add_test(NAME LoopThread COMMAND TestLoopThread)
 set_tests_properties(LoopThread AudioLifecycle PROPERTIES TIMEOUT 60)
+
+
+# TestDtlsClient: failed connection attempts release their TLS contexts
+add_executable(TestDtlsClient
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Stream/Impl/MbedTls/DtlsClient.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestDtlsClient.cpp
+)
+
+set_target_properties(TestDtlsClient PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestDtlsClient PUBLIC
+  include
+)
+
+target_link_libraries(TestDtlsClient PUBLIC
+  ${MBEDTLS_LIBS}
+  ${MBEDTLS_X509}
+  ${MBEDTLS_CRYPTO}
+  nlohmann_json::nlohmann_json
+)
+
+target_compile_options(TestDtlsClient PRIVATE -fsanitize=address,undefined)
+target_link_options(TestDtlsClient PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME DtlsClient COMMAND TestDtlsClient)

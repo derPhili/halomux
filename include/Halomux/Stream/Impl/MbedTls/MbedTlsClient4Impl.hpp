@@ -47,8 +47,9 @@ namespace Halomux::Stream
       void operator()(T* ptr) const noexcept
       {
         if(ptr){
+          // Releases what the context holds, then the context itself (allocated with new)
           FreeFunc(ptr);
-          ptr = nullptr;
+          delete ptr;
         }
       }
     };
