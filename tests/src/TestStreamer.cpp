@@ -1,5 +1,6 @@
 #include <chrono>
 #include <memory>
+#include <thread>
 
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Stream/Streamer.hpp>
@@ -25,7 +26,15 @@ int main()
 
   const Hue::Api::ChannelStreams channels = {{.id = 0, .r = 0.3f, .g = 0.3f, .b = 0.5f}, {.id = 1, .r = 0.3f, .g = 0.3f, .b = 0.5f}};
 
-  // Stream at 50 Hz for 3 seconds, while the first handshake runs
+  // Stream at 50 Hz for 3 seconds, while the first handshake runs. Meanwhile the bridge is
+  // noticed to have stopped the stream, as the area session does from its own thread.
+  std::jthread watchdog([&streamer](std::stop_token stopToken){
+    while(!stopToken.stop_requested()){
+      streamer->reconnect();
+      std::this_thread::sleep_for(100ms);
+    }
+  });
+
   Clock::duration longestFrame{};
   const auto start = Clock::now();
   while(Clock::now() - start < 3s){
@@ -34,6 +43,9 @@ int main()
     longestFrame = std::max(longestFrame, Clock::now() - frameStart);
     std::this_thread::sleep_for(20ms);
   }
+
+  watchdog.request_stop();
+  watchdog.join();
 
   const auto destructionStart = Clock::now();
   streamer.reset();
