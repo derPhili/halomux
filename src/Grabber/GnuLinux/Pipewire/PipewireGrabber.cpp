@@ -180,7 +180,7 @@ namespace Halomux::Grabber
     // Saved only now: a token of a selection that doesn't capture would ask again on every start
     if(m_capture.restoreToken.has_value() && config->restoreToken() != m_capture.restoreToken){
       config->setRestoreToken(*m_capture.restoreToken);
-      Core::Logger::log("Registered restore token: '", *m_capture.restoreToken, "' into config");
+      Core::Logger::log("Remembered the screen selection");
     }
   }
 
