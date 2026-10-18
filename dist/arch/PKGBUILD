@@ -16,13 +16,16 @@ depends=(
   'glib2'
   'libdrm'
   'libglvnd'
-  'mbedtls'
+  'mbedtls>=4'
   'opencv'
+  'openssl'
   'pipewire'
   'qt6-base'
   'qt6-svg'
   'qt6-webengine'
   'wayland'
+  'zlib'
+  'zstd'
   'xdg-desktop-portal'
 )
 makedepends=('cmake' 'git' 'glm' 'nlohmann-json' 'wayland-protocols')
