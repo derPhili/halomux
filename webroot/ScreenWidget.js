@@ -444,9 +444,9 @@ class ScreenWidget
         group.appendChild(grid);
       }
 
+      let label = null;
       if(this.monitors.length > 1){
-        let label = document.createElementNS(svg, "text");
-        label.textContent = monitor.description;
+        label = document.createElementNS(svg, "text");
         label.setAttribute("x", "98%");
         label.setAttribute("y", "95%");
         label.setAttribute("text-anchor", "end");
@@ -461,6 +461,11 @@ class ScreenWidget
       }
 
       this.monitorsAreaNode.appendChild(group);
+
+      // Measured once it's in the page: kept inside its monitor, next to the others
+      if(label){
+        ScreenWidget.fitLabel(label, monitor.description, rect.width * 0.94, rect.height * 0.4, {fontSize : 12, align : "bottom"});
+      }
     }
   }
 
@@ -552,10 +557,11 @@ class ScreenWidget
 
 
   /**
-   * Fits a label into a box around its position: wrapped into lines, then made smaller down to
-   * 8 px, and only then cut with an ellipsis. Narrow regions would otherwise let names overlap.
+   * Fits a label into a box at its position: wrapped into lines, then made smaller down to 8 px,
+   * and only then cut with an ellipsis. Narrow regions would otherwise let names overlap.
+   * Centered on its position, or with "bottom" ending there, its lines growing upwards.
    */
-  static fitLabel(textNode, text, maxWidth, maxHeight)
+  static fitLabel(textNode, text, maxWidth, maxHeight, {fontSize : baseSize = 13, align = "center"} = {})
   {
     const LineHeight = 1.2;
     const x = textNode.getAttribute("x");
@@ -587,7 +593,7 @@ class ScreenWidget
       return {lines, fits};
     };
 
-    let fontSize = 13;
+    let fontSize = baseSize;
     let result = layout(fontSize);
     while(!result.fits && fontSize > 8){
       fontSize--;
@@ -613,9 +619,9 @@ class ScreenWidget
       }
     }
 
-    // Centered on the label's position
+    const firstOffset = (result.lines.length - 1) * LineHeight * (align == "bottom" ? 1 : 0.5);
     result.lines.forEach((span, index) => {
-      span.setAttribute("dy", index == 0 ? `${-(result.lines.length - 1) * LineHeight / 2}em` : `${LineHeight}em`);
+      span.setAttribute("dy", index == 0 ? `${-firstOffset}em` : `${LineHeight}em`);
     });
   }
 
