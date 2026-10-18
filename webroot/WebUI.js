@@ -120,7 +120,11 @@ class WebUI
     this.confirmStopButton.addEventListener("click", () => {this._stop();});
     
     this.cancelStopButton = document.getElementById("cancelStopButton");
-    this.cancelStopButton.addEventListener("click", () => {this.overlay.style.display = "none";});
+    this.cancelStopButton.addEventListener("click", () => {
+      // The section too: the overlay is shown again for other messages, such as while switching areas
+      document.getElementById("confirmStopSection").style.display = "none";
+      this.overlay.style.display = "none";
+    });
 
     this.languageSelectNode = document.getElementById("languageSelect");
     this.languageSelectNode.value = I18n.setting;
