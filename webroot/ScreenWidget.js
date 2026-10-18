@@ -493,7 +493,9 @@ class ScreenWidget
       b = {x : a.x + width, y : a.y + height};
     }
 
-    this.webApp.moveChannelRegion(channelId, index, {uvA : a, uvB : b});
+    // On the cell grid: repeated steps would otherwise add up rounding errors
+    const snap = (point) => ({x : Math.round(point.x * monitor.subsampleWidth) / monitor.subsampleWidth, y : Math.round(point.y * monitor.subsampleHeight) / monitor.subsampleHeight});
+    this.webApp.moveChannelRegion(channelId, index, {uvA : snap(a), uvB : snap(b)});
   }
 
 
