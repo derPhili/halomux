@@ -242,6 +242,13 @@ halomux_add_test(DtlsClient
 )
 
 
+# Limits of HTTP requests, whose answers come from the network
+halomux_add_test(CurlClient
+  SOURCES ${SRC}/Network/Http/Client/CurlClient.cpp
+  LIBRARIES CURL::libcurl httplib::httplib nlohmann_json::nlohmann_json
+)
+
+
 # Light manager and configuration
 
 # Which Host headers the light manager answers, against DNS rebinding

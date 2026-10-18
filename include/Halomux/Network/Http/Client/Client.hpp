@@ -17,6 +17,10 @@ namespace Halomux::Network::Http::Client
 {
   using Headers = std::multimap<std::string, std::string>;
 
+  // Larger answers are refused: they come from the network, and a bridge's whole resource list
+  // is about 140 KB
+  inline constexpr size_t MaxResponseSize = 8 * 1024 * 1024;
+
 
   /**
    * @brief How the server certificate of a request is checked

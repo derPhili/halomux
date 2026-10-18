@@ -44,6 +44,11 @@ namespace Halomux::Network::Http::Client
     std::string* data
   )
   {
+    // Returning less than given aborts the transfer
+    if(data->size() + size * nmemb > MaxResponseSize){
+      return 0;
+    }
+
     data->append(ptr, size * nmemb);
     return size * nmemb;
   }
@@ -155,6 +160,8 @@ namespace Halomux::Network::Http::Client
         curl_easy_setopt(handle.get(), CURLOPT_HTTPHEADER, concatenatedHeaders.get());
       }
 
+      // Refused at once when announced, otherwise while it's received
+      curl_easy_setopt(handle.get(), CURLOPT_MAXFILESIZE_LARGE, static_cast<curl_off_t>(MaxResponseSize));
       curl_easy_setopt(handle.get(), CURLOPT_WRITEFUNCTION, writeCallback);
       curl_easy_setopt(handle.get(), CURLOPT_WRITEDATA, &responseString);
 
