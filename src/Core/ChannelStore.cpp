@@ -118,9 +118,11 @@ namespace Halomux::Core
         }
       }
 
-      const size_t monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_monitors.size());
-      channel.monitor = Grabber::monitorRef(m_monitors[monitor]);
-      channel.monitorIndex = monitor;
+      // None if every monitor is unplugged: the lamp then stays dark
+      if(const auto monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_monitors)){
+        channel.monitor = Grabber::monitorRef(m_monitors[*monitor]);
+        channel.monitorIndex = *monitor;
+      }
     }
 
     channel.setActive(active);
@@ -153,7 +155,8 @@ namespace Halomux::Core
   {
     std::lock_guard lock(m_mutex);
     auto channelIt = m_channels.find(channelId);
-    if(channelIt == m_channels.end() || monitor >= m_monitors.size()){
+    // An unplugged monitor has nothing to follow
+    if(channelIt == m_channels.end() || monitor >= m_monitors.size() || m_monitors[monitor].lost){
       return std::nullopt;
     }
 

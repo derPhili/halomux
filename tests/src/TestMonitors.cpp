@@ -128,10 +128,21 @@ int main()
   }
 
   // defaultMonitorForNewLamp: where most lamps are, the first one on a tie
-  expect("Most followed monitor", defaultMonitorForNewLamp({1, 1, 0}, 2) == 1);
-  expect("Tie goes to the first", defaultMonitorForNewLamp({0, 1}, 2) == 0);
-  expect("No lamps yet", defaultMonitorForNewLamp({}, 2) == 0);
-  expect("Stale index ignored", defaultMonitorForNewLamp({5, 5, 1}, 2) == 1);
+  {
+    const Monitors two(2);
+    expect("Most followed monitor", defaultMonitorForNewLamp({1, 1, 0}, two) == 1u);
+    expect("Tie goes to the first", defaultMonitorForNewLamp({0, 1}, two) == 0u);
+    expect("No lamps yet", defaultMonitorForNewLamp({}, two) == 0u);
+    expect("Stale index ignored", defaultMonitorForNewLamp({5, 5, 1}, two) == 1u);
+
+    // An unplugged monitor gets no new lamp, even if most lamps still follow it
+    Monitors firstLost(2);
+    firstLost[0].lost = true;
+    expect("Lost monitor skipped", defaultMonitorForNewLamp({0, 0}, firstLost) == 1u);
+    Monitors allLost(1);
+    allLost[0].lost = true;
+    expect("No monitor left", !defaultMonitorForNewLamp({0}, allLost).has_value());
+  }
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

@@ -183,12 +183,14 @@ namespace Halomux::Grabber
   /**
    * @brief Returns the monitor a newly activated lamp follows: the one most other lamps follow
    *
+   * Unplugged (lost) monitors are skipped.
+   *
    * @param monitorsOfActiveLamps Monitor index of each active lamp
-   * @param monitorCount Number of captured monitors
-   * @return size_t Monitor index, the lowest on a tie, 0 without lamps
+   * @param monitors Captured monitors
+   * @return std::optional<size_t> Monitor index, the lowest on a tie, nothing if every monitor is lost
    */
-  size_t defaultMonitorForNewLamp(
+  std::optional<size_t> defaultMonitorForNewLamp(
     const std::vector<size_t>& monitorsOfActiveLamps,
-    size_t monitorCount
+    const Monitors& monitors
   );
 }

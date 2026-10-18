@@ -105,6 +105,17 @@ int main()
     expect("Unknown lamp's corner", !store.setUV(9, {0.f, 0.f}, Imaging::UVCorner::TopLeft).has_value());
   }
 
+  // Unplugged monitors take no lamp
+  {
+    Core::ChannelStore store;
+    Grabber::Monitors firstLost = Desktop;
+    firstLost[0].lost = true;
+    store.replace(lamps(), firstLost);
+    store.setActivity(2, true);
+    expect("New lamp avoids the unplugged monitor", store.snapshot().at(2).monitorIndex == 1u);
+    expect("Lamp not moved onto an unplugged monitor", !store.setMonitor(1, 0, {{0.f, 0.f}, {1.f, 1.f}}, 256).has_value());
+  }
+
   // Moving a region onto a monitor
   {
     Core::ChannelStore store;

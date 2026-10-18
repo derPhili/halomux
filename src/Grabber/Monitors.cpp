@@ -177,21 +177,21 @@ namespace Halomux::Grabber
   }
 
 
-  size_t defaultMonitorForNewLamp(
+  std::optional<size_t> defaultMonitorForNewLamp(
     const std::vector<size_t>& monitorsOfActiveLamps,
-    size_t monitorCount
+    const Monitors& monitors
   )
   {
-    std::vector<size_t> counts(monitorCount, 0);
+    std::vector<size_t> counts(monitors.size(), 0);
     for(size_t monitor : monitorsOfActiveLamps){
-      if(monitor < monitorCount){
+      if(monitor < monitors.size()){
         counts[monitor]++;
       }
     }
 
-    size_t best = 0;
-    for(size_t i = 1; i < counts.size(); i++){
-      if(counts[i] > counts[best]){
+    std::optional<size_t> best;
+    for(size_t i = 0; i < counts.size(); i++){
+      if(!monitors[i].lost && (!best.has_value() || counts[i] > counts[*best])){
         best = i;
       }
     }
