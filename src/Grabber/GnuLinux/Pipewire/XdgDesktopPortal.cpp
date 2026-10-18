@@ -36,11 +36,17 @@ namespace Halomux::Grabber
 
       subscribeToResponse(capture, requestPathAndToken.first, onCreateSessionResponseReceivedCallback);
 
+      // The portal names the session after the token: an abort while it's being created can still
+      // close the session the portal creates anyway
+      g_free(capture->sessionHandle);
+      capture->sessionHandle = g_strdup(sessionPathAndToken.first.c_str());
+
       GVariantBuilder builder;
       g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
       g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(requestPathAndToken.second.c_str()));
       g_variant_builder_add(&builder, "{sv}", "session_handle_token", g_variant_new_string(sessionPathAndToken.second.c_str()));
 
+      capture->pendingCalls++;
       g_dbus_proxy_call(getScreencastPortalProxy(), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, capture);
     }
 
@@ -326,6 +332,8 @@ namespace Halomux::Grabber
     )
     {
       Capture* capture = static_cast<Capture*>(userData);
+      // Completed, whether it succeeded, failed or was cancelled
+      capture->pendingCalls--;
       g_autoptr(GUnixFDList) fdList = NULL;
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_with_unix_fd_list_finish(G_DBUS_PROXY(source), &fdList, res, &error);
@@ -364,6 +372,7 @@ namespace Halomux::Grabber
       GVariantBuilder builder;
       g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
 
+      capture->pendingCalls++;
       g_dbus_proxy_call_with_unix_fd_list(getScreencastPortalProxy(), "OpenPipeWireRemote", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, NULL, capture->cancellable, onPipewireRemoteOpenedCallback, capture);
     }
 
@@ -439,6 +448,8 @@ namespace Halomux::Grabber
     )
     {
       Capture* capture = static_cast<Capture*>(userData);
+      // Completed, whether it succeeded, failed or was cancelled
+      capture->pendingCalls--;
 
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
@@ -469,6 +480,7 @@ namespace Halomux::Grabber
         g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
         g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(pathAndToken.second.c_str()));
 
+        capture->pendingCalls++;
         g_dbus_proxy_call(getScreencastPortalProxy(), "Start", g_variant_new("(osa{sv})", capture->sessionHandle, "", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onStartedCallback, capture);
       }
       catch(const std::exception& e){
@@ -510,6 +522,9 @@ namespace Halomux::Grabber
       void* userData
     )
     {
+      // Completed, whether it succeeded, failed or was cancelled
+      static_cast<Capture*>(userData)->pendingCalls--;
+
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;
@@ -574,6 +589,7 @@ namespace Halomux::Grabber
         g_variant_builder_add(&builder, "{sv}", "persist_mode", g_variant_new_uint32(2));
       }
 
+      capture->pendingCalls++;
       g_dbus_proxy_call(getScreencastPortalProxy(), "SelectSources", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSourceSelectedCallback, capture);
     }
 
@@ -601,7 +617,10 @@ namespace Halomux::Grabber
       }
 
       g_autoptr(GVariant) sessionHandleVariant = g_variant_lookup_value(result, "session_handle", NULL);
-      capture->sessionHandle = g_variant_dup_string(sessionHandleVariant, NULL);
+      if(sessionHandleVariant){
+        g_free(capture->sessionHandle);
+        capture->sessionHandle = g_variant_dup_string(sessionHandleVariant, NULL);
+      }
 
       selectSource(capture);
     }
@@ -613,6 +632,9 @@ namespace Halomux::Grabber
       void* userData
     )
     {
+      // Completed, whether it succeeded, failed or was cancelled
+      static_cast<Capture*>(userData)->pendingCalls--;
+
       g_autoptr(GError) error = NULL;
       g_autoptr(GVariant) result = g_dbus_proxy_call_finish(G_DBUS_PROXY(source), res, &error);
       (void)result;

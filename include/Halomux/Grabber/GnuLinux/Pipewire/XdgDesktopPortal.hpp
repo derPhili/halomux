@@ -74,6 +74,9 @@ namespace Halomux::Grabber
       // dispatched there, never to another capture's thread
       GMainContext* context{nullptr};
       GCancellable* cancellable{nullptr};
+      // Portal calls in flight, whose completions are dispatched to the context (portal thread)
+      int pendingCalls{0};
+      // Path of the session, known from its creation on: closed even if the creation was aborted
       char* sessionHandle{nullptr};
       // Pending portal request, whose Response signal is awaited (portal thread)
       std::string requestPath;

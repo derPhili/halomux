@@ -785,6 +785,12 @@ namespace Halomux::Grabber
       g_main_context_iteration(capture->context, TRUE);
     }
 
+    // Calls cancelled by the teardown complete right away, but through this context: dispatched
+    // here, they release their references to it instead of keeping it, and themselves, forever
+    while(capture->pendingCalls > 0){
+      g_main_context_iteration(capture->context, TRUE);
+    }
+
     g_main_context_pop_thread_default(capture->context);
   }
 
