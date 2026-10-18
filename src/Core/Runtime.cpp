@@ -10,6 +10,7 @@
 
 #include <glm/common.hpp>
 
+#include <Halomux/Core/ChannelColor.hpp>
 #include <Halomux/Core/Profile.hpp>
 #include <Halomux/Network/Http/Client/Client.hpp>
 #include <Halomux/Core/Logger.hpp>
@@ -34,9 +35,6 @@ namespace
 {
   // Shown by lamps without a static color yet: warm white
   const Halomux::Imaging::Color DefaultStaticColor{255, 180, 110};
-
-  // Time constant of the fade between static colors [s]
-  constexpr float StaticFadeTimeConstant = 0.35f;
 }
 
 
@@ -404,6 +402,15 @@ namespace Halomux::Core
       return;
     }
 
+    const ChannelColor::Settings colorSettings{
+      .tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate())),
+      .transitionSmoothing = m_config.transitionSmoothing(),
+      .brightness = m_config.brightness(),
+      .highlightBoost = m_config.highlightBoost(),
+      .syncing = syncing,
+      .previewing = previewing
+    };
+
     for(auto& [channelId, channel] : channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
         continue;
@@ -434,82 +441,35 @@ namespace Halomux::Core
       auto& channelStream = *streamIt;
 
       if(channel.state == Hue::Api::Channel::State::PendingShutdown){
-        channelStream.id = channelId;
-        channelStream.r = 0;
-        channelStream.g = 0;
-        channelStream.b = 0;
-        channel.hasPreviousXyb = false;
-        channel.hasPreviousMeasuredBrightness = false;
-        channel.highlightBoost = 0.f;
-        channel.acknowledgeShutdown();
+        ChannelColor::shutDown(channel, channelStream);
+        continue;
+      }
+
+      // Horizontal position of the lamp's region on the whole desktop, 0 = left, 1 = right
+      const float pan = access.desktopCenterX(channel);
+
+      Imaging::Color color;
+      if(previewing){
+        color = PreviewSequence::colorAt(previewTime, pan);
+      }
+      else if(!syncing){
+        const auto staticColorIt = staticColors.find(channelId);
+        color = staticColorIt != staticColors.end() ? staticColorIt->second : DefaultStaticColor;
+      }
+      else if(monitorMissing){
+        color = Imaging::Color(0, 0, 0);
       }
       else{
-        // Horizontal position of the lamp's region on the whole desktop, 0 = left, 1 = right
-        const float pan = access.desktopCenterX(channel);
-
-        Imaging::Color color;
-        if(previewing){
-          color = PreviewSequence::colorAt(previewTime, pan);
-        }
-        else if(!syncing){
-          const auto staticColorIt = staticColors.find(channelId);
-          color = staticColorIt != staticColors.end() ? staticColorIt->second : DefaultStaticColor;
-        }
-        else if(monitorMissing){
-          color = Imaging::Color(0, 0, 0);
-        }
-        else{
-          color = colorIt->second;
-        }
-
-        const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
-
-        glm::vec3 correctedColor;
-        /*/
-        glm::vec3 normalized = color.toNormalized();
-        glm::vec3 correctedColor = glm::pow(normalized, glm::vec3(channel.gammaExponent()));
-        /*/
-        glm::vec3 xybColor = color.toXYB();
-
-        // Ease toward the newly measured color instead of snapping to it, so
-        // fast-changing content doesn't produce an abrupt strobe-like cut.
-        // transitionSmoothing == 0 reproduces the previous (instant) behavior.
-        float smoothing = m_config.transitionSmoothing();
-        if(!syncing && !previewing){
-          // Fade softly between static colors, whatever the smoothing tuned for the screen
-          smoothing = std::max(smoothing, std::exp(-tickDuration / StaticFadeTimeConstant));
-        }
-        if(channel.hasPreviousXyb && smoothing > 0.f){
-          xybColor = glm::mix(channel.previousXyb, xybColor, 1.f - smoothing);
-        }
-        channel.previousXyb = xybColor;
-        channel.hasPreviousXyb = true;
-
-        xybColor.z = glm::pow(xybColor.z, channel.gammaExponent());
-
-        // Global dimmer, applied last so it scales what the lamp would otherwise show
-        xybColor.z *= m_config.brightness();
-
-        // Flash on sudden brightening, after smoothing so it isn't eased away: the boost takes
-        // the lamp part of the way to full brightness and fades with a fixed time constant
-        static constexpr float BoostTimeConstant = 0.25f; // [s]
-        const float decay = std::exp(-tickDuration / BoostTimeConstant);
-        // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
-        const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
-
-        // Static colors don't flash when switching scenes
-        const float boostStrength = syncing || previewing ? m_config.highlightBoost() : 0.f;
-        const float boost = channel.updateHighlightBoost(color.brightness(), boostStrength, decay, soundTrigger);
-        xybColor.z += boost * (1.f - xybColor.z);
-
-        correctedColor = xybColor;
-        //*/
-
-        channelStream.id = channelId;
-        channelStream.r = correctedColor.r;
-        channelStream.g = correctedColor.g;
-        channelStream.b = correctedColor.b;
+        color = colorIt->second;
       }
+
+      // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
+      const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
+
+      const glm::vec3 xyb = ChannelColor::step(channel, color, colorSettings, soundTrigger);
+      channelStream.r = xyb.x;
+      channelStream.g = xyb.y;
+      channelStream.b = xyb.z;
     }
 
     if(m_areaSession){

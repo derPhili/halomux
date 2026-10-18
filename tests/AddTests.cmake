@@ -112,6 +112,34 @@ target_link_libraries(TestHighlightBoost PUBLIC
 add_test(NAME HighlightBoost COMMAND TestHighlightBoost)
 
 
+# TestChannelColor: the color streamed for a lamp from the color it should show
+add_executable(TestChannelColor
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelColor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelColor.cpp
+)
+
+set_target_properties(TestChannelColor PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestChannelColor PUBLIC
+  include
+)
+
+target_link_libraries(TestChannelColor PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+target_compile_options(TestChannelColor PRIVATE -fsanitize=address,undefined)
+target_link_options(TestChannelColor PRIVATE -fsanitize=address,undefined)
+
+add_test(NAME ChannelColor COMMAND TestChannelColor)
+
+
 # TestTransientDetector: sound transient detection on synthetic energies
 add_executable(TestTransientDetector
   # Application
