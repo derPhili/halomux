@@ -573,8 +573,9 @@ namespace Halomux::Core
 
   bool CoreService::saveProfile()
   {
-    const std::optional<std::string> areaId = currentEntertainmentConfigurationId();
-    if(!areaId.has_value()){
+    // The lamps with the area they belong to, read together: an area switch can't mix them up
+    const auto lamps = m_runtime.m_channelStore.areaSnapshot();
+    if(!lamps.areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
       return false;
     }
@@ -583,7 +584,7 @@ namespace Halomux::Core
     std::lock_guard lock(m_profileMutex);
 
     // The other areas' lamp settings are kept
-    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *areaId, Serialization::Json(m_runtime.m_channelStore.snapshot()));
+    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
 
     if(!m_config.profileName().has_value()){
       m_config.setProfileName("profile");

@@ -245,7 +245,12 @@ namespace Halomux::Core
   {
     // The lamp settings saved for this area only: channel ids repeat across areas
     const auto profileChannels = Profile::channelsForArea(m_coreService->getProfile().value_or(Serialization::Json()), areaId);
-    m_channelStore.replace(Profile::channelsFromProfile(members, profileChannels), grabber()->monitors());
+    auto channels = Profile::channelsFromProfile(members, profileChannels);
+
+    // The monitors read under the lock: a screen selection finishing meanwhile can't put the
+    // former grabber's monitors back. The lamps and their area are replaced together.
+    auto access = m_channelStore.access();
+    access.replace(areaId, std::move(channels), grabber()->monitors());
   }
 
 

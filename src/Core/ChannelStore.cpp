@@ -45,10 +45,32 @@ namespace Halomux::Core
 
   void ChannelStore::replace(
     Hue::Api::Channels channels,
-    Grabber::Monitors monitors
+    Grabber::Monitors monitors,
+    std::optional<std::string> areaId
   )
   {
     std::lock_guard lock(m_mutex);
+    _replace(std::move(areaId), std::move(channels), std::move(monitors));
+  }
+
+
+  void ChannelStore::Access::replace(
+    std::string areaId,
+    Hue::Api::Channels channels,
+    Grabber::Monitors monitors
+  )
+  {
+    m_store._replace(std::move(areaId), std::move(channels), std::move(monitors));
+  }
+
+
+  void ChannelStore::_replace(
+    std::optional<std::string> areaId,
+    Hue::Api::Channels channels,
+    Grabber::Monitors monitors
+  )
+  {
+    m_areaId = std::move(areaId);
     m_channels = std::move(channels);
     m_streams.clear();
     _resolveMonitors(std::move(monitors));
@@ -184,6 +206,13 @@ namespace Halomux::Core
   {
     std::lock_guard lock(m_mutex);
     return m_channels;
+  }
+
+
+  ChannelStore::AreaSnapshot ChannelStore::areaSnapshot() const
+  {
+    std::lock_guard lock(m_mutex);
+    return {.areaId = m_areaId, .channels = m_channels};
   }
 
 

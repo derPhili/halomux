@@ -49,6 +49,23 @@ namespace
 
 int main()
 {
+  // The lamps belong to an area: saving reads both together, never one area's lamps with another's id
+  {
+    Core::ChannelStore store;
+    store.replace(lamps(), Desktop, "pc");
+    auto saved = store.areaSnapshot();
+    expect("Lamps read with their area", saved.areaId == "pc" && saved.channels.size() == 3);
+
+    {
+      auto access = store.access();
+      Hue::Api::Channels other;
+      other.emplace(5, Channel{true, {}, 0.f});
+      access.replace("garage", std::move(other), Desktop);
+    }
+    saved = store.areaSnapshot();
+    expect("Area and lamps replaced together", saved.areaId == "garage" && saved.channels.size() == 1 && saved.channels.contains(5));
+  }
+
   // Profiles from before monitors per lamp: active lamps follow the first monitor
   {
     Core::ChannelStore store;
