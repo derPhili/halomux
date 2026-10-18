@@ -416,7 +416,6 @@ class WebUI
       });
 
       this._fillChannelEntry(newChannelEntryNode, newChannel);
-      this._addMoveButton(newChannelEntryNode, newChannel.channelId, false);
       this.lampSwatches[newChannel.channelId] = newChannelEntryNode.querySelector(".lampSwatch");
 
       this.activeChannelsNode.appendChild(newChannelEntryNode);
@@ -451,6 +450,9 @@ class WebUI
       entryNode.insertBefore(missing, id);
       entryNode.title = t("The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.");
     }
+
+    // Here, as the entry is filled again when its lamp changes: active lamps have their node
+    this._addMoveButton(entryNode, channel.channelId, !channel.node);
   }
 
 
@@ -508,7 +510,6 @@ class WebUI
       });
 
       this._fillChannelEntry(newChannelEntryNode, newChannel);
-      this._addMoveButton(newChannelEntryNode, newChannel.channelId, true);
 
       this.inactiveChannelsNode.appendChild(newChannelEntryNode);
     }
