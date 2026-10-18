@@ -794,7 +794,21 @@ class WebUI
 
   _saveProfile()
   {
-    RequestUtils.post("/api/saveProfile", JSON.stringify(null), (data) => {log("Saved profile");});
+    // The answer shows on the button for a moment: a failed save must not pass for a saved one
+    const showResult = (text) => {
+      this.saveProfileButton.textContent = t(text);
+      clearTimeout(this.saveProfileResetTimer);
+      this.saveProfileResetTimer = setTimeout(() => {this.saveProfileButton.textContent = t("Save profile");}, 3000);
+    };
+
+    this.saveProfileButton.disabled = true;
+    RequestUtils.post("/api/saveProfile", JSON.stringify(null))
+      .then(() => {showResult("Profile saved");})
+      .catch((error) => {
+        log(error);
+        showResult("Saving failed");
+      })
+      .finally(() => {this.saveProfileButton.disabled = false;});
   }
 
 

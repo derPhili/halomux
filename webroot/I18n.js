@@ -254,6 +254,8 @@ I18n.Translations = {
     // Footer and dialogs
     "Saves the lamps' screen regions, gamma and activity, loaded on every start. Settings and scenes are saved automatically" : "Speichert Bildschirmbereiche, Gamma und Aktivität der Lampen, geladen bei jedem Start. Einstellungen und Szenen werden automatisch gespeichert",
     "Save profile" : "Profil speichern",
+    "Profile saved" : "Profil gespeichert",
+    "Saving failed" : "Speichern fehlgeschlagen",
     "Stops the service: the lamps go back to their state from before. The desktop application can start it again" : "Beendet den Dienst: Die Lampen kehren in ihren vorherigen Zustand zurück. Die Desktop-Anwendung kann ihn wieder starten",
     "Shut down" : "Beenden",
     "Do you really want to stop Halomux?" : "Halomux wirklich beenden?",
