@@ -95,7 +95,8 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/entertainmentConfigurations", [this](const Request& /*req*/, Response& res){
-      const auto entertainmentConfigurations = m_coreService->entertainmentConfigurations();
+      // Asked again, so that areas created in the Hue app since show up when the page loads
+      const auto entertainmentConfigurations = m_coreService->refreshEntertainmentConfigurations();
       // None while the bridge is unreachable or has no area yet
       const auto currentEntertainmentConfigurationId = m_coreService->currentEntertainmentConfigurationId();
 

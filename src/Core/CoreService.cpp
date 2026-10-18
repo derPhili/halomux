@@ -191,6 +191,12 @@ namespace Halomux::Core
   }
 
 
+  Hue::Api::EntertainmentConfigurations CoreService::refreshEntertainmentConfigurations()
+  {
+    return m_runtime.m_areaSession ? m_runtime.m_areaSession->refreshAreas() : Hue::Api::EntertainmentConfigurations{};
+  }
+
+
   std::optional<std::string> CoreService::currentEntertainmentConfigurationId() const
   {
     return m_runtime.m_areaSession ? m_runtime.m_areaSession->currentAreaId() : std::nullopt;

@@ -220,6 +220,38 @@ int main()
     expect("Areas listed", h.session->areas().size() == 2);
   }
 
+  // An area created in the Hue app shows up when the light manager lists them again
+  {
+    Harness h;
+    h.session->start("pc");
+    h.bridge->configuredAreas.insert({"cellar", {.name = "Cellar"}});
+    expect("New area listed after a refresh", h.session->refreshAreas().contains("cellar") && h.session->areas().contains("cellar"));
+
+    h.bridge->reachable = false;
+    expect("Unreachable bridge keeps the known areas", h.session->refreshAreas().size() == 3);
+  }
+
+  // The current area deleted in the Hue app: another one is streamed to
+  {
+    Harness h;
+    h.session->start("garage");
+    h.bridge->configuredAreas.erase("garage");
+    h.bridge->status = std::nullopt; // The bridge answers an error for an unknown area
+    h.session->tick();
+    expect("Deleted area replaced", h.session->currentAreaId() == "pc");
+    expect("Lamps of the other area loaded", !h.selected.empty() && h.selected.back() == "pc");
+    expect("Streamer for the other area", !h.streamersCreated.empty() && h.streamersCreated.back() == "pc");
+  }
+
+  // An unreachable bridge is no deleted area
+  {
+    Harness h;
+    h.session->start("garage");
+    h.bridge->reachable = false;
+    h.session->tick();
+    expect("Unreachable bridge keeps the area", h.session->currentAreaId() == "garage");
+  }
+
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");
     return 1;

@@ -80,6 +80,14 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Loads the entertainment configurations from the bridge again, such as ones created since
+     *
+     * @return EntertainmentConfigurations Available entertainment configurations, the known ones if the bridge is unreachable
+     */
+    Hue::Api::EntertainmentConfigurations refreshEntertainmentConfigurations();
+
+
+    /**
      * @brief Returns the ID of the current entertainment configuration
      * 
      * @return const std::string& Current entertainment configuration ID
