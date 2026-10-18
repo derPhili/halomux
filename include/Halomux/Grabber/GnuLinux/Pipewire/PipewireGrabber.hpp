@@ -89,6 +89,8 @@ namespace Halomux::Grabber
 
       // GPU path (Pipewire thread only)
       bool dmaBufFailed{false};
+      // Its formats are to be offered again, without DMA-BUF
+      bool renegotiate{false};
       bool usingDmaBuf{false};
       // Modifier last logged, once fixated
       std::optional<uint64_t> loggedModifier;

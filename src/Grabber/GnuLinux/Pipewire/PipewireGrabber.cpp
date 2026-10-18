@@ -3,6 +3,7 @@
 #include <Halomux/Grabber/GnuLinux/Pipewire/DmaBufPlanes.hpp>
 
 #include <algorithm>
+#include <utility>
 #include <array>
 #include <cstdlib>
 #include <future>
@@ -498,6 +499,7 @@ namespace Halomux::Grabber
         auto lock = std::lock_guard(pw->processingInfoMutex);
         stream->cpuReason = "GPU downscaling failed, shared memory";
       }
+      stream->renegotiate = true;
       pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
       return false;
     }
@@ -1076,9 +1078,12 @@ namespace Halomux::Grabber
     uint64_t /*count*/
   )
   {
-    // Runs in the Pipewire thread, outside of the process callbacks
+    // Runs in the Pipewire thread, outside of the process callbacks. Only the streams that failed:
+    // the others would glitch for nothing.
     for(auto& stream : static_cast<PipewireData*>(userData)->streams){
-      _updateFormatParams(stream.get());
+      if(std::exchange(stream->renegotiate, false)){
+        _updateFormatParams(stream.get());
+      }
     }
   }
 
