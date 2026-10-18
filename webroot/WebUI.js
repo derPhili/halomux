@@ -300,6 +300,7 @@ class WebUI
     if(monitorsChanged){
       this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth, monitors);
       this._redrawScreenWidget();
+      this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, displayInfo.subsampleWidth);
     }
   }
 
@@ -501,21 +502,25 @@ class WebUI
     // The lamps may have arrived before the monitors
     this._redrawScreenWidget();
     this._monitorsCallback(displayInfo);
-    let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
+    this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, subsampleWidth);
+  }
 
-    this.availableSubsamplesNode.innerHTML = "";
-    for(let subsampleCandidate of subsampleResolutionCandidates.reverse()){
+
+  // The resolutions offered depend on the captured monitors: built again when they change
+  _buildSubsampleOptions(subsampleResolutionCandidates, subsampleWidth)
+  {
+    this.availableSubsamplesNode.replaceChildren();
+    for(let subsampleCandidate of [...subsampleResolutionCandidates].reverse()){
       let newOption = document.createElement("option");
       let width = subsampleCandidate.x;
       let height = subsampleCandidate.y;
       let percentage = width / this.screenWidget.width * 100;
       percentage = MathUtils.roundPrecision(percentage, 2);
-      newOption.innerHTML = width + "x" + height;
-      newOption.innerHTML += ` (${percentage}%)`;
+      newOption.textContent = `${width}x${height} (${percentage}%)`;
       newOption.value = width;
       this.availableSubsamplesNode.appendChild(newOption);
     }
-    
+
     this.availableSubsamplesNode.value = subsampleWidth.toString();
   }
 
