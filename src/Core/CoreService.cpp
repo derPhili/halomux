@@ -95,6 +95,12 @@ namespace Halomux::Core
       return false;
     }
 
+    // The bridge only checks the username: a mistyped clientkey would fail every streaming connection
+    if(!credentials.hasValidClientkey()){
+      Logger::error("The clientkey isn't hexadecimal");
+      return false;
+    }
+
     const std::string bridgeAddress = m_config.bridgeAddress().value();
     const Network::Http::Client::Headers headers = {{"hue-application-key", credentials.username()}};
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/clip/v2/resource/bridge", "GET", "", headers, Hue::Api::bridgeTls(bridgeAddress));

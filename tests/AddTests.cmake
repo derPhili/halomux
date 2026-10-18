@@ -224,6 +224,12 @@ halomux_add_test(Streamer
   DEPENDS generate_version_header
 )
 
+# Reading the clientkey, the pre-shared key of the streaming connection
+halomux_add_test(Credentials
+  SOURCES ${SRC}/Hue/Auth/Credentials.cpp
+  LIBRARIES nlohmann_json::nlohmann_json
+)
+
 # Failed connection attempts release their TLS contexts
 halomux_add_test(DtlsClient
   SOURCES ${SRC}/Stream/Impl/MbedTls/DtlsClient.cpp ${SRC}/Hue/Auth/Credentials.cpp
