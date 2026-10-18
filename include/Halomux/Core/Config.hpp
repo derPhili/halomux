@@ -101,33 +101,33 @@ namespace Halomux::Core
     /**
      * @brief Returns the registered bound ip address for the backend
      * 
-     * @return const std::string& Bound ip address
+     * @return std::string Bound ip address
      */
-    const std::string& boundBackendIP() const;
+    std::string boundBackendIP() const;
 
 
     /**
      * @brief Returns the registered address of the Hue bridge
      * 
-     * @return const std::optional<std::string>& Registered address of the Hue bridge
+     * @return std::optional<std::string> Registered address of the Hue bridge
      */
-    const std::optional<std::string>& bridgeAddress() const;
+    std::optional<std::string> bridgeAddress() const;
 
 
     /**
      * @brief Returns registered credentials
      * 
-     * @return const std::optional<Credentials>& Registered credentials
+     * @return std::optional<Credentials> Registered credentials
      */
-    const std::optional<Hue::Auth::Credentials>& credentials() const;
+    std::optional<Hue::Auth::Credentials> credentials() const;
 
 
     /**
      * @brief Returns the registered profile name
      * 
-     * @return const std::optional<std::string>& Registered profile name
+     * @return std::optional<std::string> Registered profile name
      */
-    const std::optional<std::string>& profileName() const;
+    std::optional<std::string> profileName() const;
 
 
     /**
@@ -215,7 +215,7 @@ namespace Halomux::Core
      * 
      * @return Optional restore token string
     */
-    const std::optional<std::string>& restoreToken() const;
+    std::optional<std::string> restoreToken() const;
 
 
     // Setters

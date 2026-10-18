@@ -15,12 +15,14 @@
 #include <Halomux/Hue/Api/ApiTools.hpp>
 #include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Hue/Api/BridgeTls.hpp>
+#include <Halomux/Hue/Api/ClipParsing.hpp>
 #include <Halomux/Serialization/Json.hpp>
 #include <Halomux/Serialization/EntertainmentConfiguration.hpp>
 #include <Halomux/Serialization/JsonSerializer.hpp>
 #include <Halomux/Serialization/Credentials.hpp>
 #include <Halomux/Core/Notice.hpp>
 #include <Halomux/Core/PreviewSequence.hpp>
+#include <Halomux/Core/Profile.hpp>
 #include <Halomux/Core/Scenes.hpp>
 #include <Halomux/Core/Runtime.hpp>
 #include <Halomux/Network/Http/Server/SetupBackend.hpp>
@@ -88,7 +90,18 @@ namespace Halomux::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    const std::string& bridgeAddress = m_config.bridgeAddress().value();
+    // The setup validates the address first
+    if(!m_config.bridgeAddress().has_value()){
+      return false;
+    }
+
+    // The bridge only checks the username: a mistyped clientkey would fail every streaming connection
+    if(!credentials.hasValidClientkey()){
+      Logger::error("The clientkey isn't hexadecimal");
+      return false;
+    }
+
+    const std::string bridgeAddress = m_config.bridgeAddress().value();
     const Network::Http::Client::Headers headers = {{"hue-application-key", credentials.username()}};
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/clip/v2/resource/bridge", "GET", "", headers, Hue::Api::bridgeTls(bridgeAddress));
     if(!response.has_value()){
@@ -115,19 +128,30 @@ namespace Halomux::Core
 
   Serialization::Json CoreService::registerNewUser()
   {
+    // The setup validates the address first
+    if(!m_config.bridgeAddress().has_value()){
+      return {{"succeeded", false}, {"error", "no bridge address yet"}};
+    }
+
     auto response = Hue::Api::ApiTools::registerNewUser(m_config.bridgeAddress().value());
 
     if(!response.has_value()){
       return {{"succeeded", false}, {"error", "unreachable bridge"}};
     }
 
-    auto jsonResponse = response.value().asJson();
-
-    if(jsonResponse.at(0).contains("error")){
-      return {{"succeeded", false}, {"error", jsonResponse.at(0).at("error").at("description")}};
+    Hue::Api::ClipParsing::Pairing pairing;
+    try{
+      pairing = Hue::Api::ClipParsing::pairing(response.value().asJson());
+    }
+    catch(const std::exception&){
+      return {{"succeeded", false}, {"error", "unexpected answer of the bridge"}};
     }
 
-    auto credentials = jsonResponse.at(0).at("success").get<Hue::Auth::Credentials>();
+    if(!pairing.credentials.has_value()){
+      return {{"succeeded", false}, {"error", pairing.error}};
+    }
+
+    auto credentials = pairing.credentials->get<Hue::Auth::Credentials>();
     m_config.setCredentials(credentials);
 
     return {{"succeeded", true}, {"username", credentials.username()}, {"clientkey", credentials.clientkey()}};
@@ -146,7 +170,7 @@ namespace Halomux::Core
     }
 
     try{
-      for(const auto& [id, area] : Hue::Api::ApiTools::loadEntertainmentConfigurations(credentials->username(), bridgeAddress.value())){
+      for(const auto& [id, area] : Hue::Api::ApiTools::loadEntertainmentConfigurations(credentials->username(), bridgeAddress.value()).value_or(Hue::Api::EntertainmentConfigurations{})){
         jsonAreas.push_back({{"name", area.name}, {"lamps", area.devices.size()}});
       }
     }
@@ -158,16 +182,15 @@ namespace Halomux::Core
   }
 
 
-  const Hue::Api::EntertainmentConfigurations& CoreService::entertainmentConfigurations() const
+  Hue::Api::EntertainmentConfigurations CoreService::entertainmentConfigurations() const
   {
-    return m_runtime.m_selector->entertainmentConfigurations();
+    return m_runtime.m_areaSession ? m_runtime.m_areaSession->areas() : Hue::Api::EntertainmentConfigurations{};
   }
 
 
   std::optional<std::string> CoreService::currentEntertainmentConfigurationId() const
   {
-    std::lock_guard lock(m_runtime.m_selectorMutex);
-    return m_runtime.m_selector->currentEntertainmentConfigurationId();
+    return m_runtime.m_areaSession ? m_runtime.m_areaSession->currentAreaId() : std::nullopt;
   }
 
 
@@ -176,38 +199,13 @@ namespace Halomux::Core
     bool active
   )
   {
-    std::lock_guard lock(m_runtime.m_channelsMutex);
-    auto& channels = m_runtime.m_channels;
-    if(channels.find(channelId) == channels.end()){
-      return false;
-    }
-
-    auto& channel = channels.at(channelId);
-
-    // A lamp set up for the first time follows the monitor most other lamps follow
-    if(active && !channel.monitor.has_value() && !m_runtime.m_monitors.empty()){
-      std::vector<size_t> monitorsOfActiveLamps;
-      for(const auto& [otherId, other] : channels){
-        if(other.state == Hue::Api::Channel::State::Active && other.monitorIndex.has_value()){
-          monitorsOfActiveLamps.push_back(*other.monitorIndex);
-        }
-      }
-
-      const size_t monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_runtime.m_monitors.size());
-      channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
-      channel.monitorIndex = monitor;
-    }
-
-    channel.setActive(active);
-
-    return true;
+    return m_runtime.m_channelStore.setActivity(channelId, active);
   }
 
 
   Hue::Api::Channels CoreService::channels() const
   {
-    std::lock_guard lock(m_runtime.m_channelsMutex);
-    return m_runtime.m_channels;
+    return m_runtime.m_channelStore.snapshot();
   }
 
 
@@ -216,14 +214,6 @@ namespace Halomux::Core
     std::lock_guard lock(m_runtime.m_currentColorsMutex);
     return m_runtime.m_currentColorsSnapshot;
   }
-
-
-  const Hue::Api::EntertainmentConfiguration& CoreService::currentEntertainmentConfiguration() const
-  {
-    std::lock_guard lock(m_runtime.m_selectorMutex);
-    return m_runtime.m_selector->currentEntertainmentConfiguration();
-  }
-
 
 
   glm::ivec2 CoreService::displayResolution() const
@@ -354,8 +344,7 @@ namespace Halomux::Core
     const std::string& entertainmentConfigurationId
   )
   {
-    std::lock_guard lock(m_runtime.m_selectorMutex);
-    return m_runtime._enableEntertainmentConfiguration(entertainmentConfigurationId);
+    return m_runtime.m_areaSession && m_runtime.m_areaSession->select(entertainmentConfigurationId);
   }
 
 
@@ -365,13 +354,7 @@ namespace Halomux::Core
     Imaging::UVCorner uvCorner
   )
   {
-    std::lock_guard lock(m_runtime.m_channelsMutex);
-    auto channelIt = m_runtime.m_channels.find(channelId);
-    if(channelIt == m_runtime.m_channels.end()){
-      return std::nullopt;
-    }
-
-    return channelIt->second.setUV(std::move(uv), uvCorner);
+    return m_runtime.m_channelStore.setUV(channelId, uv, uvCorner);
   }
 
 
@@ -381,34 +364,7 @@ namespace Halomux::Core
     const Imaging::UVs& uvs
   )
   {
-    std::lock_guard lock(m_runtime.m_channelsMutex);
-    auto channelIt = m_runtime.m_channels.find(channelId);
-    if(channelIt == m_runtime.m_channels.end() || monitor >= m_runtime.m_monitors.size()){
-      return std::nullopt;
-    }
-
-    const auto clamp = [](const Imaging::UV& uv){
-      return Imaging::UV{std::clamp(uv.x, 0.f, 1.f), std::clamp(uv.y, 0.f, 1.f)};
-    };
-
-    const Imaging::UV a = clamp(uvs.min);
-    const Imaging::UV b = clamp(uvs.max);
-
-    // At least one cell of the monitor's subsample, which the region is averaged on
-    const auto& target = m_runtime.m_monitors[monitor];
-    int widestPixelWidth = 0;
-    for(const auto& captured : m_runtime.m_monitors){
-      widestPixelWidth = std::max(widestPixelWidth, captured.pixelWidth);
-    }
-    const int subsampleWidth = Grabber::subsampleWidthFor(m_config.subsampleWidth(), widestPixelWidth, target.pixelWidth);
-    const int subsampleHeight = std::max(1, target.pixelWidth > 0 ? target.pixelHeight * subsampleWidth / target.pixelWidth : 1);
-
-    auto& channel = channelIt->second;
-    channel.uvs = Grabber::minimalRegion({glm::min(a, b), glm::max(a, b)}, 1.f / static_cast<float>(subsampleWidth), 1.f / static_cast<float>(subsampleHeight));
-    channel.monitor = Grabber::monitorRef(m_runtime.m_monitors[monitor]);
-    channel.monitorIndex = monitor;
-
-    return channel.uvs;
+    return m_runtime.m_channelStore.setMonitor(channelId, monitor, uvs, m_config.subsampleWidth());
   }
 
 
@@ -435,19 +391,7 @@ namespace Halomux::Core
     float gammaExponent
   )
   {
-    if(!std::isfinite(gammaExponent)){
-      return false;
-    }
-
-    std::lock_guard lock(m_runtime.m_channelsMutex);
-    auto& channels = m_runtime.m_channels;
-
-    if(channels.find(channelId) == channels.end()){
-      return false;
-    }
-
-    channels.at(channelId).gammaFactor = gammaExponent;
-    return true;
+    return m_runtime.m_channelStore.setGammaFactor(channelId, gammaExponent);
   }
 
 
@@ -581,15 +525,7 @@ namespace Halomux::Core
       }
 
       // Colors are spread from left to right over the whole desktop
-      std::vector<std::pair<uint8_t, float>> lampCenters;
-      {
-        std::lock_guard lock(m_runtime.m_channelsMutex);
-        for(const auto& [channelId, channel] : m_runtime.m_channels){
-          if(channel.state == Hue::Api::Channel::State::Active){
-            lampCenters.emplace_back(channelId, m_runtime._desktopCenterX(channel));
-          }
-        }
-      }
+      std::vector<std::pair<uint8_t, float>> lampCenters = m_runtime.m_channelStore.activeLampCenters();
 
       sceneColors = Scenes::spread(*scene, std::move(lampCenters));
     }
@@ -626,23 +562,16 @@ namespace Halomux::Core
   }
 
 
-  void CoreService::saveProfile()
+  bool CoreService::saveProfile()
   {
-    std::lock_guard selectorLock(m_runtime.m_selectorMutex);
-    std::lock_guard channelsLock(m_runtime.m_channelsMutex);
-
-    if(!m_runtime.m_selector->validSelection()){
+    const std::optional<std::string> areaId = currentEntertainmentConfigurationId();
+    if(!areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
-      return;
+      return false;
     }
 
-    Serialization::Json profile;
-    if(m_runtime.m_selector->validSelection()){
-      profile = Serialization::Json{
-        {"entertainmentConfigurationId", m_runtime.m_selector->currentEntertainmentConfigurationId().value()},
-        {"channels", m_runtime.m_channels}
-      };
-    }
+    // The other areas' lamp settings are kept
+    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *areaId, Serialization::Json(m_runtime.m_channelStore.snapshot()));
 
     if(!m_config.profileName().has_value()){
       m_config.setProfileName("profile");
@@ -658,11 +587,18 @@ namespace Halomux::Core
       profileFile << profile.dump(2) << "\n";
       if(!profileFile){
         Logger::error("Failed to write profile ", std::quoted(tmpPath.string()));
-        return;
+        return false;
       }
     }
 
-    std::filesystem::rename(tmpPath, pp);
+    std::error_code error;
+    std::filesystem::rename(tmpPath, pp, error);
+    if(error){
+      Logger::error("Failed to write profile ", std::quoted(pp.string()), ": ", error.message());
+      return false;
+    }
+
+    return true;
   }
 
 
@@ -677,7 +613,7 @@ namespace Halomux::Core
     // Bridges set up before the certificate checks, or whose certificate never passed them, are
     // identified again at each start: once their certificate passes the check, it always has to
     if(!m_config.bridgeId().has_value() || !m_config.bridgeCertificateVerified()){
-      const std::string& bridgeAddress = m_config.bridgeAddress().value();
+      const std::string bridgeAddress = m_config.bridgeAddress().value();
       auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
 
       try{
@@ -707,6 +643,12 @@ namespace Halomux::Core
     if(!verified){
       Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");
     }
+  }
+
+
+  bool CoreService::initialSetupComplete() const
+  {
+    return m_config.initialSetupOk();
   }
 
 

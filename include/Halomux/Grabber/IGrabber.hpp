@@ -10,6 +10,7 @@
 #include <glm/vec2.hpp>
 
 #include <Halomux/Grabber/Monitors.hpp>
+#include <Halomux/Grabber/SubsampleResolutions.hpp>
 #include <Halomux/Imaging/Color.hpp>
 #include <Halomux/Imaging/ImageData.hpp>
 #include <Halomux/Imaging/UV.hpp>
@@ -44,7 +45,6 @@ namespace Halomux::Grabber
   {
   public:
     // Type definitions
-    using Divisors = std::vector<int>;
     using Resolution = glm::ivec2;
     using Resolutions = std::vector<Resolution>;
     using RefreshRate = unsigned;
@@ -200,70 +200,11 @@ namespace Halomux::Grabber
      */
     Resolutions subsampleResolutionCandidates()
     {
-      auto resolution = displayResolution();
-      auto wDivisors = _divisors(resolution.x);
-      auto hDivisors = _divisors(resolution.y);
-
-      auto validDivisors = _selectValidDivisors(wDivisors, hDivisors);
-
-      Resolutions subsampleResolutionCandidates;
-
-      for(const auto& validDivisor : validDivisors){
-        int width = resolution.x / validDivisor;
-        int height = (resolution.y * width) / resolution.x;
-        subsampleResolutionCandidates.emplace_back(width, height);
-      }
-
-      return subsampleResolutionCandidates;
+      return subsampleResolutions(displayResolution());
     }
 
 
   protected:
-    // Protected static methods
-    /**
-     * @brief Computes a list of integer divisors for a given number
-     * 
-     * @param number 
-     * @return Divisors 
-     */
-    inline static Divisors _divisors(
-      int number
-    )
-    {
-      Divisors divisors;
-      for(int i = 1; i < number / 2; i++){
-        if(number % i == 0){
-          divisors.push_back(i);
-        }
-      }
-
-      divisors.push_back(number);
-
-      return divisors;
-    }
-
-
-    /**
-     * @brief Outputs a list of integer divisors for given width and height out of divisor list
-     * 
-     * @param widthDivisors List of width divisors
-     * @param heightDivisors List of height divisors
-     * @return Divisors
-     */
-    inline static Divisors _selectValidDivisors(
-      const Divisors& widthDivisors,
-      const Divisors& heightDivisors
-    )
-    {
-      Divisors validDivisors(std::max(widthDivisors.size(), heightDivisors.size()));
-      auto validDivisorsIt = std::set_intersection(widthDivisors.begin(), widthDivisors.end(), heightDivisors.begin(), heightDivisors.end(), validDivisors.begin());
-
-      validDivisors.resize(validDivisorsIt - validDivisors.begin());
-
-      return validDivisors;
-    }
-
-
     //Attributes
     Core::Config* m_config;
   };

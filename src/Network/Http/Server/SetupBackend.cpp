@@ -1,6 +1,7 @@
 #include <Halomux/Network/Http/Server/SetupBackend.hpp>
 
 #include <Halomux/Core/CoreService.hpp>
+#include <Halomux/Network/Http/Server/RouteTools.hpp>
 #include <Halomux/Hue/Api/ApiTools.hpp>
 #include <Halomux/Serialization/Credentials.hpp>
 
@@ -75,6 +76,11 @@ namespace Halomux::Network::Http::Server
     // POST METHODS
 
     m_httpServer.addRoute(HttpMethod::Post, "/api/finishSetup", [this](const Request& /*req*/, Response& res){
+      // Starting without a paired bridge would fail
+      if(!m_coreService->initialSetupComplete()){
+        throw HttpError(409, "the setup isn't complete yet: pair with the bridge first");
+      }
+
       Serialization::Json jsonResponse = {
         {"version", m_coreService->version()},
       };

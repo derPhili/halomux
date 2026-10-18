@@ -93,9 +93,13 @@ set(APP_SOURCE
 
 set(AUDIO_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Audio/AudioAnalyzer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Pipewire/LoopThread.cpp
 )
 
 set(CORE_SOURCE
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AreaSession.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelColor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/CoreService.cpp
@@ -103,6 +107,7 @@ set(CORE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Runtime.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Profile.cpp
 )
 
 
@@ -112,13 +117,15 @@ set(HUE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ApiTools.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeAddress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeDiscovery.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeApi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeTls.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ClipParsing.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/EntertainmentConfigurationSelector.cpp
 )
 
 set(GRABBER_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/SubsampleResolutions.cpp
 )
 
 set(IMAGING_SOURCE
@@ -127,6 +134,8 @@ set(IMAGING_SOURCE
 
 set(NETWORK_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Client/CurlClient.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HostCheck.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/RouteTools.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/SetupBackend.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/WebUIBackend.cpp

@@ -20,6 +20,7 @@ namespace Halomux::Network::Http::Server
     unsigned port
   )
   {
+    std::lock_guard lock(m_mutex);
     m_httpServerImpl = std::make_unique<Impl>(m_routes);
 
     return m_httpServerImpl->bind(boundAddress, port);
@@ -28,18 +29,27 @@ namespace Halomux::Network::Http::Server
 
   bool HttpServer::listen()
   {
-    if(!m_httpServerImpl){
-      return false;
+    Impl* impl = nullptr;
+    {
+      std::lock_guard lock(m_mutex);
+      // Stopped meanwhile: the stop would otherwise be lost, as nothing listened yet
+      if(m_stopRequested || !m_httpServerImpl){
+        return false;
+      }
+      impl = m_httpServerImpl.get();
     }
 
-    return m_httpServerImpl->listen();
+    return impl->listen();
   }
 
 
   bool HttpServer::stop()
   {
+    std::lock_guard lock(m_mutex);
+    m_stopRequested = true;
+
     if(!m_httpServerImpl){
-      return false;
+      return true;
     }
 
     return m_httpServerImpl->stop();

@@ -11,24 +11,6 @@ namespace Halomux::Serialization
   template<>
   struct JsonSerializer<Hue::Api::EntertainmentConfiguration>
   {
-    // Deserialization
-    static void from_json(
-      const Json& jsonEntConf,
-      Hue::Api::EntertainmentConfiguration& entConf
-    )
-    {
-      jsonEntConf.at("metadata").at("name").get_to(entConf.name);
-
-      const auto& lightServices = jsonEntConf.at("light_services");
-      for (const auto& lightService : lightServices) {
-        std::string lightId = lightService.at("rid");
-        Hue::Api::Device device;
-        device.id = lightId; // Initialize with default value
-        entConf.devices.push_back(std::move(device));
-      }
-    }
-
-
     // Serialization
     static void to_json(
       Json& jsonEntConf,
@@ -37,8 +19,6 @@ namespace Halomux::Serialization
     {
       jsonEntConf = {
         {"name", entConf.name},
-        //{"devices", entConf.devices},
-        //{"channels", entConf.channels},
       };
     }
   };

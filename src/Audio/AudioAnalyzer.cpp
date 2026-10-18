@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <future>
 
 #include <Halomux/Core/Logger.hpp>
 
@@ -11,34 +10,17 @@ namespace Halomux::Audio
 {
   AudioAnalyzer::AudioAnalyzer()
   {
-    std::promise<void> loopReady;
-    auto loopReadyFuture = loopReady.get_future();
-
-    m_thread.emplace([this, &loopReady](){
-      pw_init(nullptr, nullptr);
-      m_loop = pw_main_loop_new(nullptr);
-      loopReady.set_value();
-
-      _run();
-
-      pw_main_loop_destroy(m_loop);
-      pw_deinit();
-    });
-
-    // The loop must exist before the destructor may quit it
-    loopReadyFuture.wait();
+    m_loopThread.emplace(
+      [this](pw_main_loop* loop){return _connect(loop);},
+      [this](pw_main_loop*){_disconnect();}
+    );
   }
 
 
   AudioAnalyzer::~AudioAnalyzer()
   {
-    if(m_loop){
-      pw_main_loop_quit(m_loop);
-    }
-
-    if(m_thread.has_value()){
-      m_thread->join();
-    }
+    // Quits the loop and waits for its thread
+    m_loopThread.reset();
   }
 
 
@@ -48,12 +30,18 @@ namespace Halomux::Audio
   }
 
 
-  void AudioAnalyzer::_run()
+  bool AudioAnalyzer::_connect(
+    pw_main_loop* loop
+  )
   {
-    pw_stream_events streamEvents = {};
-    streamEvents.version = PW_VERSION_STREAM_EVENTS;
-    streamEvents.param_changed = _onStreamParamChanged;
-    streamEvents.process = _onStreamProcess;
+    // Outlives the stream
+    static const pw_stream_events streamEvents = [](){
+      pw_stream_events events = {};
+      events.version = PW_VERSION_STREAM_EVENTS;
+      events.param_changed = _onStreamParamChanged;
+      events.process = _onStreamProcess;
+      return events;
+    }();
 
     // Capture what is played on the default output, not a microphone
     auto props = pw_properties_new(
@@ -65,7 +53,7 @@ namespace Halomux::Audio
       NULL
     );
 
-    m_stream = pw_stream_new_simple(pw_main_loop_get_loop(m_loop), "HalomuxAudio", props, &streamEvents, this);
+    m_stream = pw_stream_new_simple(pw_main_loop_get_loop(loop), "HalomuxAudio", props, &streamEvents, this);
 
     uint8_t buffer[1024];
 #pragma GCC diagnostic push
@@ -91,10 +79,18 @@ namespace Halomux::Audio
 
     if(result < 0){
       Core::Logger::error("[audio] Could not capture the audio output");
+      return false;
     }
-    else{
-      Core::Logger::log("[audio] Listening to the default audio output");
-      pw_main_loop_run(m_loop);
+
+    Core::Logger::log("[audio] Listening to the default audio output");
+    return true;
+  }
+
+
+  void AudioAnalyzer::_disconnect()
+  {
+    if(!m_stream){
+      return;
     }
 
     pw_stream_destroy(m_stream);

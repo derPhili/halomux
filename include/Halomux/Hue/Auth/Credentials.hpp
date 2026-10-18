@@ -1,6 +1,5 @@
 #pragma once
 
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -60,10 +59,19 @@ namespace Halomux::Hue::Auth
 
     /**
      * @brief Helper to get byte representation of clientkey
-     * 
+     *
      * @return std::vector<unsigned char> clientkey as bytes
+     * @throw std::runtime_error The clientkey isn't hexadecimal
      */
     std::vector<unsigned char> clientkeyBytes() const;
+
+
+    /**
+     * @brief Tells whether the clientkey is hexadecimal, as the pre-shared key of the streaming connection
+     *
+     * @return true Non-empty, of even length, only hexadecimal digits
+     */
+    bool hasValidClientkey() const;
 
   private:
     // Attributes

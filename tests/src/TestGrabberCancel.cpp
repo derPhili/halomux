@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <thread>
 
 #pragma GCC diagnostic push
@@ -13,6 +14,7 @@
 #include <Halomux/Core/Config.hpp>
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
+#include <Halomux/Pipewire/LoopThread.hpp>
 
 using namespace Halomux;
 using namespace std::chrono_literals;
@@ -38,25 +40,17 @@ int main()
   // No portal to reach: the selection fails right away
   setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/nonexistent/halomux-test-bus", 1);
 
-  // The running grabber's Pipewire thread
-  pw_main_loop* loop = nullptr;
-  std::atomic<bool> loopReady{false};
-  std::thread running([&](){
-    pw_init(nullptr, nullptr);
-    loop = pw_main_loop_new(nullptr);
-    spa_source* timer = pw_loop_add_timer(pw_main_loop_get_loop(loop), onTimer, nullptr);
-    timespec interval{0, 10'000'000};
-    pw_loop_update_timer(pw_main_loop_get_loop(loop), timer, &interval, &interval, false);
-    loopReady = true;
-    pw_main_loop_run(loop);
-    pw_loop_destroy_source(pw_main_loop_get_loop(loop), timer);
-    pw_main_loop_destroy(loop);
-    pw_deinit();
-  });
-
-  while(!loopReady){
-    std::this_thread::sleep_for(1ms);
-  }
+  // The running grabber's Pipewire loop, ticking every 10 ms
+  spa_source* timer = nullptr;
+  auto running = std::make_unique<Pipewire::LoopThread>(
+    [&timer](pw_main_loop* loop){
+      timer = pw_loop_add_timer(pw_main_loop_get_loop(loop), onTimer, nullptr);
+      timespec interval{0, 10'000'000};
+      pw_loop_update_timer(pw_main_loop_get_loop(loop), timer, &interval, &interval, false);
+      return true;
+    },
+    [&timer](pw_main_loop* loop){pw_loop_destroy_source(pw_main_loop_get_loop(loop), timer);}
+  );
 
   Core::Config config(std::filesystem::temp_directory_path() / "halomux-test-cancel");
   bool cancelled = false;
@@ -71,8 +65,7 @@ int main()
   std::this_thread::sleep_for(300ms);
   const int after = ticks;
 
-  pw_main_loop_quit(loop);
-  running.join();
+  running.reset();
 
   if(!cancelled){
     Core::Logger::error("The screen selection didn't fail");

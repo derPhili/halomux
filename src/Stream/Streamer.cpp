@@ -113,10 +113,23 @@ namespace Halomux::Stream
   }
 
 
+  void Streamer::reconnect()
+  {
+    m_reconnectRequested = true;
+  }
+
+
   void Streamer::streamChannels(
     const Hue::Api::ChannelStreams& channels
   )
   {
+    // Only this thread hands the DTLS client over to the connection thread
+    if(m_reconnectRequested.exchange(false)){
+      m_connected = false;
+      _requestConnection();
+      return;
+    }
+
     if(!m_connected){
       // Dropped: colors are streamed again on the next frames once connected
       return;

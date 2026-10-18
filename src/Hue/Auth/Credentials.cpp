@@ -1,34 +1,56 @@
 #include <Halomux/Hue/Auth/Credentials.hpp>
 
+#include <optional>
 
-namespace Halomux::Hue::Auth
+
+namespace
 {
-  inline std::vector<unsigned char> hexStringToBytes(
+  // Value of a hexadecimal digit, nothing for another character
+  std::optional<unsigned char> hexDigit(
+    char c
+  )
+  {
+    if(c >= '0' && c <= '9'){
+      return static_cast<unsigned char>(c - '0');
+    }
+    if(c >= 'a' && c <= 'f'){
+      return static_cast<unsigned char>(c - 'a' + 10);
+    }
+    if(c >= 'A' && c <= 'F'){
+      return static_cast<unsigned char>(c - 'A' + 10);
+    }
+
+    return std::nullopt;
+  }
+
+
+  // Bytes of a hexadecimal string, nothing if it isn't one
+  std::optional<std::vector<unsigned char>> hexStringToBytes(
     const std::string& hexString
   )
   {
-    if(hexString.size() % 2 != 0){
-      throw std::runtime_error("Wrong hex string length");
+    if(hexString.empty() || hexString.size() % 2 != 0){
+      return std::nullopt;
     }
 
     std::vector<unsigned char> bytes;
-    bytes.resize(hexString.size() / 2);
+    bytes.reserve(hexString.size() / 2);
 
-    std::stringstream converter;
-    unsigned byte;
-    for(size_t i = 0; auto& b : bytes){
-      converter << std::hex << hexString.substr(i, 2);
-      converter >> byte;
-      b = byte & 0xFF;
-      converter.clear();
-      i += 2;
+    for(size_t i = 0; i < hexString.size(); i += 2){
+      const auto high = hexDigit(hexString[i]);
+      const auto low = hexDigit(hexString[i + 1]);
+      if(!high || !low){
+        return std::nullopt;
+      }
+
+      bytes.push_back(static_cast<unsigned char>(*high << 4 | *low));
     }
 
     return bytes;
   }
 
 
-  inline std::vector<unsigned char> stringToBytes(
+  std::vector<unsigned char> stringToBytes(
     const std::string& string
   )
   {
@@ -39,8 +61,11 @@ namespace Halomux::Hue::Auth
 
     return bytes;
   }
+}
 
 
+namespace Halomux::Hue::Auth
+{
   Credentials::Credentials(
     const std::string& username,
     const std::string& clientkey
@@ -70,6 +95,17 @@ namespace Halomux::Hue::Auth
 
   std::vector<unsigned char> Credentials::clientkeyBytes() const
   {
-    return hexStringToBytes(m_clientkey);
+    auto bytes = hexStringToBytes(m_clientkey);
+    if(!bytes){
+      throw std::runtime_error("The clientkey isn't hexadecimal");
+    }
+
+    return std::move(*bytes);
+  }
+
+
+  bool Credentials::hasValidClientkey() const
+  {
+    return hexStringToBytes(m_clientkey).has_value();
   }
 }

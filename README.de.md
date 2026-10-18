@@ -152,7 +152,7 @@ Scheitert der Import, weicht Halomux auf Shared Memory und die CPU aus (`Capture
 Die Konfiguration liegt in `~/.config/halomux/`. Eine Konfiguration von Huenicorn oder eines früheren Namens von Halomux (Lightspill, Hue Desktop Sync) wird beim ersten Start übernommen.
 
 * `config.json`: Bridge, Zugangsdaten und Einstellungen
-* `profile.json`: die Bildschirmbereiche der Lampen für einen Entertainment-Bereich
+* `profile.json`: die Bildschirmbereiche der Lampen, für jeden Entertainment-Bereich
 
 ### config.json
 
@@ -178,8 +178,10 @@ Die meisten Werte änderst du in der Lichtsteuerung. Von Hand lassen sich alle b
 
 ### profile.json
 
-* **entertainmentConfigurationId**: (String) UUID des Entertainment-Bereichs
-* **channels**: (Array) die Lampen des Bereichs, jeweils mit **channelId**, **active**, **devices**, **gammaFactor**, **uvs** (obere linke Ecke **uvA** und untere rechte Ecke **uvB** ihres Bildschirmbereichs, von 0 bis 1) und **monitor**: der Monitor, auf dem der Bereich liegt, über seine Position und Größe auf dem Desktop (**x**, **y**, **width**, **height**) und seinen Anschlussnamen (**name**). Eine Lampe ohne dieses Feld folgt dem ersten erfassten Monitor; eine Lampe, deren Monitor nicht erfasst wird, bleibt bei Sync aus
+* **entertainmentConfigurationId**: (String) UUID des Entertainment-Bereichs, der beim Speichern ausgewählt war
+* **areas**: (Objekt) für jeden Entertainment-Bereich unter seiner UUID dessen **channels**: (Array) die Lampen des Bereichs, jeweils mit **channelId**, **active**, **devices**, **gammaFactor**, **uvs** (obere linke Ecke **uvA** und untere rechte Ecke **uvB** ihres Bildschirmbereichs, von 0 bis 1) und **monitor**: der Monitor, auf dem der Bereich liegt, über seine Position und Größe auf dem Desktop (**x**, **y**, **width**, **height**) und seinen Anschlussnamen (**name**). Eine Lampe ohne dieses Feld folgt dem ersten erfassten Monitor; eine Lampe, deren Monitor nicht erfasst wird, bleibt bei Sync aus
+
+Profile früherer Versionen mit einem einzelnen **channels**-Array werden für ihren Entertainment-Bereich übernommen.
 
 ## Fehlerbehebung
 

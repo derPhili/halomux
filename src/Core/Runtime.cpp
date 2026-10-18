@@ -10,6 +10,8 @@
 
 #include <glm/common.hpp>
 
+#include <Halomux/Core/ChannelColor.hpp>
+#include <Halomux/Core/Profile.hpp>
 #include <Halomux/Network/Http/Client/Client.hpp>
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Platform/Selector.hpp>
@@ -33,9 +35,6 @@ namespace
 {
   // Shown by lamps without a static color yet: warm white
   const Halomux::Imaging::Color DefaultStaticColor{255, 180, 110};
-
-  // Time constant of the fade between static colors [s]
-  constexpr float StaticFadeTimeConstant = 0.35f;
 }
 
 
@@ -122,10 +121,11 @@ namespace Halomux::Core
     // Don't let the compositor produce frames that would never be consumed
     grabber()->setFrameRateLimit(m_config.refreshRate());
 
-    if(m_config.subsampleWidth() == 0){
+    // Without a captured image, the width stays unset and is chosen on the next start
+    auto subsampleCandidates = grabber()->subsampleResolutionCandidates();
+    if(m_config.subsampleWidth() == 0 && !subsampleCandidates.empty()){
       auto displayResolution = grabber()->displayResolution();
       float percentThreshold = 1.0;
-      auto subsampleCandidates = grabber()->subsampleResolutionCandidates();
 
       auto bestSubsampleWidth = subsampleCandidates.back().x;
       for(auto i = subsampleCandidates.size(); i--;){
@@ -150,22 +150,24 @@ namespace Halomux::Core
 
     Logger::log("Configuration is ready. Feel free to modify it manually by editing ", std::quoted(m_config.configFilePath().string()));
 
-    const auto& credentials = m_config.credentials().value();
-    const std::string& bridgeAddress =  m_config.bridgeAddress().value();
+    const auto credentials = m_config.credentials().value();
+    const std::string bridgeAddress = m_config.bridgeAddress().value();
 
-    m_selector = std::make_unique<Hue::Api::EntertainmentConfigurationSelector>(credentials, bridgeAddress);
+    // Selects the area of the profile, and keeps trying in the background if the bridge is offline
+    static constexpr auto AreaCheckInterval = std::chrono::seconds(5);
+    m_areaSession = std::make_unique<AreaSession>(
+      std::make_unique<Hue::Api::ClipBridgeApi>(credentials, bridgeAddress),
+      [credentials, bridgeAddress](const std::string& areaId) -> std::unique_ptr<Stream::IStreamer>{
+        // Connects in the background: replacing it doesn't hold the streaming loop
+        auto streamer = std::make_unique<Stream::Streamer>(credentials, bridgeAddress);
+        streamer->setEntertainmentConfigurationId(areaId);
+        return streamer;
+      },
+      [this](const std::string& areaId, const Hue::Api::ChannelMembers& members){_onAreaSelected(areaId, members);},
+      std::chrono::duration_cast<std::chrono::milliseconds>(AreaCheckInterval)
+    );
 
-    std::string entertainmentConfigurationId = {};
-    auto optJsonProfile = m_coreService->getProfile();
-
-    if(optJsonProfile.has_value()){
-      const auto& jsonProfile = optJsonProfile.value();
-      if(jsonProfile.contains("entertainmentConfigurationId")){
-        entertainmentConfigurationId = jsonProfile.at("entertainmentConfigurationId");
-      }
-    }
-
-    _enableEntertainmentConfiguration(entertainmentConfigurationId);
+    m_areaSession->start(Profile::currentArea(m_coreService->getProfile().value_or(Serialization::Json())));
 
     return true;
   }
@@ -211,45 +213,14 @@ namespace Halomux::Core
   }
 
 
-  void Runtime::_initChannels(
-    const Serialization::Json& jsonChannels
+  void Runtime::_onAreaSelected(
+    const std::string& areaId,
+    const Hue::Api::ChannelMembers& members
   )
   {
-    const auto& username = m_config.credentials().value().username();
-    const auto& bridgeAddress =  m_config.bridgeAddress().value();
-    auto devices = Hue::Api::ApiTools::loadDevices(username, bridgeAddress);
-    auto entertainmentConfigurationsChannels = Hue::Api::ApiTools::loadEntertainmentConfigurationsChannels(username, bridgeAddress);
-
-    Hue::Api::Channels channels;
-
-    for(const auto& [id, channel] : m_selector->currentEntertainmentConfiguration().channels){
-      bool found = false;
-      const auto& members = Hue::Api::ApiTools::matchDevices(entertainmentConfigurationsChannels.at(m_selector->currentEntertainmentConfigurationId().value()).at(id), devices);
-      for(const auto& jsonProfileChannel : jsonChannels){
-        if(jsonProfileChannel.at("channelId") == id){
-          bool active = jsonProfileChannel.at("active");
-          Serialization::Json jsonUVs = jsonProfileChannel.at("uvs");
-
-          Imaging::UVs uvs = jsonUVs.get<Imaging::UVs>();
-
-          float gammaFactor = jsonProfileChannel.at("gammaFactor");
-          auto& profileChannel = channels.emplace(id, Hue::Api::Channel{active, members, gammaFactor, uvs}).first->second;
-          profileChannel.monitor = Serialization::monitorRefFromJson(jsonProfileChannel);
-
-          found = true;
-          break;
-        }
-      }
-
-      if(!found){
-        channels.emplace(id, Hue::Api::Channel{false, members, 0.0f});
-      }
-    }
-
-    std::lock_guard lock(m_channelsMutex);
-    m_channels = std::move(channels);
-    m_channelStreams.clear();
-    _resolveChannelMonitors();
+    // The lamp settings saved for this area only: channel ids repeat across areas
+    const auto profileChannels = Profile::channelsForArea(m_coreService->getProfile().value_or(Serialization::Json()), areaId);
+    m_channelStore.replace(Profile::channelsFromProfile(members, profileChannels), grabber()->monitors());
   }
 
 
@@ -291,14 +262,14 @@ namespace Halomux::Core
 
       std::shared_ptr<Grabber::IGrabber> oldGrabber;
       {
-        std::lock_guard channelsLock(m_channelsMutex);
+        auto channels = m_channelStore.access();
         {
           std::lock_guard grabberLock(m_grabberMutex);
           oldGrabber = std::exchange(m_grabber, newGrabber);
         }
 
         // Channel monitor indices refer to the new monitors from now on
-        _resolveChannelMonitors();
+        channels.resolveMonitors(newGrabber->monitors());
         m_grabberReplaced = true;
       }
 
@@ -308,70 +279,6 @@ namespace Halomux::Core
       // Stops the former capture, unless an update still uses it
       oldGrabber.reset();
     });
-
-    return true;
-  }
-
-
-  void Runtime::_resolveChannelMonitors()
-  {
-    m_monitors = grabber()->monitors();
-
-    for(auto& [channelId, channel] : m_channels){
-      // Profiles from before monitors per lamp captured only one monitor: the first one
-      if(!channel.monitor.has_value() && channel.state == Hue::Api::Channel::State::Active && !m_monitors.empty()){
-        channel.monitor = Grabber::monitorRef(m_monitors.front());
-      }
-
-      // Lost monitors are never found
-      channel.monitorIndex = channel.monitor.has_value() ? Grabber::findMonitor(*channel.monitor, m_monitors) : std::nullopt;
-
-      if(channel.monitor.has_value() && !channel.monitorIndex.has_value()){
-        Logger::warn("The monitor of channel ", static_cast<int>(channelId), " isn't captured (", channel.monitor->name, " ", channel.monitor->geometry.width, "x", channel.monitor->geometry.height, "): it stays off while syncing");
-      }
-    }
-  }
-
-
-  float Runtime::_desktopCenterX(
-    const Hue::Api::Channel& channel
-  ) const
-  {
-    if(!channel.monitorIndex.has_value() || *channel.monitorIndex >= m_monitors.size()){
-      return 0.5f;
-    }
-
-    return Grabber::desktopCenterX(channel.uvs, m_monitors[*channel.monitorIndex].geometry, Grabber::desktopBounds(m_monitors));
-  }
-
-
-  bool Runtime::_enableEntertainmentConfiguration(
-    const std::string& entertainmentConfigurationId
-  )
-  {
-    if(!m_selector->selectEntertainmentConfiguration(entertainmentConfigurationId)){
-      return false;
-    }
-
-    const auto& credentials = m_config.credentials().value();
-
-    // The streamer connects in the background: replacing it doesn't hold the streaming loop
-    auto streamer = std::make_unique<Stream::Streamer>(credentials, m_config.bridgeAddress().value());
-    streamer->setEntertainmentConfigurationId(m_selector->currentEntertainmentConfigurationId().value());
-
-    {
-      std::lock_guard lock(m_streamerMutex);
-      m_streamer = std::move(streamer);
-    }
-
-    Serialization::Json jsonChannels = Serialization::Json::object();
-
-    auto optJsonProfile = m_coreService->getProfile();
-    if(optJsonProfile.has_value() && optJsonProfile->contains("channels")){
-      jsonChannels = optJsonProfile->at("channels");
-    }
-
-    _initChannels(jsonChannels);
 
     return true;
   }
@@ -421,7 +328,9 @@ namespace Halomux::Core
 
     const Audio::AudioAnalyzer::Triggers soundTriggers = m_audioAnalyzer ? m_audioAnalyzer->takeTriggers() : Audio::AudioAnalyzer::Triggers{0.f, 0.f};
 
-    std::lock_guard channelsLock(m_channelsMutex);
+    auto access = m_channelStore.access();
+    auto& channels = access.channels;
+    auto& channelStreams = access.streams;
 
     // Taken under the channels lock, like the replacement of a screen selection: the regions sent
     // below always reach the grabber that m_grabberReplaced refers to. Kept alive for this update.
@@ -438,13 +347,13 @@ namespace Halomux::Core
     if(now - m_lastLostMonitorsCheck >= std::chrono::seconds(1)){
       m_lastLostMonitorsCheck = now;
 
-      const auto monitors = grabber->monitors();
-      const bool lostChanged = monitors.size() != m_monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
-        return monitors[i].lost != m_monitors[i].lost;
+      auto monitors = grabber->monitors();
+      const bool lostChanged = monitors.size() != access.monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
+        return monitors[i].lost != access.monitors[i].lost;
       });
 
       if(lostChanged){
-        _resolveChannelMonitors();
+        access.resolveMonitors(std::move(monitors));
       }
     }
 
@@ -453,7 +362,7 @@ namespace Halomux::Core
       grabber->setPaused(m_capturePaused);
 
       // A jump between the static colors and the screen is no highlight
-      for(auto& [channelId, channel] : m_channels){
+      for(auto& [channelId, channel] : channels){
         channel.hasPreviousMeasuredBrightness = false;
       }
     }
@@ -462,7 +371,7 @@ namespace Halomux::Core
 
     // The grabber averages the regions of the active channels on each captured frame
     Grabber::IGrabber::ChannelRegions regions;
-    for(const auto& [channelId, channel] : m_channels){
+    for(const auto& [channelId, channel] : channels){
       // Channels whose monitor isn't captured stay off while syncing
       if(channel.state == Hue::Api::Channel::State::Active && channel.monitorIndex.has_value()){
         regions.push_back({channelId, *channel.monitorIndex, channel.uvs});
@@ -494,7 +403,16 @@ namespace Halomux::Core
       return;
     }
 
-    for(auto& [channelId, channel] : m_channels){
+    const ChannelColor::Settings colorSettings{
+      .tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate())),
+      .transitionSmoothing = m_config.transitionSmoothing(),
+      .brightness = m_config.brightness(),
+      .highlightBoost = m_config.highlightBoost(),
+      .syncing = syncing,
+      .previewing = previewing
+    };
+
+    for(auto& [channelId, channel] : channels){
       if(channel.state == Hue::Api::Channel::State::Inactive){
         continue;
       }
@@ -513,119 +431,64 @@ namespace Halomux::Core
       // Streams are only created once a channel has been active, so channels
       // that were never enabled are left untouched on the bridge. Shut down
       // channels keep being streamed as black.
-      auto streamIt = std::find_if(m_channelStreams.begin(), m_channelStreams.end(), [channelId](const auto& stream){
+      auto streamIt = std::find_if(channelStreams.begin(), channelStreams.end(), [channelId](const auto& stream){
         return stream.id == channelId;
       });
 
-      if(streamIt == m_channelStreams.end()){
-        streamIt = m_channelStreams.insert(m_channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
+      if(streamIt == channelStreams.end()){
+        streamIt = channelStreams.insert(channelStreams.end(), Hue::Api::ChannelStream{.id = channelId});
       }
 
       auto& channelStream = *streamIt;
 
       if(channel.state == Hue::Api::Channel::State::PendingShutdown){
-        channelStream.id = channelId;
-        channelStream.r = 0;
-        channelStream.g = 0;
-        channelStream.b = 0;
-        channel.hasPreviousXyb = false;
-        channel.hasPreviousMeasuredBrightness = false;
-        channel.highlightBoost = 0.f;
-        channel.acknowledgeShutdown();
+        ChannelColor::shutDown(channel, channelStream);
+        continue;
+      }
+
+      // Horizontal position of the lamp's region on the whole desktop, 0 = left, 1 = right
+      const float pan = access.desktopCenterX(channel);
+
+      Imaging::Color color;
+      if(previewing){
+        color = PreviewSequence::colorAt(previewTime, pan);
+      }
+      else if(!syncing){
+        const auto staticColorIt = staticColors.find(channelId);
+        color = staticColorIt != staticColors.end() ? staticColorIt->second : DefaultStaticColor;
+      }
+      else if(monitorMissing){
+        color = Imaging::Color(0, 0, 0);
       }
       else{
-        // Horizontal position of the lamp's region on the whole desktop, 0 = left, 1 = right
-        const float pan = _desktopCenterX(channel);
-
-        Imaging::Color color;
-        if(previewing){
-          color = PreviewSequence::colorAt(previewTime, pan);
-        }
-        else if(!syncing){
-          const auto staticColorIt = staticColors.find(channelId);
-          color = staticColorIt != staticColors.end() ? staticColorIt->second : DefaultStaticColor;
-        }
-        else if(monitorMissing){
-          color = Imaging::Color(0, 0, 0);
-        }
-        else{
-          color = colorIt->second;
-        }
-
-        const float tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate()));
-
-        glm::vec3 correctedColor;
-        /*/
-        glm::vec3 normalized = color.toNormalized();
-        glm::vec3 correctedColor = glm::pow(normalized, glm::vec3(channel.gammaExponent()));
-        /*/
-        glm::vec3 xybColor = color.toXYB();
-
-        // Ease toward the newly measured color instead of snapping to it, so
-        // fast-changing content doesn't produce an abrupt strobe-like cut.
-        // transitionSmoothing == 0 reproduces the previous (instant) behavior.
-        float smoothing = m_config.transitionSmoothing();
-        if(!syncing && !previewing){
-          // Fade softly between static colors, whatever the smoothing tuned for the screen
-          smoothing = std::max(smoothing, std::exp(-tickDuration / StaticFadeTimeConstant));
-        }
-        if(channel.hasPreviousXyb && smoothing > 0.f){
-          xybColor = glm::mix(channel.previousXyb, xybColor, 1.f - smoothing);
-        }
-        channel.previousXyb = xybColor;
-        channel.hasPreviousXyb = true;
-
-        xybColor.z = glm::pow(xybColor.z, channel.gammaExponent());
-
-        // Global dimmer, applied last so it scales what the lamp would otherwise show
-        xybColor.z *= m_config.brightness();
-
-        // Flash on sudden brightening, after smoothing so it isn't eased away: the boost takes
-        // the lamp part of the way to full brightness and fades with a fixed time constant
-        static constexpr float BoostTimeConstant = 0.25f; // [s]
-        const float decay = std::exp(-tickDuration / BoostTimeConstant);
-        // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
-        const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
-
-        // Static colors don't flash when switching scenes
-        const float boostStrength = syncing || previewing ? m_config.highlightBoost() : 0.f;
-        const float boost = channel.updateHighlightBoost(color.brightness(), boostStrength, decay, soundTrigger);
-        xybColor.z += boost * (1.f - xybColor.z);
-
-        correctedColor = xybColor;
-        //*/
-
-        channelStream.id = channelId;
-        channelStream.r = correctedColor.r;
-        channelStream.g = correctedColor.g;
-        channelStream.b = correctedColor.b;
+        color = colorIt->second;
       }
+
+      // Sound: pan the left and right channel triggers by the horizontal center of the lamp's region
+      const float soundTrigger = (1.f - pan) * soundTriggers[0] + pan * soundTriggers[1];
+
+      const glm::vec3 xyb = ChannelColor::step(channel, color, colorSettings, soundTrigger);
+      channelStream.r = xyb.x;
+      channelStream.g = xyb.y;
+      channelStream.b = xyb.z;
     }
 
-    {
-      std::lock_guard lock(m_streamerMutex);
-      if(m_streamer.get()){
-        m_streamer->streamChannels(m_channelStreams);
-      }
+    if(m_areaSession){
+      m_areaSession->stream(channelStreams);
     }
 
     {
       std::lock_guard lock(m_currentColorsMutex);
-      m_currentColorsSnapshot = m_channelStreams;
+      m_currentColorsSnapshot = channelStreams;
     }
   }
 
 
   void Runtime::_shutdown()
   {
-    {
-      // Close the DTLS session before asking the bridge to stop streaming
-      std::lock_guard lock(m_streamerMutex);
-      m_streamer.reset();
+    if(m_areaSession){
+      m_areaSession->stop();
     }
-
-    std::lock_guard lock(m_selectorMutex);
-    m_selector->disableStreaming();
   }
 
 }

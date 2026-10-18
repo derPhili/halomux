@@ -74,9 +74,9 @@ namespace Halomux::Core
     /**
      * @brief Returns the list of available entertainment configurations
      * 
-     * @return const EntertainmentConfigurations& Available entertainment configurations
+     * @return EntertainmentConfigurations Available entertainment configurations, empty until the bridge answered
      */
-    const Hue::Api::EntertainmentConfigurations& entertainmentConfigurations() const;
+    Hue::Api::EntertainmentConfigurations entertainmentConfigurations() const;
 
 
     /**
@@ -85,15 +85,6 @@ namespace Halomux::Core
      * @return const std::string& Current entertainment configuration ID
      */
     std::optional<std::string> currentEntertainmentConfigurationId() const;
-
-
-
-    /**
-     * @brief Returns the current entertainment configuration
-     * 
-     * @return const EntertainmentConfiguration& Current entertainment configuration
-     */
-    const Hue::Api::EntertainmentConfiguration& currentEntertainmentConfiguration() const;
 
 
 
@@ -501,10 +492,12 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Saves the current state of a user-defined configuration as profile
-     * 
+     * @brief Saves the lamp settings of the current entertainment area in the profile
+     *
+     * @return true Saved
+     * @return false No area is selected, or the file couldn't be written
      */
-    void saveProfile();
+    bool saveProfile();
 
 
      /**
@@ -520,6 +513,14 @@ namespace Halomux::Core
      * @return false Setup was not completed
     */
     bool ensureInitialSetup();
+
+
+    /**
+     * @brief Tells whether the setup registered everything needed: bridge address and credentials
+     *
+     * @return true The setup can be finished
+     */
+    bool initialSetupComplete() const;
 
 
     /**

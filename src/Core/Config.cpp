@@ -1,6 +1,7 @@
 #include <Halomux/Core/Config.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 
@@ -11,6 +12,14 @@
 namespace Halomux::Core
 {
   using namespace Serialization;
+
+  namespace
+  {
+    constexpr std::filesystem::perms OwnerOnly = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write;
+
+    // Above, colors would barely move: at 1 they never would
+    constexpr float MaxTransitionSmoothing = 0.97f;
+  }
 
   Config::Config(
     const std::filesystem::path& settingsRoot
@@ -29,18 +38,9 @@ namespace Halomux::Core
 
   bool Config::initialSetupOk() const
   {
-    try{
-      const auto& data = m_configData.value();
-      const auto& bridgeAddress = data.bridgeAddress;
-      const auto& credentials = data.credentials;
-
-      return bridgeAddress.has_value() && credentials.has_value();
-    }
-    catch(const std::exception& e){
-      return false;
-    }
-
-    return true;
+    std::lock_guard lock(m_mutex);
+    const auto& data = m_configData.value();
+    return data.bridgeAddress.has_value() && data.credentials.has_value();
   }
 
 
@@ -51,8 +51,10 @@ namespace Halomux::Core
   }
 
 
-  const std::string& Config::boundBackendIP() const
+  std::string Config::boundBackendIP() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().boundBackendIP.value();
   }
 
@@ -127,26 +129,34 @@ namespace Halomux::Core
   }
 
 
-  const std::optional<std::string>& Config::restoreToken() const
+  std::optional<std::string> Config::restoreToken() const
   {
-    return m_configData->restoreToken;
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().restoreToken;
   }
 
 
-  const std::optional<std::string>& Config::bridgeAddress() const
+  std::optional<std::string> Config::bridgeAddress() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().bridgeAddress;
   }
 
 
-  const std::optional<std::string>& Config::profileName() const
+  std::optional<std::string> Config::profileName() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().profileName;
   }
 
 
-  const std::optional<Hue::Auth::Credentials>& Config::credentials() const
+  std::optional<Hue::Auth::Credentials> Config::credentials() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().credentials;
   }
 
@@ -385,6 +395,12 @@ namespace Halomux::Core
       return false;
     }
 
+    // Files written by former versions were readable by every user
+    std::error_code permissionsError;
+    if((std::filesystem::status(m_configFilePath).permissions() & ~OwnerOnly) != std::filesystem::perms::none){
+      std::filesystem::permissions(m_configFilePath, OwnerOnly, std::filesystem::perm_options::replace, permissionsError);
+    }
+
     try{
       jsonConfig = Json::parse(std::ifstream(m_configFilePath));
       m_configData = jsonConfig.get<Data>();
@@ -397,6 +413,17 @@ namespace Halomux::Core
     bool requireSave = false;
 
     auto& configData = m_configData.value();
+
+    // Hand-edited values get the limits of the setters: a smoothing of 1 would freeze the colors
+    const auto limit = [&requireSave](std::optional<float>& value, float min, float max){
+      if(value.has_value() && (!std::isfinite(*value) || *value < min || *value > max)){
+        value = std::isfinite(*value) ? std::clamp(*value, min, max) : min;
+        requireSave = true;
+      }
+    };
+    limit(configData.transitionSmoothing, 0.f, MaxTransitionSmoothing);
+    limit(configData.highlightBoost, 0.f, 1.f);
+    limit(configData.brightness, 0.f, 1.f);
 
     if(!configData.restServerPort.has_value()){
       configData.restServerPort = defaultConfigData.restServerPort.value();
@@ -437,6 +464,8 @@ namespace Halomux::Core
 
     {
       std::ofstream configFile(tmpPath);
+      // It holds the bridge credentials: readable by its owner only, before anything is written
+      std::filesystem::permissions(tmpPath, OwnerOnly, std::filesystem::perm_options::replace);
       configFile << Json(m_configData.value()).dump(2) << "\n";
       if(!configFile){
         Logger::error("Failed to write configuration file ", tmpPath.string());

@@ -11,6 +11,7 @@
 #include <Halomux/Hue/Api/Channel.hpp>
 #include <Halomux/Hue/Auth/Credentials.hpp>
 #include <Halomux/Stream/DtlsClient.hpp>
+#include <Halomux/Stream/IStreamer.hpp>
 #include <Halomux/Stream/HuestreamHeader.hpp>
 #include <Halomux/Stream/HuestreamPayload.hpp>
 
@@ -30,7 +31,7 @@ namespace Halomux::Stream
   static constexpr unsigned MaxStreamingRate = 60;
 
 
-  class Streamer
+  class Streamer : public IStreamer
   {
     static const std::string Port;
 
@@ -71,7 +72,10 @@ namespace Halomux::Stream
      */
     void streamChannels(
       const Hue::Api::ChannelStreams& channels
-    );
+    ) override;
+
+
+    void reconnect() override;
 
 
   private:
@@ -115,6 +119,8 @@ namespace Halomux::Stream
     // Set by the connection thread once the handshake succeeded, cleared by the streaming
     // thread when sending fails. The DTLS client is only used by the thread it designates.
     std::atomic<bool> m_connected{false};
+    // Set by reconnect(), from any thread: the streaming thread then drops the connection
+    std::atomic<bool> m_reconnectRequested{false};
 
     std::mutex m_connectionMutex;
     std::condition_variable_any m_connectionRequested;

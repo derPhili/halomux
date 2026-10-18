@@ -547,7 +547,7 @@ class WebUI
 
     for(let entertainmentConfiguration of entertainmentConfigurations){
       let newOption = document.createElement("option");
-      newOption.innerHTML = entertainmentConfiguration.name;
+      newOption.textContent = entertainmentConfiguration.name;
       newOption.value = entertainmentConfiguration.entertainmentConfigurationId;
       this.entertainmentConfigurationsSelectNode.appendChild(newOption);
     }
@@ -606,6 +606,11 @@ class WebUI
     promise.catch((error) => {
       log(error);
       this._showLoading(false);
+
+      // Back to the area actually streamed to
+      RequestUtils.get("/api/entertainmentConfigurations")
+      .then((data) => {this._entertainmentConfigurationsCallback(data);})
+      .catch((error) => {log(error);});
     });
   }
 

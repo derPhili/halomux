@@ -135,7 +135,10 @@ namespace Halomux::Network::Http::Client
 
       curl_easy_setopt(handle.get(), CURLOPT_URL, requestUrl.c_str());
       curl_easy_setopt(handle.get(), CURLOPT_CUSTOMREQUEST, method.c_str());
-      curl_easy_setopt(handle.get(), CURLOPT_TIMEOUT, 1L);
+      // The full resource list of a bridge with many devices takes a while: 0.3 s for 140 KB on a
+      // bridge with about 20 lights. An unreachable bridge is still noticed quickly.
+      curl_easy_setopt(handle.get(), CURLOPT_CONNECTTIMEOUT, 3L);
+      curl_easy_setopt(handle.get(), CURLOPT_TIMEOUT, 10L);
 
       if(body.size() > 0){
         curl_easy_setopt(handle.get(), CURLOPT_POSTFIELDS, body.c_str());

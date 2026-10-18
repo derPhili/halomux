@@ -1,0 +1,125 @@
+{
+  "errors": [],
+  "data": [
+    {
+      "id": "d0000000-0000-4000-8000-000000000000",
+      "type": "device",
+      "metadata": {"name": "Hue Bridge", "archetype": "bridge_v2"},
+      "services": [
+        {"rid": "b0000000-0000-4000-8000-000000000000", "rtype": "bridge"},
+        {"rid": "z0000000-0000-4000-8000-000000000000", "rtype": "zigbee_connectivity"}
+      ]
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000001",
+      "type": "device",
+      "metadata": {"name": "Play Left", "archetype": "hue_play"},
+      "services": [
+        {"rid": "10000000-0000-4000-8000-000000000001", "rtype": "light"},
+        {"rid": "e0000000-0000-4000-8000-000000000001", "rtype": "entertainment"}
+      ]
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000002",
+      "type": "device",
+      "metadata": {"name": "Play Right", "archetype": "hue_play"},
+      "services": [
+        {"rid": "10000000-0000-4000-8000-000000000002", "rtype": "light"},
+        {"rid": "e0000000-0000-4000-8000-000000000002", "rtype": "entertainment"}
+      ]
+    },
+    {
+      "id": "d0000000-0000-4000-8000-000000000003",
+      "type": "device",
+      "metadata": {"name": "Lightstrip", "archetype": "hue_lightstrip"},
+      "services": [
+        {"rid": "10000000-0000-4000-8000-000000000003", "rtype": "light"},
+        {"rid": "e0000000-0000-4000-8000-000000000003", "rtype": "entertainment"}
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "type": "light",
+      "owner": {"rid": "d0000000-0000-4000-8000-000000000001", "rtype": "device"},
+      "metadata": {"name": "Play Left", "archetype": "hue_play"},
+      "on": {"on": true}
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "type": "light",
+      "owner": {"rid": "d0000000-0000-4000-8000-000000000002", "rtype": "device"},
+      "metadata": {"name": "Play Right", "archetype": "hue_play"},
+      "on": {"on": true}
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "type": "light",
+      "owner": {"rid": "d0000000-0000-4000-8000-000000000003", "rtype": "device"},
+      "metadata": {"name": "Lightstrip", "archetype": "hue_lightstrip"},
+      "on": {"on": false}
+    },
+    {
+      "id": "e0000000-0000-4000-8000-000000000001",
+      "type": "entertainment",
+      "owner": {"rid": "d0000000-0000-4000-8000-000000000001", "rtype": "device"},
+      "renderer": true
+    },
+    {
+      "id": "r0000000-0000-4000-8000-000000000001",
+      "type": "room",
+      "metadata": {"name": "Office", "archetype": "office"},
+      "children": [{"rid": "d0000000-0000-4000-8000-000000000001", "rtype": "device"}]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "type": "entertainment_configuration",
+      "metadata": {"name": "Desk"},
+      "configuration_type": "screen",
+      "status": "inactive",
+      "channels": [
+        {
+          "channel_id": 0,
+          "position": {"x": -0.5, "y": 0.8, "z": 0},
+          "members": [{"service": {"rid": "e0000000-0000-4000-8000-000000000001", "rtype": "entertainment"}, "index": 0}]
+        },
+        {
+          "channel_id": 1,
+          "position": {"x": 0.5, "y": 0.8, "z": 0},
+          "members": [{"service": {"rid": "e0000000-0000-4000-8000-000000000002", "rtype": "entertainment"}, "index": 0}]
+        }
+      ],
+      "light_services": [
+        {"rid": "10000000-0000-4000-8000-000000000001", "rtype": "light"},
+        {"rid": "10000000-0000-4000-8000-000000000002", "rtype": "light"}
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "type": "entertainment_configuration",
+      "metadata": {"name": "TV"},
+      "configuration_type": "screen",
+      "status": "active",
+      "channels": [
+        {
+          "channel_id": 0,
+          "position": {"x": 0, "y": 1, "z": 0},
+          "members": [
+            {"service": {"rid": "e0000000-0000-4000-8000-000000000003", "rtype": "entertainment"}, "index": 0},
+            {"service": {"rid": "e0000000-0000-4000-8000-000000000001", "rtype": "entertainment"}, "index": 1},
+            {"index": 2}
+          ]
+        }
+      ],
+      "light_services": [
+        {"rid": "10000000-0000-4000-8000-000000000003", "rtype": "light"},
+        {"rid": "10000000-0000-4000-8000-000000000009", "rtype": "light"}
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "type": "entertainment_configuration",
+      "metadata": {"name": "Broken"},
+      "light_services": []
+    }
+  ]
+}

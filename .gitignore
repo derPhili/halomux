@@ -2,6 +2,8 @@
 build/
 
 *.json
+# Made-up bridge answers for the tests
+!tests/fixtures/*.json
 # makepkg
 # Directories makepkg creates: sources, build, package
 dist/arch/*/

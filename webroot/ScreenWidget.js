@@ -230,7 +230,7 @@ class ScreenWidget
     this.showWidgets(true);
     this._updateShape(channel.uvs);
 
-    this.svgChannelMembersNamesNode.innerHTML = channel.formatMembers();
+    this.svgChannelMembersNamesNode.textContent = channel.formatMembers();
   }
 
 
