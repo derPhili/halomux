@@ -25,12 +25,13 @@ get_target_property(APP_LINK_LIBRARIES halomux LINK_LIBRARIES)
 #   [ARGS <arguments>]
 #   [TIMEOUT <seconds>]
 #   [ENVIRONMENT <variables>]
+#   [RUNNER <command>]                runs the test through it, such as dbus-run-session --
 #   [MANUAL])                         built, but not run by ctest
 #
 # Builds Test<Name> and registers it as the ctest test <Name>. Tests find their data files under
 # HALOMUX_TEST_FIXTURES.
 function(halomux_add_test name)
-  cmake_parse_arguments(PARSE_ARGV 1 TEST "WITH_APP;MANUAL" "SANITIZE;TIMEOUT" "SOURCES;LIBRARIES;INCLUDES;DEPENDS;ARGS;ENVIRONMENT")
+  cmake_parse_arguments(PARSE_ARGV 1 TEST "WITH_APP;MANUAL" "SANITIZE;TIMEOUT" "SOURCES;LIBRARIES;INCLUDES;DEPENDS;ARGS;ENVIRONMENT;RUNNER")
 
   set(target Test${name})
 
@@ -68,7 +69,7 @@ function(halomux_add_test name)
     return()
   endif()
 
-  add_test(NAME ${name} COMMAND ${target} ${TEST_ARGS})
+  add_test(NAME ${name} COMMAND ${TEST_RUNNER} $<TARGET_FILE:${target}> ${TEST_ARGS})
   if(TEST_TIMEOUT)
     set_tests_properties(${name} PROPERTIES TIMEOUT ${TEST_TIMEOUT})
   endif()
@@ -98,6 +99,14 @@ halomux_add_test(Grabber WITH_APP
 # A failed screen selection leaves the running capture alone
 halomux_add_test(GrabberCancel WITH_APP
   LIBRARIES ${OpenCV_LIBS}
+)
+
+# The screen selection against a fake portal on a private session bus: cancelled by the user,
+# refused by the portal, and stopped while its dialog is open
+halomux_add_test(PortalCancel WITH_APP
+  LIBRARIES ${OpenCV_LIBS}
+  RUNNER dbus-run-session --
+  TIMEOUT 60
 )
 
 # GPU downscale of a real DMA-BUF against the exact CPU area average
