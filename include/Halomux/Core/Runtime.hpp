@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <stop_token>
 #include <thread>
 
 #include <Halomux/Audio/AudioAnalyzer.hpp>
@@ -169,6 +170,8 @@ namespace Halomux::Core
     std::unique_ptr<CoreService> m_coreService;
 
     std::atomic<bool> m_keepLooping{true};
+    // Requested by stop(): aborts the screen selection dialog of the start
+    std::stop_source m_stopSource;
     bool m_openedSetup{false};
     std::unique_ptr<Timing::LoopRegulator> m_loopRegulator;
 

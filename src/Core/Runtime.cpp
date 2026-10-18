@@ -101,7 +101,9 @@ namespace Halomux::Core
   void Runtime::stop()
   {
     m_keepLooping = false;
-    // Closes a pending screen selection dialog
+    // Closes the screen selection dialog of the start, if it's open
+    m_stopSource.request_stop();
+    // And the one of a monitor change
     std::lock_guard lock(m_reselectMutex);
     m_reselectThread.request_stop();
     m_coreService->abortInitialSetup();
@@ -175,7 +177,7 @@ namespace Halomux::Core
 
   bool Runtime::_initGrabber()
   {
-    auto grabber = Platform::adapter.getGrabber(&m_config);
+    auto grabber = Platform::adapter.getGrabber(&m_config, m_stopSource.get_token());
     std::lock_guard lock(m_grabberMutex);
     m_grabber = std::move(grabber);
     return m_grabber != nullptr;

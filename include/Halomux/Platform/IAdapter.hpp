@@ -85,14 +85,16 @@ namespace Halomux::Platform
      * and before leaving main(), as its teardown relies on other static objects.
      *
      * @param config Halomux current configuration
+     * @param stopToken Aborts a screen selection dialog, if the saved selection can't be restored
      * @return SharedGrabber Grabber instance, nullptr if none could be started
      */
     inline SharedGrabber getGrabber(
-      Core::Config* config
+      Core::Config* config,
+      std::stop_token stopToken = {}
     )
     {
       try{
-        return _createGrabber(config, false);
+        return _createGrabber(config, false, stopToken);
       }
       catch(const Grabber::GrabberCancelled& e){
         Core::Logger::warn(e.what());
