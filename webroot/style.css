@@ -1040,6 +1040,13 @@ input[type=color]::-webkit-color-swatch
 }
 
 
+/* A touch on a handle or the region drags it instead of scrolling the page */
+.handler, #uvArea > rect
+{
+  touch-action: none;
+}
+
+
 .handler:hover
 {
   fill: var(--accentStrong);

@@ -39,7 +39,7 @@ class Handle
     this.handleNode = document.getElementById(handleId);
     this.screenWidget = screenWidget;
     this.parentNode = parentNode;
-    this.handleNode.addEventListener("mousedown", () => {this.drag();});
+    this.handleNode.addEventListener("pointerdown", (event) => {event.preventDefault(); this.drag();});
     this.type = Handle.MapHandleTypeId[handleId];
   }
 
@@ -90,7 +90,7 @@ class GammaHandle
     this.screenWidget = screenWidget;
     this.parentNode = parentNode;
     this.handleNode = document.getElementById("gammaCursor");
-    this.handleNode.addEventListener("mousedown", () => {this.drag();});
+    this.handleNode.addEventListener("pointerdown", (event) => {event.preventDefault(); this.drag();});
   }
 
 
@@ -190,11 +190,12 @@ class ScreenWidget
     };
 
     // Dragging the region itself moves it, onto another monitor too
-    this.uvAreaNode.querySelector("rect").addEventListener("mousedown", (event) => {this._startMove(event);});
+    // Pointer events: mouse, touch and pen alike
+    this.uvAreaNode.querySelector("rect").addEventListener("pointerdown", (event) => {this._startMove(event);});
 
-    document.addEventListener("mouseup", () => {this.drop();})
-    this.svgAreaNode.addEventListener("mousemove", (event) => {this._updateMousePosition(event);});
-    this.svgAreaNode.addEventListener("mouseup", () => {this.drop();});
+    document.addEventListener("pointerup", () => {this.drop();});
+    document.addEventListener("pointercancel", () => {this.drop();});
+    this.svgAreaNode.addEventListener("pointermove", (event) => {this._updateMousePosition(event);});
 
     this.draggedHandle = null;
     this.move = null;
