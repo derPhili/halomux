@@ -199,7 +199,7 @@ halomux_add_test(LoopThread
 
 # Reading mDNS answers, which come from the network
 halomux_add_test(BridgeDiscovery
-  SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp
+  SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp ${SRC}/Hue/Api/BridgeTls.cpp
 )
 
 # Which bridge ids the certificate checks accept

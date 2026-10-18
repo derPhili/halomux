@@ -1,5 +1,7 @@
 #include <Halomux/Hue/Api/BridgeDiscovery.hpp>
 
+#include <Halomux/Hue/Api/BridgeTls.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -192,13 +194,15 @@ namespace Halomux::Hue::Api
       }
 
       if(*type == TypeTxt && name->ends_with(ServiceName)){
-        // Strings prefixed with their length, such as "bridgeid=001788fffe4a2b3c"
+        // Strings prefixed with their length, such as "bridgeid=aabbccddeeff0011"
         size_t position = offset;
         while(position < offset + *length){
           const uint8_t entryLength = reader.data()[position];
           const std::string entry(reinterpret_cast<const char*>(reader.data() + position + 1), std::min<size_t>(entryLength, offset + *length - position - 1));
           if(entry.starts_with("bridgeid=")){
-            bridgeId = entry.substr(9);
+            // Anyone in the network may answer: only an id that is one is kept, as it's shown and sent on
+            const std::string candidate = entry.substr(9);
+            bridgeId = isBridgeId(candidate) ? candidate : "";
           }
           position += 1 + entryLength;
         }

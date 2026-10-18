@@ -59,7 +59,7 @@ namespace
 
 
   // An answer as a Hue bridge sends it: PTR to its instance, TXT with its id
-  Message bridgeAnswer()
+  Message bridgeAnswer(const std::string& bridgeId = "aabbccddeeff0011")
   {
     Message message;
     message.u16(0); message.u16(0x8400); // id, flags
@@ -75,7 +75,7 @@ namespace
     message.bytes.insert(message.bytes.end(), instance.begin(), instance.end());
     message.pointer(serviceOffset);
 
-    const std::string id = "bridgeid=001788fffe4a2b3c";
+    const std::string id = "bridgeid=" + bridgeId;
     const std::string model = "modelid=BSB002";
     message.pointer(instanceOffset);
     message.record(16, static_cast<uint16_t>(2 + id.size() + model.size()));
@@ -97,7 +97,14 @@ int main()
 {
   const Message valid = bridgeAnswer();
   const auto id = Hue::Api::parseDiscoveryAnswer(valid.bytes.data(), valid.bytes.size());
-  expect("Bridge id from a compressed answer", id.has_value() && *id == "001788fffe4a2b3c");
+  expect("Bridge id from a compressed answer", id.has_value() && *id == "aabbccddeeff0011");
+
+  // Anyone in the network can answer: an id that isn't one is dropped, the answer still counts
+  for(const std::string bad : {std::string("\xff\xfe\xfd\xfc\xfb\xfa\xf9\xf8\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0"), std::string("aabbccdd\"eff0011"), std::string("x")}){
+    const Message odd = bridgeAnswer(bad);
+    const auto oddId = Hue::Api::parseDiscoveryAnswer(odd.bytes.data(), odd.bytes.size());
+    expect("Invalid bridge id dropped", oddId.has_value() && oddId->empty());
+  }
 
   // Every truncation is rejected or read safely, never read beyond the message
   for(size_t size = 0; size < valid.bytes.size(); size++){
