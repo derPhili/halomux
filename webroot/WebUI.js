@@ -319,12 +319,13 @@ class WebUI
       return;
     }
 
-    this.screenWidget.currentChannel.gammaFactor = gammaFactor;
+    // The answer is for this lamp, even if another one is selected by then
+    const channel = this.screenWidget.currentChannel;
+    channel.gammaFactor = gammaFactor;
 
-    let promise = RequestUtils.put(`/api/setChannelGammaFactor/${this.screenWidget.currentChannel.channelId}`, JSON.stringify({gammaFactor : gammaFactor}));
+    let promise = RequestUtils.put(`/api/setChannelGammaFactor/${channel.channelId}`, JSON.stringify({gammaFactor : gammaFactor}));
     promise.then((gammaFactorData) => {
-      let gammaFactor = gammaFactorData.gammaFactor;
-      this.screenWidget.currentChannel.gammaFactor = Utils.truncate(gammaFactor, 2);
+      channel.gammaFactor = Utils.truncate(gammaFactorData.gammaFactor, 2);
     });
     promise.catch((error) => {log(error);});
   }
@@ -351,6 +352,11 @@ class WebUI
   {
     const activeChannels = channels.filter(channel => channel.active);
     const inactiveChannels = channels.filter(channel => !channel.active);
+
+    // New lamp objects, none selected: the former selection would point at an object no longer
+    // listed, possibly of another area whose lamps share channel ids
+    this.screenWidget.currentChannel = null;
+    this.screenWidget.showWidgets(false);
 
     this.activeChannels = {};
     this._refreshActiveChannels(activeChannels);
@@ -597,11 +603,18 @@ class WebUI
 
     this.screenWidget.setLegend(ScreenWidget.Legends.none);
 
+    const channel = this.activeChannels[channelId];
     let channelPromise = RequestUtils.get(`/api/channel/${channelId}`);
     channelPromise.then((channelData) => {
-      this.activeChannels[channelId].uvs = channelData.uvs;
-      this.activeChannels[channelId].monitor = channelData.monitor;
-      this.screenWidget.initChannelRegion(this.activeChannels[channelId]);
+      // The lamps may have been listed again meanwhile, such as after an area switch, or another
+      // lamp selected
+      if(this.activeChannels[channelId] !== channel || !channel.node.selected){
+        return;
+      }
+
+      channel.uvs = channelData.uvs;
+      channel.monitor = channelData.monitor;
+      this.screenWidget.initChannelRegion(channel);
     });
     channelPromise.catch((error) => {log(error);});
   }
