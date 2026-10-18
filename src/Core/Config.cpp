@@ -38,18 +38,9 @@ namespace Halomux::Core
 
   bool Config::initialSetupOk() const
   {
-    try{
-      const auto& data = m_configData.value();
-      const auto& bridgeAddress = data.bridgeAddress;
-      const auto& credentials = data.credentials;
-
-      return bridgeAddress.has_value() && credentials.has_value();
-    }
-    catch(const std::exception& e){
-      return false;
-    }
-
-    return true;
+    std::lock_guard lock(m_mutex);
+    const auto& data = m_configData.value();
+    return data.bridgeAddress.has_value() && data.credentials.has_value();
   }
 
 
@@ -60,8 +51,10 @@ namespace Halomux::Core
   }
 
 
-  const std::string& Config::boundBackendIP() const
+  std::string Config::boundBackendIP() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().boundBackendIP.value();
   }
 
@@ -136,26 +129,34 @@ namespace Halomux::Core
   }
 
 
-  const std::optional<std::string>& Config::restoreToken() const
+  std::optional<std::string> Config::restoreToken() const
   {
-    return m_configData->restoreToken;
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().restoreToken;
   }
 
 
-  const std::optional<std::string>& Config::bridgeAddress() const
+  std::optional<std::string> Config::bridgeAddress() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().bridgeAddress;
   }
 
 
-  const std::optional<std::string>& Config::profileName() const
+  std::optional<std::string> Config::profileName() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().profileName;
   }
 
 
-  const std::optional<Hue::Auth::Credentials>& Config::credentials() const
+  std::optional<Hue::Auth::Credentials> Config::credentials() const
   {
+    // A copy: the setup's threads may change it meanwhile
+    std::lock_guard lock(m_mutex);
     return m_configData.value().credentials;
   }
 

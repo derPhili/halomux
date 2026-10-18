@@ -607,7 +607,7 @@ namespace Halomux::Core
     // Bridges set up before the certificate checks, or whose certificate never passed them, are
     // identified again at each start: once their certificate passes the check, it always has to
     if(!m_config.bridgeId().has_value() || !m_config.bridgeCertificateVerified()){
-      const std::string& bridgeAddress = m_config.bridgeAddress().value();
+      const std::string bridgeAddress = m_config.bridgeAddress().value();
       auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
 
       try{

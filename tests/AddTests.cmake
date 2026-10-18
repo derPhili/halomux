@@ -597,3 +597,32 @@ target_link_libraries(TestHttpErrors PUBLIC
 )
 
 add_test(NAME HttpErrors COMMAND TestHttpErrors)
+
+
+# TestConfigThreads: configuration read while the setup writes it, under ThreadSanitizer
+add_executable(TestConfigThreads
+  # Application
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+
+  # Test
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestConfigThreads.cpp
+)
+
+set_target_properties(TestConfigThreads PROPERTIES CXX_STANDARD 20)
+
+target_include_directories(TestConfigThreads PUBLIC
+  include
+)
+
+target_link_libraries(TestConfigThreads PUBLIC
+  nlohmann_json::nlohmann_json
+  glm::glm
+)
+
+target_compile_options(TestConfigThreads PRIVATE -fsanitize=thread)
+target_link_options(TestConfigThreads PRIVATE -fsanitize=thread)
+
+add_test(NAME ConfigThreads COMMAND TestConfigThreads)
+set_tests_properties(ConfigThreads PROPERTIES ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1")

@@ -151,8 +151,8 @@ namespace Halomux::Core
 
     Logger::log("Configuration is ready. Feel free to modify it manually by editing ", std::quoted(m_config.configFilePath().string()));
 
-    const auto& credentials = m_config.credentials().value();
-    const std::string& bridgeAddress =  m_config.bridgeAddress().value();
+    const auto credentials = m_config.credentials().value();
+    const std::string bridgeAddress = m_config.bridgeAddress().value();
 
     // Selects the area of the profile, and keeps trying in the background if the bridge is offline
     static constexpr auto AreaCheckInterval = std::chrono::seconds(5);
