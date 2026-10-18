@@ -72,8 +72,12 @@ int main()
 
   // Pairing with the bridge (v1 API): the link button pressed, not pressed, or something else
   {
-    const auto paired = pairing(Json::parse(R"([{"success": {"username": "u", "clientkey": "K"}}])"));
+    const auto paired = pairing(Json::parse(R"([{"success": {"username": "u", "clientkey": "00112233445566778899AABBCCDDEEFF"}}])"));
     expect("Paired", paired.credentials.has_value() && paired.credentials->at("username") == "u");
+
+    // The clientkey is the pre-shared key of the streaming connection: hexadecimal
+    const auto badKey = pairing(Json::parse(R"([{"success": {"username": "u", "clientkey": "K"}}])"));
+    expect("Non-hex clientkey refused", !badKey.credentials.has_value() && !badKey.error.empty());
 
     const auto notPressed = pairing(Json::parse(R"([{"error": {"type": 101, "description": "link button not pressed"}}])"));
     expect("Link button not pressed", !notPressed.credentials.has_value() && notPressed.error == "link button not pressed");

@@ -156,7 +156,8 @@ namespace Halomux::Core
     auto credentials = pairing.credentials->get<Hue::Auth::Credentials>();
     m_config.setCredentials(credentials);
 
-    return {{"succeeded", true}, {"username", credentials.username()}, {"clientkey", credentials.clientkey()}};
+    // The credentials stay here: the page doesn't need them, and any local process may ask
+    return {{"succeeded", true}};
   }
 
 

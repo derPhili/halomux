@@ -204,7 +204,7 @@ halomux_add_test(BridgeDiscovery
 
 # Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
 halomux_add_test(ClipParsing
-  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp
+  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp ${SRC}/Hue/Auth/Credentials.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
