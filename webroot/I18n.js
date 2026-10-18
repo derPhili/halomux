@@ -207,6 +207,8 @@ I18n.Translations = {
     "{lamp}: the dot shows its current color. Click or press Enter to edit its screen region, drag to Available or use the arrow to stop driving it" : "{lamp}: Der Punkt zeigt die aktuelle Farbe. Klick oder Enter bearbeitet den Bildschirmbereich, Ziehen nach „Verfügbar“ oder der Pfeil beendet die Steuerung",
     "{lamp}: not driven. Drag to Active or use the arrow to have it follow the screen" : "{lamp}: nicht gesteuert. Nach „Aktiv“ ziehen oder den Pfeil nutzen, damit sie dem Bildschirm folgt",
     "Drive this lamp: move it to Active" : "Lampe steuern: nach „Aktiv“ verschieben",
+    "Screen region of the lamp. Arrow keys move it, with Shift they resize it, with Alt left and right they put it on the previous or next monitor" : "Bildschirmbereich der Lampe. Pfeiltasten verschieben ihn, mit Umschalt ändern sie seine Größe, mit Alt links und rechts setzen sie ihn auf den vorigen oder nächsten Monitor",
+    "Gamma correction of the lamp. The arrow keys change it" : "Gammakorrektur der Lampe. Die Pfeiltasten verändern sie",
     "Stop driving this lamp: move it to Available" : "Lampe nicht mehr steuern: nach „Verfügbar“ verschieben",
 
     // Settings

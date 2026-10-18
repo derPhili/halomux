@@ -1040,6 +1040,15 @@ input[type=color]::-webkit-color-swatch
 }
 
 
+/* Focused with the keyboard */
+#uvArea > rect:focus-visible, .handler:focus-visible
+{
+  outline: none;
+  stroke: var(--accent);
+  stroke-width: 3px;
+}
+
+
 /* A touch on a handle or the region drags it instead of scrolling the page */
 .handler, #uvArea > rect
 {
