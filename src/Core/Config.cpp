@@ -3,6 +3,7 @@
 #include <Halomux/Core/AtomicFile.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -326,8 +327,16 @@ namespace Halomux::Core
   {
     std::lock_guard lock(m_mutex);
     auto& data = m_configData.value();
+
+    // Verified once, a bridge must always be: but that binds this bridge, not another one
+    const auto lowercase = [](std::string id){
+      std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c){return std::tolower(c);});
+      return id;
+    };
+    const bool sameBridge = data.bridgeId.has_value() && lowercase(*data.bridgeId) == lowercase(bridgeId);
+
     data.bridgeId = bridgeId;
-    data.bridgeCertificateVerified = data.bridgeCertificateVerified.value_or(false) || certificateVerified;
+    data.bridgeCertificateVerified = (sameBridge && data.bridgeCertificateVerified.value_or(false)) || certificateVerified;
     _save();
   }
 

@@ -71,6 +71,18 @@ int main()
   }
 
   {
+    // A verified certificate binds its bridge: another bridge's id starts unverified again
+    Core::Config config(root);
+    config.setBridgeIdentity("aabbccddeeff0011", true);
+    config.setBridgeIdentity("aabbccddeeff0011", false);
+    expect("Same bridge stays verified", config.bridgeCertificateVerified());
+    config.setBridgeIdentity("AABBCCDDEEFF0011", false);
+    expect("Same bridge in other case stays verified", config.bridgeCertificateVerified());
+    config.setBridgeIdentity("0011aabbccddeeff", false);
+    expect("Another bridge isn't verified", !config.bridgeCertificateVerified());
+  }
+
+  {
     // A full disk while saving: the configuration on disk, with the credentials, stays as it was
     {
       Core::Config config(root);

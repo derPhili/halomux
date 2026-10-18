@@ -71,7 +71,8 @@ namespace Halomux::Core
 
     try{
       auto responseData = response->asJson();
-      if(!responseData.contains("name") || !responseData.contains("bridgeid")){
+      // Its id names its certificate: without a valid one, it isn't a bridge to trust
+      if(!responseData.contains("name") || !responseData.contains("bridgeid") || !responseData.at("bridgeid").is_string() || !Hue::Api::isBridgeId(responseData.at("bridgeid").get<std::string>())){
         return false;
       }
 
@@ -605,13 +606,17 @@ namespace Halomux::Core
   {
     // Bridges set up before the certificate checks, or whose certificate never passed them, are
     // identified again at each start: once their certificate passes the check, it always has to
-    if(!m_config.bridgeId().has_value() || !m_config.bridgeCertificateVerified()){
+    const auto savedId = m_config.bridgeId();
+    if(!savedId.has_value() || !Hue::Api::isBridgeId(*savedId) || !m_config.bridgeCertificateVerified()){
       const std::string bridgeAddress = m_config.bridgeAddress().value();
       auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
 
       try{
-        if(response.has_value() && response->asJson().contains("bridgeid")){
-          m_config.setBridgeIdentity(response->asJson().at("bridgeid"), response->tlsVerified());
+        if(response.has_value()){
+          const auto answer = response->asJson();
+          if(answer.contains("bridgeid") && answer.at("bridgeid").is_string() && Hue::Api::isBridgeId(answer.at("bridgeid").get<std::string>())){
+            m_config.setBridgeIdentity(answer.at("bridgeid").get<std::string>(), response->tlsVerified());
+          }
         }
       }
       catch(const std::exception& e){
@@ -631,7 +636,10 @@ namespace Halomux::Core
     }
 
     const bool verified = m_config.bridgeCertificateVerified();
-    Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified);
+    if(!Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified)){
+      Logger::error("The bridge answered no valid id: its certificate can't be checked against it");
+      return;
+    }
 
     if(!verified){
       Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");

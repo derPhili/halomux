@@ -202,6 +202,11 @@ halomux_add_test(BridgeDiscovery
   SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp
 )
 
+# Which bridge ids the certificate checks accept
+halomux_add_test(BridgeTls
+  SOURCES ${SRC}/Hue/Api/BridgeTls.cpp
+)
+
 # Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
 halomux_add_test(ClipParsing
   SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp ${SRC}/Hue/Auth/Credentials.cpp
