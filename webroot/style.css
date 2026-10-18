@@ -972,6 +972,8 @@ input[type=color]::-webkit-color-swatch
 #svgArea #legendText
 {
   fill: var(--textMuted);
+  /* Drawn over the monitors on narrow widgets: clicks go through */
+  pointer-events: none;
 }
 
 
@@ -1022,6 +1024,14 @@ input[type=color]::-webkit-color-swatch
 #svgArea #svgChannelName, #svgArea #svgChannelUVSize
 {
   fill: var(--text);
+}
+
+
+/* Over its region: hovering shows the region's tooltip */
+.previewLabel
+{
+  pointer-events: none;
+  dominant-baseline: middle;
 }
 
 

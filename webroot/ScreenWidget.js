@@ -197,6 +197,7 @@ class ScreenWidget
     document.addEventListener("pointerup", () => {this.drop();});
     document.addEventListener("pointercancel", () => {this.drop();});
     this.svgAreaNode.addEventListener("pointermove", (event) => {this._updateMousePosition(event);});
+    window.addEventListener("resize", () => {this._layoutLegend();});
 
     // Keyboard: the region and the gamma cursor can be focused and moved with the arrow keys
     this.regionNode = this.uvAreaNode.querySelector("rect");
@@ -240,15 +241,53 @@ class ScreenWidget
   {
     this.currentChannel = channel;
     this.showWidgets(true);
+    // Labels included
     this._updateShape(channel.uvs);
-
-    this.svgChannelMembersNamesNode.textContent = channel.formatMembers();
   }
 
 
   setLegend(legendFlag){
-    this.legendText.textContent = legendFlag ? t(legendFlag) : "";
+    this.legendFlag = legendFlag;
+    this._layoutLegend();
   }
+
+
+  // Below the monitors, wrapped into as many lines as the widget's width needs
+  _layoutLegend()
+  {
+    const text = this.legendFlag ? t(this.legendFlag) : "";
+    this.legendText.textContent = text;
+
+    const available = this.svgAreaNode.getBoundingClientRect().width * 0.94;
+    if(!text || available <= 0 || this.legendText.getBBox().width <= available){
+      return;
+    }
+
+    this.legendText.textContent = "";
+    const addLine = () => {
+      const span = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      span.setAttribute("x", "50%");
+      span.setAttribute("dy", "1.2em");
+      this.legendText.appendChild(span);
+      return span;
+    };
+
+    let line = addLine();
+    for(const word of text.split(" ")){
+      const before = line.textContent;
+      line.textContent = before ? `${before} ${word}` : word;
+      if(before && line.getComputedTextLength() > available){
+        line.textContent = before;
+        line = addLine();
+        line.textContent = word;
+      }
+    }
+
+    // Growing upwards from the legend's line, which is near the bottom
+    const lines = this.legendText.children.length;
+    this.legendText.firstChild.setAttribute("dy", `${-1.2 * (lines - 1)}em`);
+  }
+
 
 
   /**
@@ -493,7 +532,9 @@ class ScreenWidget
       b = {x : a.x + width, y : a.y + height};
     }
 
-    this.webApp.moveChannelRegion(channelId, index, {uvA : a, uvB : b});
+    // On the cell grid: repeated steps would otherwise add up rounding errors
+    const snap = (point) => ({x : Math.round(point.x * monitor.subsampleWidth) / monitor.subsampleWidth, y : Math.round(point.y * monitor.subsampleHeight) / monitor.subsampleHeight});
+    this.webApp.moveChannelRegion(channelId, index, {uvA : snap(a), uvB : snap(b)});
   }
 
 
@@ -507,6 +548,75 @@ class ScreenWidget
 
     event.preventDefault();
     this.gammaCursor.affectFactor(Utils.clamp(Utils.truncate(this.currentChannel.gammaFactor + step, 1), -1, 1));
+  }
+
+
+  /**
+   * Fits a label into a box around its position: wrapped into lines, then made smaller down to
+   * 8 px, and only then cut with an ellipsis. Narrow regions would otherwise let names overlap.
+   */
+  static fitLabel(textNode, text, maxWidth, maxHeight)
+  {
+    const LineHeight = 1.2;
+    const x = textNode.getAttribute("x");
+
+    const layout = (fontSize) => {
+      textNode.style.fontSize = `${fontSize}px`;
+      textNode.textContent = "";
+      const lines = [];
+      const addLine = () => {
+        const span = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+        span.setAttribute("x", x);
+        textNode.appendChild(span);
+        lines.push(span);
+        return span;
+      };
+
+      let line = addLine();
+      for(const word of text.split(" ")){
+        const before = line.textContent;
+        line.textContent = before ? `${before} ${word}` : word;
+        if(before && line.getComputedTextLength() > maxWidth){
+          line.textContent = before;
+          line = addLine();
+          line.textContent = word;
+        }
+      }
+
+      const fits = lines.length * fontSize * LineHeight <= maxHeight && lines.every(span => span.getComputedTextLength() <= maxWidth);
+      return {lines, fits};
+    };
+
+    let fontSize = 13;
+    let result = layout(fontSize);
+    while(!result.fits && fontSize > 8){
+      fontSize--;
+      result = layout(fontSize);
+    }
+
+    if(!result.fits){
+      // As many lines as the height takes, the last one marked as cut, each one cut to the width
+      const maxLines = Math.max(1, Math.floor(maxHeight / (fontSize * LineHeight)));
+      if(result.lines.length > maxLines){
+        while(result.lines.length > maxLines){
+          result.lines.pop().remove();
+        }
+        result.lines[maxLines - 1].textContent += "…";
+      }
+
+      for(const span of result.lines){
+        let content = span.textContent;
+        while(content.length > 1 && span.getComputedTextLength() > maxWidth){
+          content = content.replace(/…$/, "").slice(0, -1).trimEnd();
+          span.textContent = `${content}…`;
+        }
+      }
+    }
+
+    // Centered on the label's position
+    result.lines.forEach((span, index) => {
+      span.setAttribute("dy", index == 0 ? `${-(result.lines.length - 1) * LineHeight / 2}em` : `${LineHeight}em`);
+    });
   }
 
 
@@ -536,10 +646,10 @@ class ScreenWidget
       var rectNode = document.createElementNS("http://www.w3.org/2000/svg", "rect");
       var textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
 
-      textNode.textContent = activeChannel.formatMembers();
       textNode.setAttribute("text-anchor", "middle");
       textNode.setAttribute("x", geometry.x + geometry.width / 2);
       textNode.setAttribute("y", geometry.y + geometry.height / 2);
+      textNode.classList.add("previewLabel");
 
       rectNode.classList.add("previewRegion");
 
@@ -553,6 +663,9 @@ class ScreenWidget
 
       this.previewArea.appendChild(rectNode);
       this.previewArea.appendChild(textNode);
+
+      // Measured once it's in the page
+      ScreenWidget.fitLabel(textNode, activeChannel.formatMembers(), geometry.width * 0.9, geometry.height * 0.9);
     }
   }
 
@@ -631,7 +744,9 @@ class ScreenWidget
     let propWidth = Utils.truncate((uvs.uvB.x - uvs.uvA.x) * 100, 2);
     let propHeight = Utils.truncate((uvs.uvB.y - uvs.uvA.y) * 100, 2);
 
-    this.svgChannelUVSizeNode.innerHTML = `${propWidth}% x ${propHeight}%`;
+    // The name above the middle, the size below: each in its half of the region
+    ScreenWidget.fitLabel(this.svgChannelMembersNamesNode, this.currentChannel.formatMembers(), geometry.width * 0.9, geometry.height * 0.42);
+    ScreenWidget.fitLabel(this.svgChannelUVSizeNode, `${propWidth}% x ${propHeight}%`, geometry.width * 0.9, geometry.height * 0.42);
   }
 
 
