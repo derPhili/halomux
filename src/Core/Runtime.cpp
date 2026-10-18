@@ -59,26 +59,36 @@ namespace Halomux::Core
   }
 
 
-  void Runtime::start()
+  bool Runtime::start()
   {
     if(!m_coreService->ensureInitialSetup() || !m_keepLooping){
-      return;
+      return true;
     }
 
-    if(!_initGrabber()){
-      Logger::error("Could not start any grabber");
-      return;
+    switch(_initGrabber()){
+      case GrabberStart::Started:
+        break;
+
+      case GrabberStart::Cancelled:
+        // The user's choice, or a stop: starting again would only ask again
+        Logger::warn("Now quitting");
+        return true;
+
+      case GrabberStart::Failed:
+        // Such as the portal or Pipewire not ready yet: worth starting again
+        Logger::error("Could not start any grabber");
+        return false;
     }
 
     if(!m_keepLooping){
-      return;
+      return true;
     }
 
     Logger::log("Started ", grabber()->name());
 
     if(!_initSettings()){
       Logger::error("Could not load suitable entertainment configuration.");
-      return;
+      return false;
 
       // TODO : Add tool to create entertainment configurations inside the application
       // so the official application would no longer be a requirement
@@ -91,10 +101,11 @@ namespace Halomux::Core
     if(!_initWebUI(spawnBrowser)){
       Logger::error("Could not start the web UI on ", m_config.boundBackendIP(), ":", m_config.restServerPort(), ". Is the port already in use?");
       _shutdown();
-      return;
+      return false;
     }
 
     _startStreamingLoop();
+    return true;
   }
 
 
@@ -175,12 +186,24 @@ namespace Halomux::Core
   }
 
 
-  bool Runtime::_initGrabber()
+  Runtime::GrabberStart Runtime::_initGrabber()
   {
-    auto grabber = Platform::adapter.getGrabber(&m_config, m_stopSource.get_token());
+    std::shared_ptr<Grabber::IGrabber> grabber;
+    try{
+      grabber = Platform::adapter.getGrabber(&m_config, m_stopSource.get_token());
+    }
+    catch(const Grabber::GrabberCancelled& e){
+      Logger::warn(e.what());
+      return GrabberStart::Cancelled;
+    }
+    catch(const std::exception& e){
+      Logger::error(e.what());
+      return GrabberStart::Failed;
+    }
+
     std::lock_guard lock(m_grabberMutex);
     m_grabber = std::move(grabber);
-    return m_grabber != nullptr;
+    return m_grabber ? GrabberStart::Started : GrabberStart::Failed;
   }
 
 

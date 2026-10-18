@@ -34,7 +34,7 @@ public:
     bool succeeded = true;
     m_applicationThread.emplace([&](){
       try{
-        m_core->start();
+        succeeded = m_core->start();
       }
       catch(const std::exception& e){
         Halomux::Core::Logger::error(e.what());

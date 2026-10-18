@@ -23,9 +23,12 @@ int main(int argc, char* argv[])
   Config config(std::filesystem::temp_directory_path() / "halomux-test");
   config.setSubsampleWidth(160);
 
-  auto grabber = Platform::adapter.getGrabber(&config);
-  if(!grabber){
-    Logger::error("Could not start any grabber");
+  std::shared_ptr<Grabber::IGrabber> grabber;
+  try{
+    grabber = Platform::adapter.getGrabber(&config);
+  }
+  catch(const std::exception& e){
+    Logger::error("Could not start any grabber: ", e.what());
     return 1;
   }
 

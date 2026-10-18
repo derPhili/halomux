@@ -86,25 +86,16 @@ namespace Halomux::Platform
      *
      * @param config Halomux current configuration
      * @param stopToken Aborts a screen selection dialog, if the saved selection can't be restored
-     * @return SharedGrabber Grabber instance, nullptr if none could be started
+     * @return SharedGrabber Grabber instance
+     * @throw Grabber::GrabberCancelled The screen selection was cancelled or stopped
+     * @throw std::exception No grabber could be started
      */
     inline SharedGrabber getGrabber(
       Core::Config* config,
       std::stop_token stopToken = {}
     )
     {
-      try{
-        return _createGrabber(config, false, stopToken);
-      }
-      catch(const Grabber::GrabberCancelled& e){
-        Core::Logger::warn(e.what());
-        Core::Logger::warn("Now quitting");
-      }
-      catch(const std::exception& e){
-        Core::Logger::error(e.what());
-      }
-
-      return nullptr;
+      return _createGrabber(config, false, stopToken);
     }
 
 

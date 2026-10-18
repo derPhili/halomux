@@ -65,10 +65,12 @@ namespace Halomux::Core
 
     // Methods
     /**
-     * @brief Initiates Halomux and starts the main loop
-     * 
+     * @brief Initiates Halomux and runs the main loop until stopped
+     *
+     * @return true Stopped, or the user cancelled the setup or the screen selection
+     * @return false Failed to start, such as without any grabber: starting again may succeed
      */
-    void start();
+    bool start();
 
 
     /**
@@ -94,12 +96,17 @@ namespace Halomux::Core
 
 
     /**
-     * Brief Initializes a grabber based on the graphical session
-     * 
-     * @return true Relevant grabber was found and initialized
-     * @return false could not initialize a grabber
-    */
-    bool _initGrabber();
+     * @brief Initializes a grabber based on the graphical session
+     *
+     * @return GrabberStart Whether it started, the screen selection was cancelled, or it failed
+     */
+    enum class GrabberStart
+    {
+      Started,
+      Cancelled,
+      Failed
+    };
+    GrabberStart _initGrabber();
 
 
     /**
