@@ -1,6 +1,7 @@
 #include <Halomux/Hue/Api/BridgeApi.hpp>
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
+#include <Halomux/Hue/Api/ClipParsing.hpp>
 
 
 namespace Halomux::Hue::Api
@@ -16,13 +17,7 @@ namespace Halomux::Hue::Api
 
   std::optional<EntertainmentConfigurations> ClipBridgeApi::areas()
   {
-    try{
-      return ApiTools::loadEntertainmentConfigurations(m_credentials.username(), m_bridgeAddress);
-    }
-    catch(const std::exception&){
-      // A malformed answer: as unknown as no answer
-      return std::nullopt;
-    }
+    return ApiTools::loadEntertainmentConfigurations(m_credentials.username(), m_bridgeAddress);
   }
 
 
@@ -30,25 +25,12 @@ namespace Halomux::Hue::Api
     const std::string& areaId
   )
   {
-    try{
-      const auto areasChannels = ApiTools::loadEntertainmentConfigurationsChannels(m_credentials.username(), m_bridgeAddress);
-      const auto areaIt = areasChannels.find(areaId);
-      if(areaIt == areasChannels.end()){
-        return std::nullopt;
-      }
-
-      const auto devices = ApiTools::loadDevices(m_credentials.username(), m_bridgeAddress);
-
-      ChannelMembers members;
-      for(const auto& [channelId, membersIds] : areaIt->second){
-        members.emplace(channelId, ApiTools::matchDevices(membersIds, devices));
-      }
-
-      return members;
-    }
-    catch(const std::exception&){
+    const auto resources = ApiTools::loadResources(m_credentials.username(), m_bridgeAddress);
+    if(!resources){
       return std::nullopt;
     }
+
+    return ClipParsing::channelMembers(*resources, areaId);
   }
 
 

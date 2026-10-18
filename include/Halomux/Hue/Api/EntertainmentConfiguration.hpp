@@ -24,4 +24,7 @@ namespace Halomux::Hue::Api
   using EntertainmentConfigurations = std::unordered_map<std::string, EntertainmentConfiguration>;
   using EntertainmentConfigurationsIterator = EntertainmentConfigurations::iterator;
   using EntertainmentConfigurationEntry = std::pair<std::string, EntertainmentConfiguration>;
+
+  // Lamps of each channel of an entertainment area
+  using ChannelMembers = std::unordered_map<uint8_t, Devices>;
 }

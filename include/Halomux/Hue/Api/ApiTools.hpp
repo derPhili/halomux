@@ -2,8 +2,6 @@
 
 #include <Halomux/Network/Http/Client/Client.hpp>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 
 #include <Halomux/Hue/Api/Device.hpp>
 #include <Halomux/Hue/Api/EntertainmentConfiguration.hpp>
@@ -12,11 +10,6 @@
 
 namespace Halomux::Hue::Api
 {
-  using MembersIds = std::unordered_set<std::string>;
-  using ChannelsMembersIds = std::unordered_map<uint8_t, MembersIds>;
-  using EntertainmentConfigurationsChannels = std::unordered_map<std::string, ChannelsMembersIds>;
-
-
   /**
    * @brief Provides wrappers around the Hue bridge API
    * 
@@ -24,51 +17,27 @@ namespace Halomux::Hue::Api
   namespace ApiTools
   {
     /**
-     * @brief Loads entertainment configurations from Hue bridge
-     * 
+     * @brief Loads all the resources of the Hue bridge (GET /clip/v2/resource)
+     *
      * @param username Username credential for the HTTPS request
      * @param bridgeAddress Address of the Hue bridge
-     * @return EntertainmentConfigurations List of entertainment configurations
+     * @return std::optional<Serialization::Json> Answer of the bridge, nothing if it's unreachable or the answer isn't JSON
+     */
+    std::optional<Serialization::Json> loadResources(
+      const std::string& username,
+      const std::string& bridgeAddress
+    );
+
+    /**
+     * @brief Loads entertainment configurations from Hue bridge
+     *
+     * @param username Username credential for the HTTPS request
+     * @param bridgeAddress Address of the Hue bridge
+     * @return std::optional<EntertainmentConfigurations> Entertainment configurations, nothing if the bridge is unreachable or answers an error
      */
     std::optional<EntertainmentConfigurations> loadEntertainmentConfigurations(
       const std::string& username,
       const std::string& bridgeAddress
-    );
-
-    /**
-     * @brief Loads devices from all entertainment configurations
-     * 
-     * @param username Username credential for the HTTPS request
-     * @param bridgeAddress Address of the Hue bridge
-     * @return Devices List of entertainment devices
-     */
-    Devices loadDevices(
-      const std::string& username,
-      const std::string& bridgeAddress
-    );
-
-    /**
-     * @brief Loads entertainment configurations channels
-     * 
-     * @param username Username credential for the HTTPS request
-     * @param bridgeAddress Address of the Hue bridge
-     * @return EntertainmentConfigurationsChannels Map of entertainment configurations channels
-     */
-    EntertainmentConfigurationsChannels loadEntertainmentConfigurationsChannels(
-      const std::string& username,
-      const std::string& bridgeAddress
-    );
-
-    /**
-     * @brief Resolves members data from list of IDs
-     * 
-     * @param membersIds Members ids to match
-     * @param devices Devices data
-     * @return Devices List of matched data for each device
-     */
-    Devices matchDevices(
-      const MembersIds& membersIds,
-      const Devices& devices
     );
 
     /**

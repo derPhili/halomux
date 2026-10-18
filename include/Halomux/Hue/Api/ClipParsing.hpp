@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 
+#include <Halomux/Hue/Api/EntertainmentConfiguration.hpp>
 #include <Halomux/Serialization/Json.hpp>
 
 
@@ -54,5 +55,31 @@ namespace Halomux::Hue::Api::ClipParsing
    */
   Pairing pairing(
     const Serialization::Json& response
+  );
+
+
+  /**
+   * @brief Reads the entertainment areas from the bridge's resource list (GET /clip/v2/resource)
+   *
+   * Malformed areas are left out, lamps whose light is missing from the list keep an empty name.
+   *
+   * @param response Answer of the bridge
+   * @return std::optional<EntertainmentConfigurations> Areas by ID, with their lamps and inactive channels, nothing if the answer is an error
+   */
+  std::optional<EntertainmentConfigurations> areas(
+    const Serialization::Json& response
+  );
+
+
+  /**
+   * @brief Reads the lamps of each channel of an area from the bridge's resource list (GET /clip/v2/resource)
+   *
+   * @param response Answer of the bridge
+   * @param areaId ID of the entertainment area
+   * @return std::optional<ChannelMembers> Lamps by channel, named after their device, nothing if the answer is an error or the area isn't in it
+   */
+  std::optional<ChannelMembers> channelMembers(
+    const Serialization::Json& response,
+    const std::string& areaId
   );
 }

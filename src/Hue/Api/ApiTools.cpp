@@ -1,6 +1,5 @@
 #include <Halomux/Hue/Api/ApiTools.hpp>
 
-#include <Halomux/Core/Logger.hpp>
 #include <Halomux/Version.hpp>
 #include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Hue/Api/BridgeDiscovery.hpp>
@@ -10,151 +9,43 @@
 #include <Halomux/Network/Http/Client/Client.hpp>
 #include <Halomux/Platform/Selector.hpp>
 #include <Halomux/Serialization/Credentials.hpp>
-#include <Halomux/Serialization/Device.hpp>
-#include <Halomux/Serialization/EntertainmentConfiguration.hpp>
 
 
 namespace Halomux::Hue::Api
 {
   namespace ApiTools
   {
+    std::optional<Serialization::Json> loadResources(
+      const std::string& username,
+      const std::string& bridgeAddress
+    )
+    {
+      Network::Http::Client::Headers headers = {{"hue-application-key", username}};
+      const auto response = Network::Http::Client::sendRequest(HttpProtocol + bridgeAddress + "/clip/v2/resource", "GET", "", headers, bridgeTls(bridgeAddress));
+      if(!response.has_value()){
+        return std::nullopt;
+      }
+
+      try{
+        return response->asJson();
+      }
+      catch(const std::exception&){
+        return std::nullopt;
+      }
+    }
+
+
     std::optional<EntertainmentConfigurations> loadEntertainmentConfigurations(
       const std::string& username,
       const std::string& bridgeAddress
     )
     {
-      // I don't always abbreviate variable names
-      // but when I do, it's because I don't have a 32:9 monitor
-      EntertainmentConfigurations entConfs;
-
-      Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string entConfUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
-      auto entConfResponse = Network::Http::Client::sendRequest(entConfUrl, "GET", "", headers, bridgeTls(bridgeAddress));
-
-      // Unreachable bridge, as opposed to a bridge without areas
-      if(!entConfResponse.has_value()){
+      const auto resources = loadResources(username, bridgeAddress);
+      if(!resources){
         return std::nullopt;
       }
 
-      {
-        // Listing entertainment configurations
-
-        auto jsonEntConfs = entConfResponse.value().asJson();
-
-        for(const auto& jsonEntConf : jsonEntConfs.at("data")){
-          EntertainmentConfiguration entConf = jsonEntConf.get<EntertainmentConfiguration>();
-
-          for(auto& device : entConf.devices){
-            std::string lightUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/light/" + device.id;
-
-            auto lightResponse = Network::Http::Client::sendRequest(lightUrl, "GET", "", headers, bridgeTls(bridgeAddress));
-            if(!lightResponse.has_value()){
-              Core::Logger::warn("Could not load the metadata of light ", device.id);
-              continue;
-            }
-
-            auto jsonLightData = lightResponse.value().asJson();
-            auto deviceId = device.id;
-            device = jsonLightData.at("data").at(0).at("metadata").get<Device>();
-            device.id = deviceId;
-          }
-
-          const auto& jsonChannels = jsonEntConf.at("channels");
-          for (const auto& jsonChannel : jsonChannels) {
-            uint8_t channelId = jsonChannel.at("channel_id").get<uint8_t>();
-            entConf.channels.insert({channelId, Channel{false, {}, 0.f}});
-          }
-
-          entConfs.insert({jsonEntConf.at("id").get<std::string>(), entConf});
-        }
-      }
-
-      return entConfs;
-    }
-
-
-    Devices loadDevices(
-      const std::string& username,
-      const std::string& bridgeAddress
-    )
-    {
-      using namespace Network::Http::Client;
-
-      Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string resourceUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource";
-      auto resourceResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers, bridgeTls(bridgeAddress));
-
-      Devices devices;
-
-      if(resourceResponse.has_value()){
-        auto jsonResource = resourceResponse.value().asJson();
-        for(const auto& jsonData : jsonResource.at("data")){
-          if(jsonData.at("type") != "device"){
-            continue;
-          }
-
-          for(const auto& service : jsonData.at("services")){
-            if(service.at("rtype") == "entertainment"){
-              auto device = jsonData.at("metadata").get<Device>();
-              device.id = service.at("rid");
-              devices.push_back(device);
-            }
-          }
-        }
-      }
-
-      return devices;
-    }
-
-
-    EntertainmentConfigurationsChannels loadEntertainmentConfigurationsChannels(
-      const std::string& username,
-      const std::string& bridgeAddress
-    )
-    {
-      using namespace Network::Http::Client;
-
-      Network::Http::Client::Headers headers = {{"hue-application-key", username}};
-      std::string resourceUrl = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration";
-
-      auto entertainmentConfigurationsResponse = Network::Http::Client::sendRequest(resourceUrl, "GET", "", headers, bridgeTls(bridgeAddress));
-
-      EntertainmentConfigurationsChannels entConfsChannels;
-
-      if(entertainmentConfigurationsResponse.has_value()){
-        auto jsonEntertainmentConfigurations = entertainmentConfigurationsResponse.value().asJson();
-        for(const auto& entConf : jsonEntertainmentConfigurations.at("data")){
-          std::string configurationId = entConf.at("id");
-          for(const auto& jsonChannel : entConf.at("channels")){
-            uint8_t channelId = jsonChannel.at("channel_id");
-            for(const auto& jsonMember : jsonChannel.at("members")){
-              std::string jsonMemberId = jsonMember.at("service").at("rid");
-              entConfsChannels[configurationId][channelId].insert(jsonMemberId);
-            }
-          }
-        }
-      }
-
-      return entConfsChannels;
-    }
-
-
-    Devices matchDevices(
-      const MembersIds& membersIds,
-      const Devices& devices
-    )
-    {
-      Devices matchedDevices;
-      std::copy_if(
-        devices.begin(),
-        devices.end(),
-        std::back_inserter(matchedDevices),
-        [&](const Device& d){
-          return membersIds.count(d.id) > 0;
-        }
-      );
-
-      return matchedDevices;
+      return ClipParsing::areas(*resources);
     }
 
 

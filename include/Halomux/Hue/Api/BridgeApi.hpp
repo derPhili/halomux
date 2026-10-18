@@ -12,10 +12,6 @@
 
 namespace Halomux::Hue::Api
 {
-  // Lamps of each channel of an entertainment area
-  using ChannelMembers = std::unordered_map<uint8_t, Devices>;
-
-
   /**
    * @brief What the area session asks the bridge
    *

@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Hue/Api/ClipParsing.hpp>
 
@@ -15,6 +17,36 @@ namespace
       Core::Logger::error(name);
       failures++;
     }
+  }
+
+
+  // Made-up resource list in the shape of a bridge's answer to GET /clip/v2/resource
+  Json fixture()
+  {
+    std::ifstream file(HALOMUX_TEST_FIXTURES "/clip-resources.json");
+    return Json::parse(file);
+  }
+
+
+  std::vector<std::string> names(const Hue::Api::Devices& devices)
+  {
+    std::vector<std::string> result;
+    for(const auto& device : devices){
+      result.push_back(device.name);
+    }
+
+    return result;
+  }
+
+
+  std::vector<std::string> ids(const Hue::Api::Devices& devices)
+  {
+    std::vector<std::string> result;
+    for(const auto& device : devices){
+      result.push_back(device.id);
+    }
+
+    return result;
   }
 }
 
@@ -50,6 +82,51 @@ int main()
     expect("Empty array", !pairing(Json::parse("[]")).credentials.has_value());
     expect("Success without credentials", !pairing(Json::parse(R"([{"success": {"username": "u"}}])")).credentials.has_value());
     expect("Error without description", !pairing(Json::parse(R"([{"error": {}}])")).error.empty());
+  }
+
+  {
+    // Entertainment areas from the whole resource list
+    const auto parsed = areas(fixture());
+    expect("Areas parsed", parsed.has_value());
+    if(parsed){
+      expect("Malformed area left out", parsed->size() == 2 && !parsed->contains("a0000000-0000-4000-8000-000000000003"));
+
+      const auto desk = parsed->find("a0000000-0000-4000-8000-000000000001");
+      expect("Area found", desk != parsed->end());
+      if(desk != parsed->end()){
+        expect("Area name", desk->second.name == "Desk");
+        expect("Area lamps named after their lights", names(desk->second.devices) == std::vector<std::string>{"Play Left", "Play Right"});
+        expect("Area lamps keep their light IDs", ids(desk->second.devices) == std::vector<std::string>{"10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002"});
+        expect("Area channels, inactive", desk->second.channels.size() == 2 && desk->second.channels.contains(0) && desk->second.channels.contains(1) && desk->second.channels.at(0).state == Hue::Api::Channel::State::Inactive);
+      }
+
+      const auto tv = parsed->find("a0000000-0000-4000-8000-000000000002");
+      if(tv != parsed->end()){
+        expect("Missing light keeps an empty name", names(tv->second.devices) == std::vector<std::string>{"Lightstrip", ""});
+      }
+    }
+
+    const auto none = areas(Json::parse(R"({"errors": [], "data": []})"));
+    expect("Bridge without areas", none.has_value() && none->empty());
+    expect("Error answer has no areas", !areas(Json::parse(R"({"errors": [{"description": "unauthorized user"}], "data": []})")).has_value());
+    expect("Malformed answer has no areas", !areas(Json::parse(R"({"data": {}})")).has_value());
+  }
+
+  {
+    // Lamps of each channel, named after their devices
+    const auto desk = channelMembers(fixture(), "a0000000-0000-4000-8000-000000000001");
+    expect("Channel members parsed", desk.has_value() && desk->size() == 2);
+    if(desk && desk->size() == 2){
+      expect("Channel 0 lamp", names(desk->at(0)) == std::vector<std::string>{"Play Left"} && ids(desk->at(0)) == std::vector<std::string>{"e0000000-0000-4000-8000-000000000001"});
+      expect("Channel 1 lamp", names(desk->at(1)) == std::vector<std::string>{"Play Right"});
+    }
+
+    // Several lamps on one channel, in the order of the device list; the member without service is left out
+    const auto tv = channelMembers(fixture(), "a0000000-0000-4000-8000-000000000002");
+    expect("Several lamps on a channel", tv.has_value() && tv->size() == 1 && names(tv->at(0)) == std::vector<std::string>{"Play Left", "Lightstrip"});
+
+    expect("Unknown area", !channelMembers(fixture(), "a0000000-0000-4000-8000-00000000000f").has_value());
+    expect("Error answer has no members", !channelMembers(Json::parse(R"({"errors": [{"description": "x"}], "data": []})"), "a").has_value());
   }
 
   if(failures > 0){

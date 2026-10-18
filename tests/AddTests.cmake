@@ -461,10 +461,12 @@ add_test(NAME ChannelStore COMMAND TestChannelStore)
 add_executable(TestClipParsing
   # Application
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ClipParsing.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
   # Test
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestClipParsing.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
 )
 
 set_target_properties(TestClipParsing PROPERTIES CXX_STANDARD 20)
@@ -475,7 +477,10 @@ target_include_directories(TestClipParsing PUBLIC
 
 target_link_libraries(TestClipParsing PUBLIC
   nlohmann_json::nlohmann_json
+  glm::glm
 )
+
+target_compile_definitions(TestClipParsing PRIVATE HALOMUX_TEST_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
 
 target_compile_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
 target_link_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
