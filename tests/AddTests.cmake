@@ -1,661 +1,253 @@
 message("Building tests")
 
 find_package(OpenCV REQUIRED COMPONENTS imgproc imgcodecs)
+pkg_check_modules(GBM REQUIRED gbm)
 
 enable_testing()
 
+set(SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-# TestImageProcessing
-add_executable(TestImageProcessing
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestImageProcessing.cpp
-)
-
-set_target_properties(TestImageProcessing PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestImageProcessing PUBLIC
-  include
-  ${OpenCV_INCLUDE_DIRS}
-)
-
-target_link_libraries(TestImageProcessing PUBLIC
-  ${OpenCV_LIBS}
-  glm::glm
-)
-
-# Without arguments, only the self-checking tests run
-add_test(NAME ImageProcessing COMMAND TestImageProcessing)
-
-
-# TestGrabber (manual: needs a graphical session)
-# Reuses every application source but the entry point
+# The application's sources but the entry point, with what they need to build
 get_target_property(APP_SOURCES halomux SOURCES)
 list(FILTER APP_SOURCES EXCLUDE REGEX "/src/App/")
-
-add_executable(TestGrabber
-  ${APP_SOURCES}
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGrabber.cpp
-)
-
-add_dependencies(TestGrabber generate_version_header generate_webroot_header)
-
-set_target_properties(TestGrabber PROPERTIES CXX_STANDARD 20)
-
 get_target_property(APP_INCLUDE_DIRECTORIES halomux INCLUDE_DIRECTORIES)
 get_target_property(APP_COMPILE_DEFINITIONS halomux COMPILE_DEFINITIONS)
 get_target_property(APP_LINK_LIBRARIES halomux LINK_LIBRARIES)
 
-target_include_directories(TestGrabber PUBLIC ${APP_INCLUDE_DIRECTORIES})
-if(APP_COMPILE_DEFINITIONS)
-  target_compile_definitions(TestGrabber PUBLIC ${APP_COMPILE_DEFINITIONS})
-endif()
-target_link_libraries(TestGrabber PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
-
-
-# TestGpuDownscale: GPU downscale of a real DMA-BUF against the exact CPU area average
-pkg_check_modules(GBM REQUIRED gbm)
-
-add_executable(TestGpuDownscale
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Imaging/ImageProcessing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGpuDownscale.cpp
-)
-
-set_target_properties(TestGpuDownscale PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestGpuDownscale PUBLIC
-  include
-  ${OpenCV_INCLUDE_DIRS}
-  ${GPU_INCLUDE_DIRS}
-  ${GBM_INCLUDE_DIRS}
-)
-
-target_link_libraries(TestGpuDownscale PUBLIC
-  glm::glm
-  ${OpenCV_LIBS}
-  ${GPU_LIBRARIES}
-  ${GBM_LIBRARIES}
-)
-
-add_test(NAME GpuDownscale COMMAND TestGpuDownscale ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/WebUI.png)
-
-
-# TestHighlightBoost: brightness flash envelope of a channel
-add_executable(TestHighlightBoost
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestHighlightBoost.cpp
-)
-
-set_target_properties(TestHighlightBoost PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestHighlightBoost PUBLIC
-  include
-)
-
-target_link_libraries(TestHighlightBoost PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
-)
-
-add_test(NAME HighlightBoost COMMAND TestHighlightBoost)
-
-
-# TestChannelColor: the color streamed for a lamp from the color it should show
-add_executable(TestChannelColor
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelColor.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelColor.cpp
-)
-
-set_target_properties(TestChannelColor PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestChannelColor PUBLIC
-  include
-)
-
-target_link_libraries(TestChannelColor PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
-)
-
-target_compile_options(TestChannelColor PRIVATE -fsanitize=address,undefined)
-target_link_options(TestChannelColor PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME ChannelColor COMMAND TestChannelColor)
-
-
-# TestTransientDetector: sound transient detection on synthetic energies
-add_executable(TestTransientDetector
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestTransientDetector.cpp
-)
-
-set_target_properties(TestTransientDetector PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestTransientDetector PUBLIC
-  include
-)
-
-add_test(NAME TransientDetector COMMAND TestTransientDetector)
-
-
-# TestPreviewSequence: synthetic content of the settings preview
-add_executable(TestPreviewSequence
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestPreviewSequence.cpp
-)
-
-set_target_properties(TestPreviewSequence PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestPreviewSequence PUBLIC
-  include
-)
-
-target_link_libraries(TestPreviewSequence PUBLIC
-  glm::glm
-)
-
-add_test(NAME PreviewSequence COMMAND TestPreviewSequence)
-
-
-# TestStaticColors: color notation and serialization of the static scenes
-add_executable(TestStaticColors
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestStaticColors.cpp
-)
-
-set_target_properties(TestStaticColors PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestStaticColors PUBLIC
-  include
-)
-
-target_link_libraries(TestStaticColors PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
-)
-
-add_test(NAME StaticColors COMMAND TestStaticColors)
-
-
-# TestStreamer: streaming never waits for the connection to the bridge
-add_executable(TestStreamer
-  # Application
-  ${STREAM_SOURCE}
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestStreamer.cpp
-)
-
-set_target_properties(TestStreamer PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestStreamer PUBLIC
-  include
-  ${CMAKE_CURRENT_BINARY_DIR}/include
-)
-
-add_dependencies(TestStreamer generate_version_header)
-
-target_link_libraries(TestStreamer PUBLIC
-  ${MBEDTLS_LIBS}
-  ${MBEDTLS_X509}
-  ${MBEDTLS_CRYPTO}
-  nlohmann_json::nlohmann_json
-  glm::glm
-)
-
-add_test(NAME Streamer COMMAND TestStreamer)
-
-
-# TestBridgeDiscovery: reading mDNS answers, which come from the network
-add_executable(TestBridgeDiscovery
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/BridgeDiscovery.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestBridgeDiscovery.cpp
-)
-
-set_target_properties(TestBridgeDiscovery PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestBridgeDiscovery PUBLIC
-  include
-)
-
-target_compile_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
-target_link_options(TestBridgeDiscovery PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME BridgeDiscovery COMMAND TestBridgeDiscovery)
-
-
-# TestMonitors: matching monitors between the portal, the compositor and the profile
-add_executable(TestMonitors
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestMonitors.cpp
-)
-
-set_target_properties(TestMonitors PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestMonitors PUBLIC
-  include
-)
-
-target_link_libraries(TestMonitors PUBLIC
-  glm::glm
-)
-
-target_compile_options(TestMonitors PRIVATE -fsanitize=address,undefined)
-target_link_options(TestMonitors PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME Monitors COMMAND TestMonitors)
 
+# halomux_add_test(<Name>
+#   [SOURCES <application sources>]   tests/src/Test<Name>.cpp and the logger are added
+#   [WITH_APP]                        builds against all the application's sources instead
+#   [LIBRARIES <libraries>]
+#   [INCLUDES <include directories>]  besides include/
+#   [DEPENDS <targets>]
+#   [SANITIZE <sanitizers>]           address,undefined unless given, "none" for none
+#   [ARGS <arguments>]
+#   [TIMEOUT <seconds>]
+#   [ENVIRONMENT <variables>]
+#   [MANUAL])                         built, but not run by ctest
+#
+# Builds Test<Name> and registers it as the ctest test <Name>. Tests find their data files under
+# HALOMUX_TEST_FIXTURES.
+function(halomux_add_test name)
+  cmake_parse_arguments(PARSE_ARGV 1 TEST "WITH_APP;MANUAL" "SANITIZE;TIMEOUT" "SOURCES;LIBRARIES;INCLUDES;DEPENDS;ARGS;ENVIRONMENT")
+
+  set(target Test${name})
+
+  if(TEST_WITH_APP)
+    add_executable(${target} ${APP_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/${target}.cpp)
+    add_dependencies(${target} generate_version_header generate_webroot_header)
+    target_include_directories(${target} PUBLIC ${APP_INCLUDE_DIRECTORIES})
+    if(APP_COMPILE_DEFINITIONS)
+      target_compile_definitions(${target} PUBLIC ${APP_COMPILE_DEFINITIONS})
+    endif()
+    target_link_libraries(${target} PUBLIC ${APP_LINK_LIBRARIES})
+  else()
+    add_executable(${target} ${TEST_SOURCES} ${SRC}/Core/Logger.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/${target}.cpp)
+    target_include_directories(${target} PUBLIC include)
+  endif()
+
+  set_target_properties(${target} PROPERTIES CXX_STANDARD 20)
+  target_include_directories(${target} PUBLIC ${TEST_INCLUDES})
+  target_link_libraries(${target} PUBLIC ${TEST_LIBRARIES})
+  target_compile_definitions(${target} PRIVATE HALOMUX_TEST_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+
+  if(TEST_DEPENDS)
+    add_dependencies(${target} ${TEST_DEPENDS})
+  endif()
+
+  if(NOT DEFINED TEST_SANITIZE)
+    set(TEST_SANITIZE address,undefined)
+  endif()
+  if(NOT TEST_SANITIZE STREQUAL "none")
+    target_compile_options(${target} PRIVATE -fsanitize=${TEST_SANITIZE})
+    target_link_options(${target} PRIVATE -fsanitize=${TEST_SANITIZE})
+  endif()
+
+  if(TEST_MANUAL)
+    return()
+  endif()
 
-# TestWaylandOutputs (manual: needs a Wayland session): prints the compositor's monitors
-add_executable(TestWaylandOutputs
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/WaylandOutputs.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
+  add_test(NAME ${name} COMMAND ${target} ${TEST_ARGS})
+  if(TEST_TIMEOUT)
+    set_tests_properties(${name} PROPERTIES TIMEOUT ${TEST_TIMEOUT})
+  endif()
+  if(TEST_ENVIRONMENT)
+    set_tests_properties(${name} PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT}")
+  endif()
+endfunction()
 
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestWaylandOutputs.cpp
-)
-
-set_target_properties(TestWaylandOutputs PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestWaylandOutputs PUBLIC
-  include
-)
-
-target_link_libraries(TestWaylandOutputs PUBLIC
-  wayland_protocols
-)
-
-
-# TestChannelMonitors: the monitor each lamp follows, in the profile
-add_executable(TestChannelMonitors
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelMonitors.cpp
-)
-
-set_target_properties(TestChannelMonitors PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestChannelMonitors PUBLIC
-  include
-)
-
-target_link_libraries(TestChannelMonitors PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
-)
-
-target_compile_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
-target_link_options(TestChannelMonitors PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME ChannelMonitors COMMAND TestChannelMonitors)
-
-
-# TestGrabberCancel: a failed screen selection leaves the running capture alone
-add_executable(TestGrabberCancel
-  ${APP_SOURCES}
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestGrabberCancel.cpp
-)
-
-add_dependencies(TestGrabberCancel generate_version_header generate_webroot_header)
 
-set_target_properties(TestGrabberCancel PROPERTIES CXX_STANDARD 20)
+# Imaging and capture
 
-target_include_directories(TestGrabberCancel PUBLIC ${APP_INCLUDE_DIRECTORIES})
-if(APP_COMPILE_DEFINITIONS)
-  target_compile_definitions(TestGrabberCancel PUBLIC ${APP_COMPILE_DEFINITIONS})
-endif()
-target_link_libraries(TestGrabberCancel PUBLIC ${APP_LINK_LIBRARIES} ${OpenCV_LIBS})
-
-target_compile_options(TestGrabberCancel PRIVATE -fsanitize=address,undefined)
-target_link_options(TestGrabberCancel PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME GrabberCancel COMMAND TestGrabberCancel)
-
-
-# TestHostCheck: which Host headers the light manager answers, against DNS rebinding
-add_executable(TestHostCheck
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HostCheck.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestHostCheck.cpp
-)
-
-set_target_properties(TestHostCheck PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestHostCheck PUBLIC
-  include
-)
-
-target_compile_options(TestHostCheck PRIVATE -fsanitize=address,undefined)
-target_link_options(TestHostCheck PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME HostCheck COMMAND TestHostCheck)
-
-
-# TestConfigFile: how the configuration, which holds the bridge credentials, is stored
-add_executable(TestConfigFile
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestConfigFile.cpp
-)
-
-set_target_properties(TestConfigFile PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestConfigFile PUBLIC
-  include
+# Area average of the CPU path; without arguments, only the self-checking tests run
+halomux_add_test(ImageProcessing
+  SOURCES ${SRC}/Imaging/ImageProcessing.cpp
+  INCLUDES ${OpenCV_INCLUDE_DIRS}
+  LIBRARIES ${OpenCV_LIBS} glm::glm
+  SANITIZE none
 )
 
-target_link_libraries(TestConfigFile PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
+# Captures the screen (needs a graphical session)
+halomux_add_test(Grabber WITH_APP
+  LIBRARIES ${OpenCV_LIBS}
+  SANITIZE none
+  MANUAL
 )
-
-add_test(NAME ConfigFile COMMAND TestConfigFile)
-
 
-# TestProfile: lamp settings kept per entertainment area
-add_executable(TestProfile
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Profile.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestProfile.cpp
+# A failed screen selection leaves the running capture alone
+halomux_add_test(GrabberCancel WITH_APP
+  LIBRARIES ${OpenCV_LIBS}
 )
 
-set_target_properties(TestProfile PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestProfile PUBLIC
-  include
+# GPU downscale of a real DMA-BUF against the exact CPU area average
+halomux_add_test(GpuDownscale
+  SOURCES ${SRC}/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp ${SRC}/Imaging/ImageProcessing.cpp
+  INCLUDES ${OpenCV_INCLUDE_DIRS} ${GPU_INCLUDE_DIRS} ${GBM_INCLUDE_DIRS}
+  LIBRARIES glm::glm ${OpenCV_LIBS} ${GPU_LIBRARIES} ${GBM_LIBRARIES}
+  SANITIZE none
+  ARGS ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/WebUI.png
 )
 
-target_link_libraries(TestProfile PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
+# Matching monitors between the portal, the compositor and the profile
+halomux_add_test(Monitors
+  SOURCES ${SRC}/Grabber/Monitors.cpp
+  LIBRARIES glm::glm
 )
-
-target_compile_options(TestProfile PRIVATE -fsanitize=address,undefined)
-target_link_options(TestProfile PRIVATE -fsanitize=address,undefined)
 
-add_test(NAME Profile COMMAND TestProfile)
-
-
-# TestChannelStore: the lamps' settings as the light manager edits them
-add_executable(TestChannelStore
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestChannelStore.cpp
+# Prints the compositor's monitors (needs a Wayland session)
+halomux_add_test(WaylandOutputs
+  SOURCES ${SRC}/Grabber/GnuLinux/WaylandOutputs.cpp
+  LIBRARIES wayland_protocols
+  SANITIZE none
+  MANUAL
 )
 
-set_target_properties(TestChannelStore PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(TestChannelStore PUBLIC
-  include
-)
+# Lamps and their colors
 
-target_link_libraries(TestChannelStore PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
+# Brightness flash envelope of a channel
+halomux_add_test(HighlightBoost
+  SOURCES ${SRC}/Hue/Api/Channel.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
-
-target_compile_options(TestChannelStore PRIVATE -fsanitize=address,undefined)
-target_link_options(TestChannelStore PRIVATE -fsanitize=address,undefined)
 
-add_test(NAME ChannelStore COMMAND TestChannelStore)
-
-
-# TestClipParsing: reading the bridge's CLIP v2 answers, which may be empty or errors
-add_executable(TestClipParsing
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/ClipParsing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestClipParsing.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
+# The color streamed for a lamp from the color it should show
+halomux_add_test(ChannelColor
+  SOURCES ${SRC}/Core/ChannelColor.cpp ${SRC}/Hue/Api/Channel.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
-set_target_properties(TestClipParsing PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestClipParsing PUBLIC
-  include
+# The monitor each lamp follows, in the profile
+halomux_add_test(ChannelMonitors
+  SOURCES ${SRC}/Grabber/Monitors.cpp ${SRC}/Hue/Api/Channel.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
-target_link_libraries(TestClipParsing PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
+# The lamps' settings as the light manager edits them
+halomux_add_test(ChannelStore
+  SOURCES ${SRC}/Core/ChannelStore.cpp ${SRC}/Grabber/Monitors.cpp ${SRC}/Hue/Api/Channel.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
-
-target_compile_definitions(TestClipParsing PRIVATE HALOMUX_TEST_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
 
-target_compile_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
-target_link_options(TestClipParsing PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME ClipParsing COMMAND TestClipParsing)
-
-
-# TestAreaSession: selecting the entertainment area and recovering when the bridge stopped streaming
-add_executable(TestAreaSession
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AreaSession.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Api/Channel.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestAreaSession.cpp
+# Lamp settings kept per entertainment area
+halomux_add_test(Profile
+  SOURCES ${SRC}/Core/Profile.cpp ${SRC}/Hue/Api/Channel.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
-
-set_target_properties(TestAreaSession PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(TestAreaSession PUBLIC
-  include
-  ${CMAKE_CURRENT_BINARY_DIR}/include
+# Synthetic content of the settings preview
+halomux_add_test(PreviewSequence
+  LIBRARIES glm::glm
 )
 
-add_dependencies(TestAreaSession generate_version_header)
-
-target_link_libraries(TestAreaSession PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
+# Color notation and serialization of the static scenes
+halomux_add_test(StaticColors
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
-
-target_compile_options(TestAreaSession PRIVATE -fsanitize=address,undefined)
-target_link_options(TestAreaSession PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME AreaSession COMMAND TestAreaSession)
 
-
-# TestAudioLifecycle: starting and stopping the sound analysis, which quits a Pipewire loop from another thread
-add_executable(TestAudioLifecycle
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Audio/AudioAnalyzer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Pipewire/LoopThread.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestAudioLifecycle.cpp
-)
 
-set_target_properties(TestAudioLifecycle PROPERTIES CXX_STANDARD 20)
+# Sound
 
-target_include_directories(TestAudioLifecycle PUBLIC
-  include
-  ${LIB_PIPEWIRE_INCLUDE_DIRS}
-)
+# Sound transient detection on synthetic energies
+halomux_add_test(TransientDetector)
 
-target_link_libraries(TestAudioLifecycle PUBLIC
-  ${LIB_PIPEWIRE_LIBRARIES}
+# Starting and stopping the sound analysis, which quits a Pipewire loop from another thread
+halomux_add_test(AudioLifecycle
+  SOURCES ${SRC}/Audio/AudioAnalyzer.cpp ${SRC}/Pipewire/LoopThread.cpp
+  INCLUDES ${LIB_PIPEWIRE_INCLUDE_DIRS}
+  LIBRARIES ${LIB_PIPEWIRE_LIBRARIES}
+  TIMEOUT 60
 )
-
-target_compile_options(TestAudioLifecycle PRIVATE -fsanitize=address,undefined)
-target_link_options(TestAudioLifecycle PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME AudioLifecycle COMMAND TestAudioLifecycle)
-
-
-# TestLoopThread: starting and stopping Pipewire loop threads in every order
-add_executable(TestLoopThread
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Pipewire/LoopThread.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
 
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestLoopThread.cpp
+# Starting and stopping Pipewire loop threads in every order
+halomux_add_test(LoopThread
+  SOURCES ${SRC}/Pipewire/LoopThread.cpp
+  INCLUDES ${LIB_PIPEWIRE_INCLUDE_DIRS}
+  LIBRARIES ${LIB_PIPEWIRE_LIBRARIES}
+  TIMEOUT 60
 )
 
-set_target_properties(TestLoopThread PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(TestLoopThread PUBLIC
-  include
-  ${LIB_PIPEWIRE_INCLUDE_DIRS}
-)
+# Bridge
 
-target_link_libraries(TestLoopThread PUBLIC
-  ${LIB_PIPEWIRE_LIBRARIES}
+# Reading mDNS answers, which come from the network
+halomux_add_test(BridgeDiscovery
+  SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp
 )
-
-target_compile_options(TestLoopThread PRIVATE -fsanitize=address,undefined)
-target_link_options(TestLoopThread PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME LoopThread COMMAND TestLoopThread)
-set_tests_properties(LoopThread AudioLifecycle PROPERTIES TIMEOUT 60)
 
-
-# TestDtlsClient: failed connection attempts release their TLS contexts
-add_executable(TestDtlsClient
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Stream/Impl/MbedTls/DtlsClient.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestDtlsClient.cpp
+# Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
+halomux_add_test(ClipParsing
+  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
-
-set_target_properties(TestDtlsClient PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(TestDtlsClient PUBLIC
-  include
+# Selecting the entertainment area and recovering when the bridge stopped streaming
+halomux_add_test(AreaSession
+  SOURCES ${SRC}/Core/AreaSession.cpp ${SRC}/Hue/Api/Channel.cpp
+  INCLUDES ${CMAKE_CURRENT_BINARY_DIR}/include
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
+  DEPENDS generate_version_header
 )
 
-target_link_libraries(TestDtlsClient PUBLIC
-  ${MBEDTLS_LIBS}
-  ${MBEDTLS_X509}
-  ${MBEDTLS_CRYPTO}
-  nlohmann_json::nlohmann_json
+# Streaming never waits for the connection to the bridge
+halomux_add_test(Streamer
+  SOURCES ${STREAM_SOURCE} ${SRC}/Hue/Auth/Credentials.cpp
+  INCLUDES ${CMAKE_CURRENT_BINARY_DIR}/include
+  LIBRARIES ${MBEDTLS_LIBS} ${MBEDTLS_X509} ${MBEDTLS_CRYPTO} nlohmann_json::nlohmann_json glm::glm
+  DEPENDS generate_version_header
 )
 
-target_compile_options(TestDtlsClient PRIVATE -fsanitize=address,undefined)
-target_link_options(TestDtlsClient PRIVATE -fsanitize=address,undefined)
-
-add_test(NAME DtlsClient COMMAND TestDtlsClient)
-
-
-# TestHttpErrors: malformed requests get 400, unknown resources 404, in one answer shape
-add_executable(TestHttpErrors
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HttpServer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/HostCheck.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Network/Http/Server/RouteTools.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestHttpErrors.cpp
+# Failed connection attempts release their TLS contexts
+halomux_add_test(DtlsClient
+  SOURCES ${SRC}/Stream/Impl/MbedTls/DtlsClient.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  LIBRARIES ${MBEDTLS_LIBS} ${MBEDTLS_X509} ${MBEDTLS_CRYPTO} nlohmann_json::nlohmann_json
 )
 
-set_target_properties(TestHttpErrors PROPERTIES CXX_STANDARD 20)
 
-target_include_directories(TestHttpErrors PUBLIC
-  include
-)
+# Light manager and configuration
 
-target_link_libraries(TestHttpErrors PUBLIC
-  httplib::httplib
-  nlohmann_json::nlohmann_json
-  glm::glm
+# Which Host headers the light manager answers, against DNS rebinding
+halomux_add_test(HostCheck
+  SOURCES ${SRC}/Network/Http/Server/HostCheck.cpp
 )
 
-add_test(NAME HttpErrors COMMAND TestHttpErrors)
-
-
-# TestConfigThreads: configuration read while the setup writes it, under ThreadSanitizer
-add_executable(TestConfigThreads
-  # Application
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Hue/Auth/Credentials.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Logger.cpp
-
-  # Test
-  ${CMAKE_CURRENT_SOURCE_DIR}/tests/src/TestConfigThreads.cpp
+# Malformed requests get 400, unknown resources 404, in one answer shape
+halomux_add_test(HttpErrors
+  SOURCES ${SRC}/Network/Http/Server/HttpServer.cpp ${SRC}/Network/Http/Server/HostCheck.cpp ${SRC}/Network/Http/Server/RouteTools.cpp
+  LIBRARIES httplib::httplib nlohmann_json::nlohmann_json glm::glm
 )
 
-set_target_properties(TestConfigThreads PROPERTIES CXX_STANDARD 20)
-
-target_include_directories(TestConfigThreads PUBLIC
-  include
+# How the configuration, which holds the bridge credentials, is stored
+halomux_add_test(ConfigFile
+  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
-target_link_libraries(TestConfigThreads PUBLIC
-  nlohmann_json::nlohmann_json
-  glm::glm
+# Configuration read while the setup writes it, under ThreadSanitizer
+halomux_add_test(ConfigThreads
+  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
+  SANITIZE thread
+  ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1"
 )
-
-target_compile_options(TestConfigThreads PRIVATE -fsanitize=thread)
-target_link_options(TestConfigThreads PRIVATE -fsanitize=thread)
-
-add_test(NAME ConfigThreads COMMAND TestConfigThreads)
-set_tests_properties(ConfigThreads PROPERTIES ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1")
