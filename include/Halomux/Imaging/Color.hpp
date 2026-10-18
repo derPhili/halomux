@@ -28,8 +28,6 @@ namespace Halomux::Imaging
 
     inline static constexpr glm::vec3 XYBBlack{0.315f, 0.3312f, 0.f};
 
-    using GamutCoordinates = std::array<glm::vec2, 3>;
-
     /**
      * @brief Color constructor
      * 
@@ -130,14 +128,13 @@ namespace Halomux::Imaging
 
 
     /**
-     * @brief Returns a XY conversion of RGB color
-     * 
-     * @param gamutCoordinates Boundaries of the gammut
-     * @return glm::vec2 XY color coordinates
+     * @brief Returns the CIE xy chromaticity and the brightness of the color
+     *
+     * Colors outside a lamp's gamut are left to the lamp, which shows the closest one it can.
+     *
+     * @return glm::vec3 x, y and brightness
      */
-    glm::vec3 toXYB(
-      /*const GamutCoordinates& gamutCoordinates*/
-    ) const
+    glm::vec3 toXYB() const
     {
       // Following https://gist.github.com/popcorn245/30afa0f98eea1c2fd34d
       glm::vec3 normalizedRgb = this->toNormalized();
@@ -168,14 +165,6 @@ namespace Halomux::Imaging
         xyb[2] = brightness();
       }
 
-      // Checking xy boundaries
-      //unsigned (void)gamutCoordinates;
-      /*
-      if(!_xyInGamut(xy, gamutCoordinates)){
-        // ToDo implement at some point
-        // This cas has not been observed yet
-      }
-      */
       return xyb;
     }
 
@@ -190,55 +179,6 @@ namespace Halomux::Imaging
       return (m_r * 0.3f + m_g * 0.59f + m_b * 0.11f) / Color::Max;
     }
 
-
-  private:
-    // Private methods
-    /**
-     * @brief Computes a sign check on boundaries
-     * 
-     * @param a Gammut vertex a
-     * @param b Gammut vertex b
-     * @param c Gammut vertex c
-     * @return float Signed value for boundary check
-     */
-    static inline float _sign(
-      const glm::vec2& a,
-      const glm::vec2& b,
-      const glm::vec2& c
-    )
-    {
-      return (a.x - c.x) * (b.y - c.y) - (b.x - c.x) * (a.y - c.y);
-    }
-
-
-    /**
-     * @brief Returns whether the XY color coordinates fits in gammut
-     * 
-     * @param xy 
-     * @param gamutCoordinates 
-     * @return true XY color fits in gammut boundaries
-     * @return false XY color doesn't fit in gammut boundaries
-     */
-    inline static bool _xyInGamut(
-      const glm::vec2& xy,
-      const GamutCoordinates& gamutCoordinates
-    )
-    {
-      bool has_neg, has_pos;
-
-      const auto& a = gamutCoordinates.at(0);
-      const auto& b = gamutCoordinates.at(1);
-      const auto& c = gamutCoordinates.at(2);
-
-      float d1 = _sign(xy, a, b);
-      float d2 = _sign(xy, b, c);
-      float d3 = _sign(xy, c, a);
-
-      has_neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
-      has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
-
-      return !(has_neg && has_pos);
-    }
 
   public:
     // Attributes

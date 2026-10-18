@@ -19,8 +19,6 @@ namespace Halomux::Serialization
     {
       jsonEntConf = {
         {"name", entConf.name},
-        //{"devices", entConf.devices},
-        //{"channels", entConf.channels},
       };
     }
   };

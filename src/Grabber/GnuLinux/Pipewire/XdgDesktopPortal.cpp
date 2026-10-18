@@ -5,11 +5,8 @@
 // The rest of Halomux is under the GNU General Public License version 3 (LICENSE.txt), whose
 // section 13 allows this combination.
 
-/*
-  This code is an adapation from https://codeberg.org/metamuffin/xdg-dp-start/src/branch/master/xdg-dp-start.c
-  It consists on an extraction from OBS Source code achieving the call and management of a xdg-portal capture query
-  As I spent days to do try to achieve the same result in a less concise way, I feel more confident using this one and give it some personnal changes
-*/
+// Requests a screen capture through the ScreenCast interface of xdg-desktop-portal. xdg-dp-start,
+// which this is adapted from, extracted that part of OBS Studio's portal code.
 
 #include <Halomux/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.hpp>
 

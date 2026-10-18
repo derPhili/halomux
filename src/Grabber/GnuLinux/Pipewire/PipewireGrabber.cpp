@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
-#include <sstream>
 #include <future>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -336,19 +335,6 @@ namespace Halomux::Grabber
   }
 
 
-  void PipewireGrabber::_onCoreInfoCallback(
-    void* userData,
-    const pw_core_info* info
-  )
-  {
-    (void)userData;
-    (void)info;
-    //PipewireData* pw = static_cast<PipewireData*>(userData);
-    //update_pw_versions(pw, info->version);
-    //Logger::debug("Pipewire version : ", std::string(info->version));
-  }
-
-
   void PipewireGrabber::_onCoreErrorCallback(
     void* userData,
     uint32_t id,
@@ -358,13 +344,9 @@ namespace Halomux::Grabber
   )
   {
     (void)userData;
-    //PipewireData* pw = static_cast<PipewireData*>(userData);
 
-    std::stringstream ss;
-    ss << "[pipewire] Error id: " << id << " seq: " << seq << " res: " << res << "" << g_strerror(res) << " " << message << std::endl;
-    Core::Logger::error(ss.str());
-
-    //pw_thread_loop_signal(pw->loop, FALSE);
+    // res is a negative errno
+    Core::Logger::error("[pipewire] Error id: ", id, " seq: ", seq, " res: ", res, " (", g_strerror(-res), ") ", message);
   }
 
 
@@ -377,7 +359,7 @@ namespace Halomux::Grabber
     pw_buffer* pwBuffer;
 
     if((pwBuffer = pw_stream_dequeue_buffer(stream->stream)) == NULL){
-      //pw_log_warn("out of buffers");
+      // Out of buffers
       return;
     }
 
@@ -793,7 +775,6 @@ namespace Halomux::Grabber
     static const pw_core_events coreEvents = [] {
       pw_core_events events = {};
       events.version = PW_VERSION_CORE_EVENTS;
-      events.info = _onCoreInfoCallback;
       events.error = _onCoreErrorCallback;
       return events;
     }();

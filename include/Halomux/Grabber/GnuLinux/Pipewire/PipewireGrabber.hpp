@@ -344,11 +344,6 @@ namespace Halomux::Grabber
       void* userData
     );
 
-    static void _onCoreInfoCallback(
-      void* userData,
-      const pw_core_info* info
-    );
-
     static void _onCoreErrorCallback(
       void* userData,
       uint32_t id,
