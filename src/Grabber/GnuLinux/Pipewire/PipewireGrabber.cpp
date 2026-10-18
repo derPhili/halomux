@@ -90,101 +90,105 @@ namespace Halomux::Grabber
     m_capture.context = g_main_context_new();
     m_xdgThread.emplace(_initCapture, &m_capture);
 
-    // The screen selection dialog may stay open: a stop request closes it
-    GSource* abortSource = nullptr;
-    {
-      std::stop_callback abortOnStop(stopToken, [this, &abortSource](){
-        // Runs in the thread requesting the stop (or right here if it already was): the abort
-        // itself runs in the portal thread, through its context
-        abortSource = g_idle_source_new();
-        g_source_set_callback(abortSource, _onAbortCapture, &m_capture, nullptr);
-        g_source_attach(abortSource, m_capture.context);
-      });
+    // From here on, a failure must end the portal thread before the exception leaves: a joinable
+    // thread destroyed while unwinding would terminate the application
+    try{
+      // The screen selection dialog may stay open: a stop request closes it
+      GSource* abortSource = nullptr;
+      {
+        std::stop_callback abortOnStop(stopToken, [this, &abortSource](){
+          // Runs in the thread requesting the stop (or right here if it already was): the abort
+          // itself runs in the portal thread, through its context
+          abortSource = g_idle_source_new();
+          g_source_set_callback(abortSource, _onAbortCapture, &m_capture, nullptr);
+          g_source_attach(abortSource, m_capture.context);
+        });
 
-      fdReadyFuture.wait();
-    }
+        fdReadyFuture.wait();
+      }
 
-    if(abortSource){
-      g_source_destroy(abortSource);
-      g_source_unref(abortSource);
-    }
+      if(abortSource){
+        g_source_destroy(abortSource);
+        g_source_unref(abortSource);
+      }
 
-    if(!fdReadyFuture.get()){
-      _stop();
-      throw Grabber::GrabberCancelled("Failed to get monitor file descriptor");
-    }
+      if(!fdReadyFuture.get()){
+        throw Grabber::GrabberCancelled("Failed to get monitor file descriptor");
+      }
 
-    // Names the streams in the log, and the monitors once their sizes are known
-    const auto outputs = listWaylandOutputs();
+      // Names the streams in the log, and the monitors once their sizes are known
+      const auto outputs = listWaylandOutputs();
 
-    for(size_t i = 0; i < m_capture.streams.size(); i++){
-      auto stream = std::make_unique<StreamData>();
-      stream->owner = &m_pwData;
-      stream->index = i;
-      stream->node = m_capture.streams[i].node;
-      stream->portalGeometry = m_capture.streams[i].geometry;
-      stream->label = "monitor " + std::to_string(i + 1);
+      for(size_t i = 0; i < m_capture.streams.size(); i++){
+        auto stream = std::make_unique<StreamData>();
+        stream->owner = &m_pwData;
+        stream->index = i;
+        stream->node = m_capture.streams[i].node;
+        stream->portalGeometry = m_capture.streams[i].geometry;
+        stream->label = "monitor " + std::to_string(i + 1);
 
-      for(const auto& output : outputs){
-        if(stream->portalGeometry == output.geometry && !output.name.empty()){
-          stream->label = output.name;
+        for(const auto& output : outputs){
+          if(stream->portalGeometry == output.geometry && !output.name.empty()){
+            stream->label = output.name;
+          }
+        }
+
+        m_pwData.streams.push_back(std::move(stream));
+      }
+
+      auto configDataReadyFuture = m_pwData.screenDataReadyPromise.get_future();
+      m_loopThread.emplace(
+        [this](pw_main_loop* loop){return _startCapture(&m_capture, &m_pwData, loop);},
+        [this](pw_main_loop*){_stopCapture(&m_pwData);}
+      );
+
+      // A stream that never negotiates must neither hang a screen selection nor the shutdown
+      static constexpr auto StreamsTimeout = std::chrono::seconds(15);
+      const auto deadline = std::chrono::steady_clock::now() + StreamsTimeout;
+      while(configDataReadyFuture.wait_for(100ms) != std::future_status::ready){
+        if(stopToken.stop_requested()){
+          throw Grabber::GrabberCancelled("Screen capture aborted");
+        }
+
+        if(std::chrono::steady_clock::now() >= deadline){
+          throw Grabber::GrabberUnavailable("The capture of the selected monitors didn't start");
         }
       }
 
-      m_pwData.streams.push_back(std::move(stream));
-    }
-
-    auto configDataReadyFuture = m_pwData.screenDataReadyPromise.get_future();
-    m_loopThread.emplace(
-      [this](pw_main_loop* loop){return _startCapture(&m_capture, &m_pwData, loop);},
-      [this](pw_main_loop*){_stopCapture(&m_pwData);}
-    );
-
-    // A stream that never negotiates must neither hang a screen selection nor the shutdown
-    static constexpr auto StreamsTimeout = std::chrono::seconds(15);
-    const auto deadline = std::chrono::steady_clock::now() + StreamsTimeout;
-    while(configDataReadyFuture.wait_for(100ms) != std::future_status::ready){
-      if(stopToken.stop_requested()){
-        _stop();
-        throw Grabber::GrabberCancelled("Screen capture aborted");
+      if(!configDataReadyFuture.get()){
+        throw Grabber::GrabberUnavailable("Failed to initialize Pipewire capture");
       }
 
-      if(std::chrono::steady_clock::now() >= deadline){
-        _stop();
-        throw Grabber::GrabberUnavailable("The capture of the selected monitors didn't start");
+      // Every stream has its format
+      std::vector<std::pair<int, int>> pixelSizes;
+      for(const auto& stream : m_pwData.streams){
+        pixelSizes.emplace_back(stream->pixelWidth.load(), stream->pixelHeight.load());
+      }
+
+      const auto fallback = fallbackGeometry(pixelSizes);
+      for(size_t i = 0; i < m_pwData.streams.size(); i++){
+        MonitorInfo monitor;
+        monitor.geometry = m_pwData.streams[i]->portalGeometry.value_or(fallback[i]);
+        monitor.pixelWidth = pixelSizes[i].first;
+        monitor.pixelHeight = pixelSizes[i].second;
+        m_monitors.push_back(std::move(monitor));
+      }
+
+      nameMonitors(m_monitors, outputs);
+
+      for(const auto& monitor : m_monitors){
+        Core::Logger::log("Capturing ", monitor.description, (monitor.name.empty() ? "" : " (" + monitor.name + ")"), ", ", monitor.pixelWidth, "x", monitor.pixelHeight, " at ", monitor.geometry.x, ",", monitor.geometry.y);
+      }
+
+      // Saved only now: a token of a selection that doesn't capture would ask again on every start
+      if(m_capture.restoreToken.has_value() && config->restoreToken() != m_capture.restoreToken){
+        config->setRestoreToken(*m_capture.restoreToken);
+        Core::Logger::log("Remembered the screen selection");
       }
     }
-
-    if(!configDataReadyFuture.get()){
+    catch(...){
       _stop();
-      throw Grabber::GrabberUnavailable("Failed to initialize Pipewire capture");
-    }
-
-    // Every stream has its format
-    std::vector<std::pair<int, int>> pixelSizes;
-    for(const auto& stream : m_pwData.streams){
-      pixelSizes.emplace_back(stream->pixelWidth.load(), stream->pixelHeight.load());
-    }
-
-    const auto fallback = fallbackGeometry(pixelSizes);
-    for(size_t i = 0; i < m_pwData.streams.size(); i++){
-      MonitorInfo monitor;
-      monitor.geometry = m_pwData.streams[i]->portalGeometry.value_or(fallback[i]);
-      monitor.pixelWidth = pixelSizes[i].first;
-      monitor.pixelHeight = pixelSizes[i].second;
-      m_monitors.push_back(std::move(monitor));
-    }
-
-    nameMonitors(m_monitors, outputs);
-
-    for(const auto& monitor : m_monitors){
-      Core::Logger::log("Capturing ", monitor.description, (monitor.name.empty() ? "" : " (" + monitor.name + ")"), ", ", monitor.pixelWidth, "x", monitor.pixelHeight, " at ", monitor.geometry.x, ",", monitor.geometry.y);
-    }
-
-    // Saved only now: a token of a selection that doesn't capture would ask again on every start
-    if(m_capture.restoreToken.has_value() && config->restoreToken() != m_capture.restoreToken){
-      config->setRestoreToken(*m_capture.restoreToken);
-      Core::Logger::log("Remembered the screen selection");
+      throw;
     }
   }
 
