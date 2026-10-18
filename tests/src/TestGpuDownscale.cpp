@@ -96,7 +96,8 @@ int main(int argc, char* argv[])
 
   int failures = 0;
 
-  for(int outputWidth : {160, 80, 320}){
+  // Blocks of 16, 32, 8 pixels, and 5 for odd blocks, averaged exactly too
+  for(int outputWidth : {160, 80, 320, 512}){
     const int outputHeight = frame.rows * outputWidth / frame.cols;
 
     cv::Mat gpuRgba;

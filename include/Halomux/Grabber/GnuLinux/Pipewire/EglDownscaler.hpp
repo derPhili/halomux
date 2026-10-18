@@ -22,7 +22,8 @@ namespace Halomux::Grabber
    * @brief Downscales DMA-BUF screen frames on the GPU
    *
    * Frames are imported without copy as EGL images and reduced by a fragment shader computing
-   * the exact average of each block of source pixels. Only the small result is read back.
+   * the exact average of each block of source pixels, even or odd (fractional blocks are
+   * approximated). Only the small result is read back.
    * Every method must be called from the thread that called init().
    */
   class EglDownscaler
