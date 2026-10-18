@@ -363,7 +363,7 @@ namespace Halomux::Core
     Imaging::UVCorner uvCorner
   )
   {
-    return m_runtime.m_channelStore.setUV(channelId, uv, uvCorner);
+    return m_runtime.m_channelStore.setUV(channelId, uv, uvCorner, m_config.subsampleWidth());
   }
 
 

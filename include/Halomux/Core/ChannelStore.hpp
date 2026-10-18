@@ -139,12 +139,14 @@ namespace Halomux::Core
      * @param channelId Lamp
      * @param uv New position of the corner
      * @param corner Corner
+     * @param configuredSubsampleWidth Configured subsample width: the region keeps at least one cell
      * @return std::optional<Imaging::UVs> Resulting region, nothing if the lamp doesn't exist
      */
     std::optional<Imaging::UVs> setUV(
       uint8_t channelId,
       const Imaging::UV& uv,
-      Imaging::UVCorner corner
+      Imaging::UVCorner corner,
+      unsigned configuredSubsampleWidth
     );
 
 
@@ -214,6 +216,12 @@ namespace Halomux::Core
     void _resolveMonitors(
       Grabber::Monitors monitors
     );
+
+    // Width and height of a subsample cell of a monitor, normalized
+    std::pair<float, float> _cellSize(
+      size_t monitor,
+      unsigned configuredSubsampleWidth
+    ) const;
 
     void _replace(
       std::optional<std::string> areaId,
