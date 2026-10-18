@@ -109,6 +109,12 @@ halomux_add_test(GpuDownscale
   ARGS ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/WebUI.png
 )
 
+# Planes of DMA-BUF buffers of Pipewire, several with compressed formats
+halomux_add_test(DmaBufPlanes
+  SOURCES ${SRC}/Grabber/GnuLinux/Pipewire/DmaBufPlanes.cpp
+  INCLUDES ${LIB_PIPEWIRE_INCLUDE_DIRS}
+)
+
 # Matching monitors between the portal, the compositor and the profile
 halomux_add_test(Monitors
   SOURCES ${SRC}/Grabber/Monitors.cpp

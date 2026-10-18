@@ -1,5 +1,7 @@
 #include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
+#include <Halomux/Grabber/GnuLinux/Pipewire/DmaBufPlanes.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -454,8 +456,9 @@ namespace Halomux::Grabber
       return false;
     }
 
-    const spa_data& data = pwBuffer->buffer->datas[0];
-    if(data.chunk == nullptr || data.fd < 0){
+    // One data per plane: compressed formats have several
+    const auto planes = dmaBufPlanes(*pwBuffer->buffer);
+    if(!planes.has_value()){
       return false;
     }
 
@@ -468,9 +471,7 @@ namespace Halomux::Grabber
     // Imported once per buffer: Pipewire cycles through a fixed set of DMA-BUFs
     if(!bufferData->gpuImage){
       bufferData->gpuImage = pw->gpu->importDmaBuf({
-        .fd = static_cast<int>(data.fd),
-        .offset = data.chunk->offset,
-        .stride = static_cast<uint32_t>(data.chunk->stride),
+        .planes = *planes,
         .width = width,
         .height = height,
         .drmFormat = toDrmFormat(stream->format.info.raw.format),

@@ -1,5 +1,7 @@
 #include <Halomux/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
 
+#include <array>
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -250,19 +252,39 @@ void main()
     const DmaBuf& dmaBuf
   )
   {
-    const EGLAttrib attributes[] = {
+    // Per plane: fd, offset, pitch and the modifier, the same for every plane
+    static constexpr std::array<std::array<EGLAttrib, 5>, MaxDmaBufPlanes> PlaneAttributes{{
+      {EGL_DMA_BUF_PLANE0_FD_EXT, EGL_DMA_BUF_PLANE0_OFFSET_EXT, EGL_DMA_BUF_PLANE0_PITCH_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT},
+      {EGL_DMA_BUF_PLANE1_FD_EXT, EGL_DMA_BUF_PLANE1_OFFSET_EXT, EGL_DMA_BUF_PLANE1_PITCH_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT},
+      {EGL_DMA_BUF_PLANE2_FD_EXT, EGL_DMA_BUF_PLANE2_OFFSET_EXT, EGL_DMA_BUF_PLANE2_PITCH_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT},
+      {EGL_DMA_BUF_PLANE3_FD_EXT, EGL_DMA_BUF_PLANE3_OFFSET_EXT, EGL_DMA_BUF_PLANE3_PITCH_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT}
+    }};
+
+    if(dmaBuf.planes.empty() || dmaBuf.planes.size() > MaxDmaBufPlanes){
+      Core::Logger::error("[gpu] Can't import a DMA-BUF with ", dmaBuf.planes.size(), " planes");
+      return nullptr;
+    }
+
+    std::vector<EGLAttrib> attributes{
       EGL_WIDTH, dmaBuf.width,
       EGL_HEIGHT, dmaBuf.height,
-      EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLAttrib>(dmaBuf.drmFormat),
-      EGL_DMA_BUF_PLANE0_FD_EXT, dmaBuf.fd,
-      EGL_DMA_BUF_PLANE0_OFFSET_EXT, static_cast<EGLAttrib>(dmaBuf.offset),
-      EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLAttrib>(dmaBuf.stride),
-      EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, static_cast<EGLAttrib>(dmaBuf.modifier & 0xffffffff),
-      EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, static_cast<EGLAttrib>(dmaBuf.modifier >> 32),
-      EGL_NONE
+      EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLAttrib>(dmaBuf.drmFormat)
     };
 
-    EGLImage eglImage = eglCreateImage(m_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
+    for(size_t i = 0; i < dmaBuf.planes.size(); i++){
+      const auto& plane = dmaBuf.planes[i];
+      const auto& names = PlaneAttributes[i];
+      attributes.insert(attributes.end(), {
+        names[0], plane.fd,
+        names[1], static_cast<EGLAttrib>(plane.offset),
+        names[2], static_cast<EGLAttrib>(plane.stride),
+        names[3], static_cast<EGLAttrib>(dmaBuf.modifier & 0xffffffff),
+        names[4], static_cast<EGLAttrib>(dmaBuf.modifier >> 32)
+      });
+    }
+    attributes.push_back(EGL_NONE);
+
+    EGLImage eglImage = eglCreateImage(m_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes.data());
     if(eglImage == EGL_NO_IMAGE){
       Core::Logger::error("[gpu] Failed to import DMA-BUF (EGL error 0x", std::hex, eglGetError(), std::dec, ")");
       return nullptr;
