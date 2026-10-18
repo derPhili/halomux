@@ -271,8 +271,14 @@ class WebUI
     this.reselectMonitorsButton.textContent = t(pending ? "Waiting for the screen selection…" : "Monitors…");
 
     if(pending){
-      // Until the dialog is answered
-      setTimeout(() => {this._refreshMonitors();}, 2000);
+      // Until the dialog is answered. One timer at a time: every answer, the periodic refresh and
+      // the button come here, and each scheduling its own would multiply the requests
+      if(!this.pendingMonitorsTimer){
+        this.pendingMonitorsTimer = setTimeout(() => {
+          this.pendingMonitorsTimer = null;
+          this._refreshMonitors();
+        }, 2000);
+      }
     }
     else if(previousSelection == "pending" && displayInfo.monitorSelection == "cancelled"){
       this.reselectMonitorsButton.textContent = t("Selection cancelled, nothing changed");
