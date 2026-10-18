@@ -66,10 +66,7 @@ namespace Halomux::Core
       // then another one is used. Unreachable, the bridge is asked again on the next check.
       if(_loadAreas() && !areas().contains(*current)){
         Logger::warn("The entertainment area no longer exists: using another one");
-        {
-          std::lock_guard streamerLock(m_streamerMutex);
-          m_streamer.reset();
-        }
+        _takeStreamer().reset();
         {
           std::lock_guard stateLock(m_stateMutex);
           m_currentAreaId.reset();
@@ -129,8 +126,7 @@ namespace Halomux::Core
 
     {
       // The DTLS session is closed before the bridge is asked to stop streaming
-      std::lock_guard streamerLock(m_streamerMutex);
-      m_streamer.reset();
+      _takeStreamer().reset();
     }
 
     std::optional<Hue::Api::EntertainmentConfigurationEntry> area;
@@ -170,6 +166,13 @@ namespace Halomux::Core
   {
     std::lock_guard lock(m_stateMutex);
     return m_currentAreaId;
+  }
+
+
+  std::unique_ptr<Stream::IStreamer> AreaSession::_takeStreamer()
+  {
+    std::lock_guard lock(m_streamerMutex);
+    return std::move(m_streamer);
   }
 
 
@@ -268,10 +271,9 @@ namespace Halomux::Core
       return false;
     }
 
-    {
-      std::lock_guard streamerLock(m_streamerMutex);
-      m_streamer.reset();
-    }
+    // Ended outside the lock: it may wait for a DTLS handshake attempt, which must not hold the
+    // streaming loop
+    _takeStreamer().reset();
 
     if(former.has_value()){
       m_bridge->setStreaming(*former, false);

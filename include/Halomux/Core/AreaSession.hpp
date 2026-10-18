@@ -131,6 +131,8 @@ namespace Halomux::Core
   private:
     // With m_operationMutex held
     bool _loadAreas();
+    // Removes the streamer, for the caller to end it outside the lock
+    std::unique_ptr<Stream::IStreamer> _takeStreamer();
     // Selects the saved area, or another one if it no longer exists
     void _ensureSelection(bool loadAreas = true);
     bool _select(const std::string& areaId);
