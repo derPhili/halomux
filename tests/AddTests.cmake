@@ -250,15 +250,20 @@ halomux_add_test(HttpErrors
   LIBRARIES httplib::httplib nlohmann_json::nlohmann_json glm::glm
 )
 
+# Files only ever replaced by a complete content
+halomux_add_test(AtomicFile
+  SOURCES ${SRC}/Core/AtomicFile.cpp
+)
+
 # How the configuration, which holds the bridge credentials, is stored
 halomux_add_test(ConfigFile
-  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Core/AtomicFile.cpp ${SRC}/Hue/Auth/Credentials.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
 # Configuration read while the setup writes it, under ThreadSanitizer
 halomux_add_test(ConfigThreads
-  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Core/AtomicFile.cpp ${SRC}/Hue/Auth/Credentials.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
   SANITIZE thread
   ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1"

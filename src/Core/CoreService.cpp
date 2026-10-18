@@ -10,6 +10,8 @@
 
 #include <Halomux/Version.hpp>
 #include <Halomux/Core/CoreService.hpp>
+
+#include <Halomux/Core/AtomicFile.hpp>
 #include <Halomux/Core/Logger.hpp>
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
@@ -570,6 +572,9 @@ namespace Halomux::Core
       return false;
     }
 
+    // Read, changed and written by one save at a time: concurrent saves would drop each other's area
+    std::lock_guard lock(m_profileMutex);
+
     // The other areas' lamp settings are kept
     const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *areaId, Serialization::Json(m_runtime.m_channelStore.snapshot()));
 
@@ -577,28 +582,8 @@ namespace Halomux::Core
       m_config.setProfileName("profile");
     }
 
-    // Write then rename, so an interrupted write never leaves a truncated profile behind
-    std::filesystem::path pp = profilePath();
-    std::filesystem::path tmpPath = pp;
-    tmpPath += ".tmp";
-
-    {
-      std::ofstream profileFile(tmpPath, std::ofstream::out);
-      profileFile << profile.dump(2) << "\n";
-      if(!profileFile){
-        Logger::error("Failed to write profile ", std::quoted(tmpPath.string()));
-        return false;
-      }
-    }
-
-    std::error_code error;
-    std::filesystem::rename(tmpPath, pp, error);
-    if(error){
-      Logger::error("Failed to write profile ", std::quoted(pp.string()), ": ", error.message());
-      return false;
-    }
-
-    return true;
+    // Never left truncated, whatever happens while writing
+    return writeFileAtomically(profilePath(), profile.dump(2) + "\n");
   }
 
 

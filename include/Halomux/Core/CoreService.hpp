@@ -564,6 +564,8 @@ namespace Halomux::Core
     Runtime& m_runtime;
     Config& m_config;
 
+    std::mutex m_profileMutex;
+
     std::mutex m_setupBackendMutex;
     Network::Http::Server::SetupBackend* m_setupBackend{nullptr};
   };

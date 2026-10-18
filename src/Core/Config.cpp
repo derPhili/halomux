@@ -1,5 +1,7 @@
 #include <Halomux/Core/Config.hpp>
 
+#include <Halomux/Core/AtomicFile.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -454,25 +456,7 @@ namespace Halomux::Core
 
   void Config::_save() const
   {
-    if(!std::filesystem::exists(m_configFilePath)){
-      std::filesystem::create_directories(m_configFilePath.parent_path());
-    }
-
-    // Write then rename, so an interrupted write never leaves a truncated config behind
-    std::filesystem::path tmpPath = m_configFilePath;
-    tmpPath += ".tmp";
-
-    {
-      std::ofstream configFile(tmpPath);
-      // It holds the bridge credentials: readable by its owner only, before anything is written
-      std::filesystem::permissions(tmpPath, OwnerOnly, std::filesystem::perm_options::replace);
-      configFile << Json(m_configData.value()).dump(2) << "\n";
-      if(!configFile){
-        Logger::error("Failed to write configuration file ", tmpPath.string());
-        return;
-      }
-    }
-
-    std::filesystem::rename(tmpPath, m_configFilePath);
+    // Holds the bridge credentials: written readable by its owner only, and never left truncated
+    writeFileAtomically(m_configFilePath, Json(m_configData.value()).dump(2) + "\n");
   }
 }
