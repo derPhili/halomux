@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     Logger::log(line.str());
   }
 
-  Platform::adapter.releaseGrabber();
+  grabber.reset();
   Logger::log("Done");
 
   return 0;

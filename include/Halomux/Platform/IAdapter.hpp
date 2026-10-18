@@ -79,20 +79,11 @@ namespace Halomux::Platform
 
 
     /**
-     * @brief Destroys the grabber, if any
+     * @brief Starts a grabber that restores the saved screen selection, or asks for one
      *
-     * Must be called before leaving main(): the grabber's teardown relies on
-     * other static objects that would otherwise be destroyed first.
-     */
-    inline void releaseGrabber()
-    {
-      m_grabber.reset();
-    }
-
-
-    /**
-     * @brief Getter to instanciate / store valid grabber
-     * 
+     * The caller owns the grabber: it must be destroyed before the configuration it was given,
+     * and before leaving main(), as its teardown relies on other static objects.
+     *
      * @param config Halomux current configuration
      * @return SharedGrabber Grabber instance, nullptr if none could be started
      */
@@ -100,27 +91,25 @@ namespace Halomux::Platform
       Core::Config* config
     )
     {
-      if(!m_grabber){
-        try{
-          m_grabber = _createGrabber(config, false);
-        }
-        catch(const Grabber::GrabberCancelled& e){
-          Core::Logger::warn(e.what());
-          Core::Logger::warn("Now quitting");
-        }
-        catch(const std::exception& e){
-          Core::Logger::error(e.what());
-        }
+      try{
+        return _createGrabber(config, false);
+      }
+      catch(const Grabber::GrabberCancelled& e){
+        Core::Logger::warn(e.what());
+        Core::Logger::warn("Now quitting");
+      }
+      catch(const std::exception& e){
+        Core::Logger::error(e.what());
       }
 
-      return m_grabber;
+      return nullptr;
     }
 
 
     /**
-     * @brief Starts a grabber that asks for the monitors to capture, and keeps it on success
+     * @brief Starts a grabber that asks for the monitors to capture
      *
-     * The current grabber keeps running meanwhile: its owners replace it with the returned one.
+     * The current grabber keeps running meanwhile: its owner replaces it with the returned one.
      *
      * @param config Halomux current configuration
      * @param stopToken Aborts the screen selection
@@ -132,9 +121,7 @@ namespace Halomux::Platform
     )
     {
       try{
-        auto grabber = _createGrabber(config, true, stopToken);
-        m_grabber = grabber;
-        return grabber;
+        return _createGrabber(config, true, stopToken);
       }
       catch(const Grabber::GrabberCancelled&){
         Core::Logger::warn("Screen selection cancelled, keeping the current monitors");
@@ -163,6 +150,5 @@ namespace Halomux::Platform
 
     // Attributes
     const std::string m_platformName;
-    SharedGrabber m_grabber;
   };
 }

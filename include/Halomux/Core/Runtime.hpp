@@ -189,6 +189,8 @@ namespace Halomux::Core
 
     //  Image Processing
     mutable std::mutex m_grabberMutex;
+    // The only owner of the grabber: declared after m_config, so destroyed before the
+    // configuration its threads read
     std::shared_ptr<Grabber::IGrabber> m_grabber;
     // Set when a screen selection replaced the grabber, for the streaming thread
     std::atomic<bool> m_grabberReplaced{false};

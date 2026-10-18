@@ -46,8 +46,8 @@ public:
     m_applicationThread.reset();
 
     std::lock_guard lock(m_coreMutex);
+    // Destroys the grabber too, before the configuration it reads
     m_core.reset();
-    Halomux::Platform::adapter.releaseGrabber();
 
     return succeeded;
   }
