@@ -404,7 +404,19 @@ class WebUI
         this._manageChannel(channelData.channelId);
       });
 
+      // Selected with the keyboard too
+      newChannelEntryNode.tabIndex = 0;
+      newChannelEntryNode.setAttribute("role", "button");
+      newChannelEntryNode.setAttribute("aria-pressed", "false");
+      newChannelEntryNode.addEventListener("keydown", (event) => {
+        if(event.target == newChannelEntryNode && (event.key == "Enter" || event.key == " ")){
+          event.preventDefault();
+          this._manageChannel(channelData.channelId);
+        }
+      });
+
       this._fillChannelEntry(newChannelEntryNode, newChannel);
+      this._addMoveButton(newChannelEntryNode, newChannel.channelId, false);
       this.lampSwatches[newChannel.channelId] = newChannelEntryNode.querySelector(".lampSwatch");
 
       this.activeChannelsNode.appendChild(newChannelEntryNode);
@@ -429,8 +441,8 @@ class WebUI
     entryNode.replaceChildren(swatch, name, id);
 
     entryNode.title = channel.node
-      ? t("{lamp}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it", {lamp : channel.formatMembers()})
-      : t("{lamp}: not driven. Drag to Active to have it follow the screen", {lamp : channel.formatMembers()});
+      ? t("{lamp}: the dot shows its current color. Click or press Enter to edit its screen region, drag to Available or use the arrow to stop driving it", {lamp : channel.formatMembers()})
+      : t("{lamp}: not driven. Drag to Active or use the arrow to have it follow the screen", {lamp : channel.formatMembers()});
 
     if(channel.node && channel.monitorMissing){
       let missing = document.createElement("span");
@@ -442,9 +454,30 @@ class WebUI
   }
 
 
+  // Moves a lamp to the other list without dragging: with the keyboard, a click or a touch
+  _addMoveButton(entryNode, channelId, activate)
+  {
+    let button = document.createElement("button");
+    button.type = "button";
+    button.className = "moveLampButton";
+    button.textContent = activate ? "←" : "→";
+    const label = t(activate ? "Drive this lamp: move it to Active" : "Stop driving this lamp: move it to Available");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.addEventListener("click", (event) => {
+      // Not a selection of the lamp
+      event.stopPropagation();
+      this._setChannelActivity(channelId, activate);
+    });
+
+    entryNode.appendChild(button);
+  }
+
+
   _setItemSelected(channelNode, selected)
   {
     channelNode.selected = selected;
+    channelNode.setAttribute("aria-pressed", selected ? "true" : "false");
 
     if(channelNode.selected){
       channelNode.classList.add("selected");
@@ -475,6 +508,7 @@ class WebUI
       });
 
       this._fillChannelEntry(newChannelEntryNode, newChannel);
+      this._addMoveButton(newChannelEntryNode, newChannel.channelId, true);
 
       this.inactiveChannelsNode.appendChild(newChannelEntryNode);
     }

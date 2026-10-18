@@ -161,7 +161,7 @@ class ScreenWidget
   static Legends = {
     none : "",
     noChannel : "There are no lamps in this entertainment area. Add them in the Hue app.",
-    pleaseDrag : "Drag a lamp from Available to Active to drive it.",
+    pleaseDrag : "Drag a lamp from Available to Active, or use its arrow, to drive it.",
     pleaseSelect : "Select an active lamp to edit its region"
   };
 
