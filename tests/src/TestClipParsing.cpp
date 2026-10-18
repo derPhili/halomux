@@ -105,6 +105,7 @@ int main()
       }
 
       const auto tv = parsed->find("a0000000-0000-4000-8000-000000000002");
+      expect("Second area found", tv != parsed->end());
       if(tv != parsed->end()){
         expect("Missing light keeps an empty name", names(tv->second.devices) == std::vector<std::string>{"Lightstrip", ""});
       }
