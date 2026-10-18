@@ -197,6 +197,7 @@ class ScreenWidget
     document.addEventListener("pointerup", () => {this.drop();});
     document.addEventListener("pointercancel", () => {this.drop();});
     this.svgAreaNode.addEventListener("pointermove", (event) => {this._updateMousePosition(event);});
+    window.addEventListener("resize", () => {this._layoutLegend();});
 
     // Keyboard: the region and the gamma cursor can be focused and moved with the arrow keys
     this.regionNode = this.uvAreaNode.querySelector("rect");
@@ -247,8 +248,47 @@ class ScreenWidget
 
 
   setLegend(legendFlag){
-    this.legendText.textContent = legendFlag ? t(legendFlag) : "";
+    this.legendFlag = legendFlag;
+    this._layoutLegend();
   }
+
+
+  // Below the monitors, wrapped into as many lines as the widget's width needs
+  _layoutLegend()
+  {
+    const text = this.legendFlag ? t(this.legendFlag) : "";
+    this.legendText.textContent = text;
+
+    const available = this.svgAreaNode.getBoundingClientRect().width * 0.94;
+    if(!text || available <= 0 || this.legendText.getBBox().width <= available){
+      return;
+    }
+
+    this.legendText.textContent = "";
+    const addLine = () => {
+      const span = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      span.setAttribute("x", "50%");
+      span.setAttribute("dy", "1.2em");
+      this.legendText.appendChild(span);
+      return span;
+    };
+
+    let line = addLine();
+    for(const word of text.split(" ")){
+      const before = line.textContent;
+      line.textContent = before ? `${before} ${word}` : word;
+      if(before && line.getComputedTextLength() > available){
+        line.textContent = before;
+        line = addLine();
+        line.textContent = word;
+      }
+    }
+
+    // Growing upwards from the legend's line, which is near the bottom
+    const lines = this.legendText.children.length;
+    this.legendText.firstChild.setAttribute("dy", `${-1.2 * (lines - 1)}em`);
+  }
+
 
 
   /**
