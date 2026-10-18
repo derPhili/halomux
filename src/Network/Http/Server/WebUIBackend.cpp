@@ -439,7 +439,7 @@ namespace Halomux::Network::Http::Server
       const bool saved = m_coreService->saveScene(name, colors);
 
       if(!saved){
-        res.status = 400;
+        throw HttpError(400, "invalid scene name");
       }
 
       res.contentType = "application/json";
@@ -457,7 +457,7 @@ namespace Halomux::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setLanguage", [this](const Request& req, Response& res){
       if(!m_coreService->setLanguage(readBody(req, [](const Json& body){return body.get<std::string>();}))){
-        res.status = 400;
+        throw HttpError(400, "unsupported language");
       }
 
       res.contentType = "application/json";
@@ -472,7 +472,7 @@ namespace Halomux::Network::Http::Server
       const bool applied = m_coreService->applyScene(name, builtin);
 
       if(!applied){
-        res.status = 404;
+        throw HttpError(404, "unknown scene");
       }
 
       res.contentType = "application/json";
@@ -497,7 +497,7 @@ namespace Halomux::Network::Http::Server
       const bool deleted = m_coreService->deleteScene(readBody(req, [](const Json& body){return body.at("name").get<std::string>();}));
 
       if(!deleted){
-        res.status = 404;
+        throw HttpError(404, "unknown scene");
       }
 
       res.contentType = "application/json";

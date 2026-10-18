@@ -107,7 +107,7 @@ namespace Halomux::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setLanguage", [this](const Request& req, Response& res){
       if(!m_coreService->setLanguage(readBody(req, [](const Serialization::Json& body){return body.get<std::string>();}))){
-        res.status = 400;
+        throw HttpError(400, "unsupported language");
       }
 
       res.contentType = "application/json";
