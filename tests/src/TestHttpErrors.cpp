@@ -109,6 +109,22 @@ int main()
   const auto conflict = client.Get("/conflict");
   expect("Chosen status kept", conflict && conflict->status == 409 && errorShaped(conflict));
 
+  // DNS rebinding: a page of another name resolving to this address is refused
+  const auto foreignHost = client.Get("/channel/3", httplib::Headers{{"Host", "evil.example:" + std::to_string(port)}});
+  expect("Foreign Host refused", foreignHost && foreignHost->status == 403);
+  const auto localHost = client.Get("/channel/3", httplib::Headers{{"Host", "localhost:" + std::to_string(port)}});
+  expect("localhost Host accepted", localHost && localHost->status == 200);
+
+  // A page of another origin may not change anything, the light manager's own page may
+  const auto foreignOrigin = client.Put("/json", httplib::Headers{{"Origin", "http://evil.example"}}, R"({"value": 3})", "application/json");
+  expect("Change from another origin refused", foreignOrigin && foreignOrigin->status == 403);
+  const auto nullOrigin = client.Put("/json", httplib::Headers{{"Origin", "null"}}, R"({"value": 3})", "application/json");
+  expect("Change from an opaque origin refused", nullOrigin && nullOrigin->status == 403);
+  const auto sameOrigin = client.Put("/json", httplib::Headers{{"Origin", "http://127.0.0.1:" + std::to_string(port)}}, R"({"value": 3})", "application/json");
+  expect("Change from the page itself accepted", sameOrigin && sameOrigin->status == 200);
+  const auto foreignRead = client.Get("/channel/3", httplib::Headers{{"Origin", "http://evil.example"}});
+  expect("Reading from another origin left to the browser's own rules", foreignRead && foreignRead->status == 200);
+
   const auto internalJson = client.Get("/internalJson");
   expect("Internal JSON error is a server error", internalJson && internalJson->status == 500 && errorShaped(internalJson));
   expect("Internal JSON error not disclosed", internalJson && internalJson->body.find("missing") == std::string::npos);
