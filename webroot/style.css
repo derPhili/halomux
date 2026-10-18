@@ -1027,6 +1027,14 @@ input[type=color]::-webkit-color-swatch
 }
 
 
+/* Over its region: hovering shows the region's tooltip */
+.previewLabel
+{
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+
+
 .previewRegion
 {
   stroke: var(--regionStroke);

@@ -51,8 +51,9 @@
                 <svg x="0%" y="0%" width="100%" height="100%" id="previewRectangles"></svg>
                 <svg x="0%" y="0%" width="100%" height="100%" id="uvArea" style="display: none;">
                   <rect x="0%" y="0%" width="100%" height="100%"><title>Drag to move the region. With several monitors, drop it onto another monitor to make the lamp follow it</title></rect>
-                  <text id="svgChannelName" x="50%" y="50%" dy="-0.5em" style="text-anchor: middle;"></text>
-                  <text id="svgChannelUVSize" x="50%" y="50%" dy="1em" style="text-anchor: middle;"></text>
+                  <!-- Each centered in its half of the region, wrapped to fit it (see ScreenWidget.fitLabel) -->
+                  <text id="svgChannelName" x="50%" y="30%" style="text-anchor: middle; dominant-baseline: middle;"></text>
+                  <text id="svgChannelUVSize" x="50%" y="75%" style="text-anchor: middle; dominant-baseline: middle;"></text>
                 </svg>
 
                 <circle r="1.6%" cx="0%" cy="0%" class="handler" id="tl" style="display: none;"><title>Drag to move the top left corner of the region</title></circle>
