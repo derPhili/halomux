@@ -4,19 +4,11 @@
 #include <string>
 #include <vector>
 
-
 #include <psa/crypto.h>
 
 #include <mbedtls/net_sockets.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/timing.h>
-
-#include <mbedtls/debug.h>
-#include <mbedtls/error.h>
-
-#ifdef MBEDTLS_PLATFORM_C
-#include <mbedtls/platform.h>
-#endif
 
 #include <Halomux/Stream/DtlsConfig.hpp>
 #include <Halomux/Core/Logger.hpp>
@@ -58,38 +50,15 @@ namespace Halomux::Stream
     using MbedTlsUniquePtr = std::unique_ptr<T, MbedTlsDeleter<FreeFunc>>;
 
     using UniqueNetContext = MbedTlsUniquePtr<mbedtls_net_context, mbedtls_net_free>;
-    using UniqueCert = MbedTlsUniquePtr<mbedtls_x509_crt, mbedtls_x509_crt_free>;
     using UniqueSsl = MbedTlsUniquePtr<mbedtls_ssl_context, mbedtls_ssl_free>;
     using UniqueSslConfig = MbedTlsUniquePtr<mbedtls_ssl_config, mbedtls_ssl_config_free>;
 
     UniqueNetContext serverFd;
     UniqueSsl ssl;
     UniqueSslConfig conf;
-    UniqueCert cacert;
     mbedtls_timing_delay_context timer;
     std::vector<int> ciphers;
     bool isConnected{false};
-
-    static void debugCallback(
-      void* ctx,
-      int level,
-      const char* file,
-      int line,
-      const char* str
-    )
-    {
-      const char* p, *basename;
-      (void)ctx;
-
-      for(p = basename = file; *p != '\0'; p++){
-        if(*p == '/' || *p == '\\'){
-          basename = p + 1;
-        }
-      }
-
-      mbedtls_printf("%s:%04d: |%d| %s", basename, line, level, str);
-    }
-
 
     void _ensurePsaInit()
     {
@@ -127,9 +96,6 @@ namespace Halomux::Stream
 
       conf.reset(new mbedtls_ssl_config{});
       mbedtls_ssl_config_init(conf.get());
-
-      cacert.reset(new mbedtls_x509_crt{});
-      mbedtls_x509_crt_init(cacert.get());
     }
 
 
@@ -178,8 +144,8 @@ namespace Halomux::Stream
         }
       }
 
-      mbedtls_ssl_conf_authmode(conf.get(), MBEDTLS_SSL_VERIFY_OPTIONAL);
-      mbedtls_ssl_conf_ca_chain(conf.get(), cacert.get(), NULL);
+      // The only cipher suite is a PSK one: the shared key authenticates the bridge, no certificate is exchanged
+      mbedtls_ssl_conf_authmode(conf.get(), MBEDTLS_SSL_VERIFY_NONE);
 
       {
         int result = mbedtls_ssl_conf_psk(
@@ -302,7 +268,6 @@ namespace Halomux::Stream
 
       isConnected = false;
       serverFd.reset();
-      cacert.reset();
       ssl.reset();
       conf.reset();
     }
