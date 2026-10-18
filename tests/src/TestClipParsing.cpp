@@ -126,6 +126,20 @@ int main()
     expect("Several lamps on a channel", tv.has_value() && tv->size() == 1 && names(tv->at(0)) == std::vector<std::string>{"Play Left", "Lightstrip"});
 
     expect("Unknown area", !channelMembers(fixture(), "a0000000-0000-4000-8000-00000000000f").has_value());
+
+    // Fields of unexpected types in other resources are skipped, not thrown
+    Json odd = fixture();
+    odd.at("data").push_back(Json::parse(R"({"id": "d1", "type": "device", "metadata": {"name": 7}, "services": [{"rid": "x", "rtype": 5}, {"rid": 3, "rtype": "entertainment"}, 4]})"));
+    odd.at("data").push_back(Json::parse(R"({"id": "l1", "type": "light", "metadata": "x"})"));
+    try{
+      const auto oddMembers = channelMembers(odd, "a0000000-0000-4000-8000-000000000001");
+      expect("Odd resources skipped for members", oddMembers.has_value() && oddMembers->size() == 2);
+      const auto oddAreas = areas(odd);
+      expect("Odd resources skipped for areas", oddAreas.has_value() && oddAreas->size() == 2);
+    }
+    catch(const std::exception& e){
+      expect("Odd resources don't throw", false);
+    }
     expect("Error answer has no members", !channelMembers(Json::parse(R"({"errors": [{"description": "x"}], "data": []})"), "a").has_value());
   }
 

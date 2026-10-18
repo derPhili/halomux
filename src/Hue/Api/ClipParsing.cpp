@@ -204,7 +204,7 @@ namespace Halomux::Hue::Api::ClipParsing
       }
 
       for(const Json& service : resource.at("services")){
-        if(service.is_object() && service.value("rtype", "") == "entertainment" && service.contains("rid") && service.at("rid").is_string()){
+        if(service.is_object() && service.contains("rtype") && service.at("rtype") == "entertainment" && service.contains("rid") && service.at("rid").is_string()){
           lamps.push_back({.id = service.at("rid").get<std::string>(), .name = nameOf(resource)});
         }
       }
