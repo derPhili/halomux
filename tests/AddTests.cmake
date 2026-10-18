@@ -115,6 +115,12 @@ halomux_add_test(Monitors
   LIBRARIES glm::glm
 )
 
+# Resolutions a captured image can be downscaled to
+halomux_add_test(SubsampleResolutions
+  SOURCES ${SRC}/Grabber/SubsampleResolutions.cpp
+  LIBRARIES glm::glm
+)
+
 # Prints the compositor's monitors (needs a Wayland session)
 halomux_add_test(WaylandOutputs
   SOURCES ${SRC}/Grabber/GnuLinux/WaylandOutputs.cpp

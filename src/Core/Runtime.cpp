@@ -121,10 +121,11 @@ namespace Halomux::Core
     // Don't let the compositor produce frames that would never be consumed
     grabber()->setFrameRateLimit(m_config.refreshRate());
 
-    if(m_config.subsampleWidth() == 0){
+    // Without a captured image, the width stays unset and is chosen on the next start
+    auto subsampleCandidates = grabber()->subsampleResolutionCandidates();
+    if(m_config.subsampleWidth() == 0 && !subsampleCandidates.empty()){
       auto displayResolution = grabber()->displayResolution();
       float percentThreshold = 1.0;
-      auto subsampleCandidates = grabber()->subsampleResolutionCandidates();
 
       auto bestSubsampleWidth = subsampleCandidates.back().x;
       for(auto i = subsampleCandidates.size(); i--;){

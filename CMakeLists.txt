@@ -125,6 +125,7 @@ set(HUE_SOURCE
 
 set(GRABBER_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/Monitors.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/SubsampleResolutions.cpp
 )
 
 set(IMAGING_SOURCE
