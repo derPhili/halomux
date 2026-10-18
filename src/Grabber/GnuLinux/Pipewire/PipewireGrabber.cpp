@@ -365,9 +365,18 @@ namespace Halomux::Grabber
   {
     StreamData* stream = static_cast<StreamData*>(userdata);
     PipewireData* pw = stream->owner;
-    pw_buffer* pwBuffer;
 
-    if((pwBuffer = pw_stream_dequeue_buffer(stream->stream)) == NULL){
+    // Several frames wait when processing fell behind: only the newest is worth it, the older
+    // ones go back at once instead of adding their delay
+    pw_buffer* pwBuffer = nullptr;
+    while(pw_buffer* next = pw_stream_dequeue_buffer(stream->stream)){
+      if(pwBuffer){
+        pw_stream_queue_buffer(stream->stream, pwBuffer);
+      }
+      pwBuffer = next;
+    }
+
+    if(!pwBuffer){
       // Out of buffers
       return;
     }
