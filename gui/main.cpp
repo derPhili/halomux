@@ -1,9 +1,9 @@
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QDir>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QStandardPaths>
 #include <QSystemTrayIcon>
 #include <QTimer>
 #include <QUrl>
@@ -28,7 +28,8 @@ namespace
    */
   QJsonObject serviceConfig()
   {
-    QFile configFile(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/" + AppId + "/config.json");
+    // Where the service keeps it: under $HOME/.config, whatever XDG_CONFIG_HOME says
+    QFile configFile(QDir::homePath() + "/.config/" + AppId + "/config.json");
     if(!configFile.open(QIODevice::ReadOnly)){
       return {};
     }
