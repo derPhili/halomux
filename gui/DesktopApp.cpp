@@ -1,11 +1,13 @@
 #include "DesktopApp.hpp"
 
 #include <QApplication>
+#include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLocalSocket>
 #include <QNetworkReply>
 #include <QProcess>
+#include <QStandardPaths>
 
 #include <Halomux/Version.hpp>
 
@@ -19,9 +21,16 @@ namespace Halomux::Gui
     // Interval between tray state updates [ms]
     constexpr int RefreshInterval = 10000;
 
-    QString instanceName()
+    // In the user's runtime directory, which only they can enter: another user can neither take
+    // the name nor talk to the instance
+    QString instancePath(const char* suffix)
     {
-      return QString("%1-gui-%2").arg(AppId, qEnvironmentVariable("USER"));
+      QString directory = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+      if(directory.isEmpty()){
+        directory = QDir::tempPath();
+      }
+
+      return QString("%1/%2-gui.%3").arg(directory, AppId, suffix);
     }
   }
 
@@ -90,16 +99,22 @@ namespace Halomux::Gui
 
   bool DesktopApp::claimInstance(bool showWindow)
   {
-    QLocalSocket socket;
-    socket.connectToServer(instanceName());
-    if(socket.waitForConnected(500)){
-      socket.write(showWindow ? "show" : "tray");
-      socket.waitForBytesWritten(500);
+    // The lock decides which of two instances started together runs: the check of the socket
+    // and its creation alone could let the second remove the first one's socket
+    m_instanceLock = std::make_unique<QLockFile>(instancePath("lock"));
+    m_instanceLock->setStaleLockTime(0);
+    if(!m_instanceLock->tryLock(1000)){
+      QLocalSocket socket;
+      socket.connectToServer(instancePath("socket"));
+      if(socket.waitForConnected(500)){
+        socket.write(showWindow ? "show" : "tray");
+        socket.waitForBytesWritten(500);
+      }
       return false;
     }
 
-    // Left over by an instance that crashed
-    QLocalServer::removeServer(instanceName());
+    // Left over by an instance that crashed: the lock is ours, so no instance uses it
+    QLocalServer::removeServer(instancePath("socket"));
 
     connect(&m_instanceServer, &QLocalServer::newConnection, this, [this](){
       QLocalSocket* client = m_instanceServer.nextPendingConnection();
@@ -111,7 +126,11 @@ namespace Halomux::Gui
       });
     });
 
-    m_instanceServer.listen(instanceName());
+    m_instanceServer.setSocketOptions(QLocalServer::UserAccessOption);
+    if(!m_instanceServer.listen(instancePath("socket"))){
+      // Still the only instance: only a second start can't bring its window up
+      qWarning("Single instance socket unavailable: %s", qPrintable(m_instanceServer.errorString()));
+    }
     return true;
   }
 
