@@ -404,8 +404,11 @@ namespace Halomux::Grabber
 
     const spa_data& data = pwBuffer->buffer->datas[0];
     const bool corrupted = data.chunk != nullptr && (data.chunk->flags & SPA_CHUNK_FLAG_CORRUPTED);
+    // Compositors flag a buffer without new content (such as for a cursor move only) with size 0,
+    // on both paths: it may still hold an older frame
+    const bool empty = data.chunk != nullptr && data.chunk->size == 0;
 
-    if(width == 0 || height == 0 || corrupted){
+    if(width == 0 || height == 0 || corrupted || empty){
       pw_stream_queue_buffer(stream->stream, pwBuffer);
       return;
     }
