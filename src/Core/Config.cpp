@@ -1,6 +1,7 @@
 #include <Halomux/Core/Config.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 
@@ -15,6 +16,9 @@ namespace Halomux::Core
   namespace
   {
     constexpr std::filesystem::perms OwnerOnly = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write;
+
+    // Above, colors would barely move: at 1 they never would
+    constexpr float MaxTransitionSmoothing = 0.97f;
   }
 
   Config::Config(
@@ -408,6 +412,17 @@ namespace Halomux::Core
     bool requireSave = false;
 
     auto& configData = m_configData.value();
+
+    // Hand-edited values get the limits of the setters: a smoothing of 1 would freeze the colors
+    const auto limit = [&requireSave](std::optional<float>& value, float min, float max){
+      if(value.has_value() && (!std::isfinite(*value) || *value < min || *value > max)){
+        value = std::isfinite(*value) ? std::clamp(*value, min, max) : min;
+        requireSave = true;
+      }
+    };
+    limit(configData.transitionSmoothing, 0.f, MaxTransitionSmoothing);
+    limit(configData.highlightBoost, 0.f, 1.f);
+    limit(configData.brightness, 0.f, 1.f);
 
     if(!configData.restServerPort.has_value()){
       configData.restServerPort = defaultConfigData.restServerPort.value();

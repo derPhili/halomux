@@ -53,6 +53,19 @@ int main()
   }
   expect("Existing configuration tightened", permissions(configFile) == 0600);
 
+  // Hand-edited values outside what the light manager allows are brought back into range
+  {
+    std::ofstream file(configFile);
+    file << R"({"transitionSmoothing": 1.0, "brightness": 4.0, "highlightBoost": -2.0, "subsampleWidth": 0})";
+  }
+  {
+    Core::Config config(root);
+    expect("Smoothing limited, colors keep moving", config.transitionSmoothing() <= 0.97f);
+    expect("Brightness limited", config.brightness() == 1.f);
+    expect("Highlight boost limited", config.highlightBoost() == 0.f);
+    expect("Subsample width left automatic", config.subsampleWidth() == 0);
+  }
+
   fs::remove_all(root);
 
   if(failures > 0){
