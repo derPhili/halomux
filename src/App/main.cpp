@@ -25,6 +25,10 @@ public:
     try{
       std::lock_guard lock(m_coreMutex);
       m_core = std::make_unique<Halomux::Core::Runtime>(Halomux::Version, Halomux::Platform::adapter.getConfigFilePath());
+      // A signal received while it was created
+      if(m_stopRequested){
+        m_core->stop();
+      }
     }
     catch(const std::exception& e){
       Halomux::Core::Logger::error(e.what());
@@ -56,6 +60,8 @@ public:
   void stop()
   {
     std::lock_guard lock(m_coreMutex);
+    // Kept for a runtime not created yet
+    m_stopRequested = true;
     if(!m_core){
       return;
     }
@@ -66,6 +72,7 @@ public:
 
 private:
   std::mutex m_coreMutex;
+  bool m_stopRequested{false};
   std::unique_ptr<Halomux::Core::Runtime> m_core;
   std::optional<std::thread> m_applicationThread;
 };
