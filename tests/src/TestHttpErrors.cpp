@@ -1,3 +1,4 @@
+#include <future>
 #include <chrono>
 #include <thread>
 
@@ -58,7 +59,12 @@ int main()
   // Errors of the handlers become answers of the same shape
   HttpServer server;
   server.addRoute(HttpMethod::Put, "/json", [](const Request& req, Response& res){
-    res.body = Json{{"value", Json::parse(req.body).at("value").get<int>()}}.dump();
+    const int value = readBody(req, [](const Json& body){return body.at("value").get<int>();});
+    res.body = Json{{"value", value}}.dump();
+  });
+  // Such as an unexpected answer of the bridge: not the client's error, and not disclosed
+  server.addRoute(HttpMethod::Get, "/internalJson", [](const Request&, Response& res){
+    res.body = Json::parse(R"({"field": 1})").at("missing").dump();
   });
   server.addRoute(HttpMethod::Get, "/channel/:channelId", [](const Request& req, Response& res){
     res.body = Json{{"channelId", channelIdOf(req)}}.dump();
@@ -103,6 +109,26 @@ int main()
   const auto conflict = client.Get("/conflict");
   expect("Chosen status kept", conflict && conflict->status == 409 && errorShaped(conflict));
 
+  // DNS rebinding: a page of another name resolving to this address is refused
+  const auto foreignHost = client.Get("/channel/3", httplib::Headers{{"Host", "evil.example:" + std::to_string(port)}});
+  expect("Foreign Host refused", foreignHost && foreignHost->status == 403);
+  const auto localHost = client.Get("/channel/3", httplib::Headers{{"Host", "localhost:" + std::to_string(port)}});
+  expect("localhost Host accepted", localHost && localHost->status == 200);
+
+  // A page of another origin may not change anything, the light manager's own page may
+  const auto foreignOrigin = client.Put("/json", httplib::Headers{{"Origin", "http://evil.example"}}, R"({"value": 3})", "application/json");
+  expect("Change from another origin refused", foreignOrigin && foreignOrigin->status == 403);
+  const auto nullOrigin = client.Put("/json", httplib::Headers{{"Origin", "null"}}, R"({"value": 3})", "application/json");
+  expect("Change from an opaque origin refused", nullOrigin && nullOrigin->status == 403);
+  const auto sameOrigin = client.Put("/json", httplib::Headers{{"Origin", "http://127.0.0.1:" + std::to_string(port)}}, R"({"value": 3})", "application/json");
+  expect("Change from the page itself accepted", sameOrigin && sameOrigin->status == 200);
+  const auto foreignRead = client.Get("/channel/3", httplib::Headers{{"Origin", "http://evil.example"}});
+  expect("Reading from another origin left to the browser's own rules", foreignRead && foreignRead->status == 200);
+
+  const auto internalJson = client.Get("/internalJson");
+  expect("Internal JSON error is a server error", internalJson && internalJson->status == 500 && errorShaped(internalJson));
+  expect("Internal JSON error not disclosed", internalJson && internalJson->body.find("missing") == std::string::npos);
+
   const auto bug = client.Get("/bug");
   expect("Unexpected error is a server error", bug && bug->status == 500 && errorShaped(bug));
   expect("Internal detail not leaked", bug && bug->body.find("internal detail") == std::string::npos);
@@ -121,6 +147,30 @@ int main()
     std::thread earlyListener([&early](){early.listen();});
     earlyListener.join();
     expect("Listening ends at once after an early stop", std::chrono::steady_clock::now() - start < std::chrono::seconds(2));
+  }
+
+  // A stop right as listening starts, before httplib runs, isn't lost either
+  {
+    bool allEnded = true;
+    for(int i = 0; i < 300 && allEnded; i++){
+      auto racing = std::make_unique<HttpServer>();
+      racing->addRoute(HttpMethod::Get, "/", [](const Request&, Response&){});
+      if(!racing->bind("127.0.0.1", static_cast<unsigned>(port + 2))){
+        continue;
+      }
+
+      auto ended = std::async(std::launch::async, [&racing](){racing->listen();});
+      // Lands anywhere between the stop check and httplib running
+      std::this_thread::sleep_for(std::chrono::microseconds(i % 300));
+      racing->stop();
+      allEnded = ended.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
+      if(!allEnded){
+        // Unblocked for the test to end: the stop was lost
+        racing->stop();
+        racing.release();
+      }
+    }
+    expect("A stop racing the start of listening ends it", allEnded);
   }
 
   if(failures > 0){

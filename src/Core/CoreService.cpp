@@ -10,6 +10,8 @@
 
 #include <Halomux/Version.hpp>
 #include <Halomux/Core/CoreService.hpp>
+
+#include <Halomux/Core/AtomicFile.hpp>
 #include <Halomux/Core/Logger.hpp>
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
@@ -69,7 +71,8 @@ namespace Halomux::Core
 
     try{
       auto responseData = response->asJson();
-      if(!responseData.contains("name") || !responseData.contains("bridgeid")){
+      // Its id names its certificate: without a valid one, it isn't a bridge to trust
+      if(!responseData.contains("name") || !responseData.contains("bridgeid") || !responseData.at("bridgeid").is_string() || !Hue::Api::isBridgeId(responseData.at("bridgeid").get<std::string>())){
         return false;
       }
 
@@ -154,7 +157,8 @@ namespace Halomux::Core
     auto credentials = pairing.credentials->get<Hue::Auth::Credentials>();
     m_config.setCredentials(credentials);
 
-    return {{"succeeded", true}, {"username", credentials.username()}, {"clientkey", credentials.clientkey()}};
+    // The credentials stay here: the page doesn't need them, and any local process may ask
+    return {{"succeeded", true}};
   }
 
 
@@ -185,6 +189,12 @@ namespace Halomux::Core
   Hue::Api::EntertainmentConfigurations CoreService::entertainmentConfigurations() const
   {
     return m_runtime.m_areaSession ? m_runtime.m_areaSession->areas() : Hue::Api::EntertainmentConfigurations{};
+  }
+
+
+  Hue::Api::EntertainmentConfigurations CoreService::refreshEntertainmentConfigurations()
+  {
+    return m_runtime.m_areaSession ? m_runtime.m_areaSession->refreshAreas() : Hue::Api::EntertainmentConfigurations{};
   }
 
 
@@ -354,7 +364,7 @@ namespace Halomux::Core
     Imaging::UVCorner uvCorner
   )
   {
-    return m_runtime.m_channelStore.setUV(channelId, uv, uvCorner);
+    return m_runtime.m_channelStore.setUV(channelId, uv, uvCorner, m_config.subsampleWidth());
   }
 
 
@@ -564,41 +574,25 @@ namespace Halomux::Core
 
   bool CoreService::saveProfile()
   {
-    const std::optional<std::string> areaId = currentEntertainmentConfigurationId();
-    if(!areaId.has_value()){
+    // The lamps with the area they belong to, read together: an area switch can't mix them up
+    const auto lamps = m_runtime.m_channelStore.areaSnapshot();
+    if(!lamps.areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
       return false;
     }
 
+    // Read, changed and written by one save at a time: concurrent saves would drop each other's area
+    std::lock_guard lock(m_profileMutex);
+
     // The other areas' lamp settings are kept
-    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *areaId, Serialization::Json(m_runtime.m_channelStore.snapshot()));
+    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
 
     if(!m_config.profileName().has_value()){
       m_config.setProfileName("profile");
     }
 
-    // Write then rename, so an interrupted write never leaves a truncated profile behind
-    std::filesystem::path pp = profilePath();
-    std::filesystem::path tmpPath = pp;
-    tmpPath += ".tmp";
-
-    {
-      std::ofstream profileFile(tmpPath, std::ofstream::out);
-      profileFile << profile.dump(2) << "\n";
-      if(!profileFile){
-        Logger::error("Failed to write profile ", std::quoted(tmpPath.string()));
-        return false;
-      }
-    }
-
-    std::error_code error;
-    std::filesystem::rename(tmpPath, pp, error);
-    if(error){
-      Logger::error("Failed to write profile ", std::quoted(pp.string()), ": ", error.message());
-      return false;
-    }
-
-    return true;
+    // Never left truncated, whatever happens while writing
+    return writeFileAtomically(profilePath(), profile.dump(2) + "\n");
   }
 
 
@@ -612,13 +606,17 @@ namespace Halomux::Core
   {
     // Bridges set up before the certificate checks, or whose certificate never passed them, are
     // identified again at each start: once their certificate passes the check, it always has to
-    if(!m_config.bridgeId().has_value() || !m_config.bridgeCertificateVerified()){
+    const auto savedId = m_config.bridgeId();
+    if(!savedId.has_value() || !Hue::Api::isBridgeId(*savedId) || !m_config.bridgeCertificateVerified()){
       const std::string bridgeAddress = m_config.bridgeAddress().value();
       auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
 
       try{
-        if(response.has_value() && response->asJson().contains("bridgeid")){
-          m_config.setBridgeIdentity(response->asJson().at("bridgeid"), response->tlsVerified());
+        if(response.has_value()){
+          const auto answer = response->asJson();
+          if(answer.contains("bridgeid") && answer.at("bridgeid").is_string() && Hue::Api::isBridgeId(answer.at("bridgeid").get<std::string>())){
+            m_config.setBridgeIdentity(answer.at("bridgeid").get<std::string>(), response->tlsVerified());
+          }
         }
       }
       catch(const std::exception& e){
@@ -638,7 +636,10 @@ namespace Halomux::Core
     }
 
     const bool verified = m_config.bridgeCertificateVerified();
-    Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified);
+    if(!Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified)){
+      Logger::error("The bridge answered no valid id: its certificate can't be checked against it");
+      return;
+    }
 
     if(!verified){
       Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");

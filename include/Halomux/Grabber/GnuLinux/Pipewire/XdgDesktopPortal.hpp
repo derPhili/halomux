@@ -74,6 +74,9 @@ namespace Halomux::Grabber
       // dispatched there, never to another capture's thread
       GMainContext* context{nullptr};
       GCancellable* cancellable{nullptr};
+      // Portal calls in flight, whose completions are dispatched to the context (portal thread)
+      int pendingCalls{0};
+      // Path of the session, known from its creation on: closed even if the creation was aborted
       char* sessionHandle{nullptr};
       // Pending portal request, whose Response signal is awaited (portal thread)
       std::string requestPath;
@@ -87,6 +90,9 @@ namespace Halomux::Grabber
       char cursorVisible;
       std::promise<bool> fdReadyPromise;
       bool fdReadyResolved{false};
+      // Set with a failed fdReadyPromise when the user cancelled the dialog or the capture was
+      // aborted, as opposed to a portal that failed
+      bool cancelled{false};
       // The portal thread runs until the grabber stops, so that teardown happens in it
       std::atomic<bool> running{true};
       Core::Config* config;
@@ -125,6 +131,18 @@ namespace Halomux::Grabber
      */
     static void abort(
       Capture* capture
+    );
+
+
+    /**
+     * @brief Ends the capture after a request was answered with a failure (portal thread)
+     *
+     * @param capture Capture
+     * @param response Response code of the request: 1 when the user cancelled it
+     */
+    static void rejectCapture(
+      Capture* capture,
+      uint32_t response
     );
 
 

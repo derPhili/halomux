@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <Halomux/Core/AreaSession.hpp>
@@ -74,7 +75,10 @@ namespace
   struct FakeStreamer : Stream::IStreamer
   {
     int* reconnects;
-    explicit FakeStreamer(int* reconnects) : reconnects(reconnects) {}
+    // Like a Streamer waiting for a DTLS handshake attempt to end
+    std::chrono::milliseconds teardown{0};
+    explicit FakeStreamer(int* reconnects, std::chrono::milliseconds teardown = 0ms) : reconnects(reconnects), teardown(teardown) {}
+    ~FakeStreamer() override {std::this_thread::sleep_for(teardown);}
     void streamChannels(const Hue::Api::ChannelStreams&) override {}
     void reconnect() override {(*reconnects)++;}
   };
@@ -86,6 +90,7 @@ namespace
     std::vector<std::string> streamersCreated;
     std::vector<std::string> selected;
     int reconnects{0};
+    std::chrono::milliseconds streamerTeardown{0};
     std::unique_ptr<Core::AreaSession> session;
 
     explicit Harness(Hue::Api::EntertainmentConfigurations areas = {{"pc", {.name = "PC"}}, {"garage", {.name = "Garage"}}})
@@ -98,7 +103,7 @@ namespace
         std::move(fake),
         [this](const std::string& areaId){
           streamersCreated.push_back(areaId);
-          return std::make_unique<FakeStreamer>(&reconnects);
+          return std::make_unique<FakeStreamer>(&reconnects, streamerTeardown);
         },
         [this](const std::string& areaId, const Hue::Api::ChannelMembers&){selected.push_back(areaId);},
         0ms // No watchdog thread: tick() is called by the test
@@ -218,6 +223,55 @@ int main()
     Harness h;
     h.session->start("pc");
     expect("Areas listed", h.session->areas().size() == 2);
+  }
+
+  // An area created in the Hue app shows up when the light manager lists them again
+  {
+    Harness h;
+    h.session->start("pc");
+    h.bridge->configuredAreas.insert({"cellar", {.name = "Cellar"}});
+    expect("New area listed after a refresh", h.session->refreshAreas().contains("cellar") && h.session->areas().contains("cellar"));
+
+    h.bridge->reachable = false;
+    expect("Unreachable bridge keeps the known areas", h.session->refreshAreas().size() == 3);
+  }
+
+  // The current area deleted in the Hue app: another one is streamed to
+  {
+    Harness h;
+    h.session->start("garage");
+    h.bridge->configuredAreas.erase("garage");
+    h.bridge->status = std::nullopt; // The bridge answers an error for an unknown area
+    h.session->tick();
+    expect("Deleted area replaced", h.session->currentAreaId() == "pc");
+    expect("Lamps of the other area loaded", !h.selected.empty() && h.selected.back() == "pc");
+    expect("Streamer for the other area", !h.streamersCreated.empty() && h.streamersCreated.back() == "pc");
+  }
+
+  // Replacing a streamer that takes long to end doesn't hold the streaming loop
+  {
+    Harness h;
+    h.streamerTeardown = 600ms;
+    h.session->start("pc");
+
+    std::thread switcher([&](){h.session->select("garage");});
+    std::this_thread::sleep_for(100ms);
+    const auto before = std::chrono::steady_clock::now();
+    h.session->stream({});
+    const auto waited = std::chrono::steady_clock::now() - before;
+    switcher.join();
+
+    expect("Streaming not held by the former streamer's end", waited < 200ms);
+    h.streamerTeardown = 0ms;
+  }
+
+  // An unreachable bridge is no deleted area
+  {
+    Harness h;
+    h.session->start("garage");
+    h.bridge->reachable = false;
+    h.session->tick();
+    expect("Unreachable bridge keeps the area", h.session->currentAreaId() == "garage");
   }
 
   if(failures > 0){

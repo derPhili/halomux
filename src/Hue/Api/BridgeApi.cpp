@@ -2,6 +2,7 @@
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
 #include <Halomux/Hue/Api/ClipParsing.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
 namespace Halomux::Hue::Api
@@ -17,7 +18,14 @@ namespace Halomux::Hue::Api
 
   std::optional<EntertainmentConfigurations> ClipBridgeApi::areas()
   {
-    return ApiTools::loadEntertainmentConfigurations(m_credentials.username(), m_bridgeAddress);
+    try{
+      return ApiTools::loadEntertainmentConfigurations(m_credentials.username(), m_bridgeAddress);
+    }
+    catch(const std::exception& e){
+      // An answer the parsing didn't expect: as unknown as no answer
+      Core::Logger::warn("Unexpected answer of the bridge: ", e.what());
+      return std::nullopt;
+    }
   }
 
 
@@ -25,12 +33,18 @@ namespace Halomux::Hue::Api
     const std::string& areaId
   )
   {
-    const auto resources = ApiTools::loadResources(m_credentials.username(), m_bridgeAddress);
-    if(!resources){
+    try{
+      const auto resources = ApiTools::loadResources(m_credentials.username(), m_bridgeAddress);
+      if(!resources){
+        return std::nullopt;
+      }
+
+      return ClipParsing::channelMembers(*resources, areaId);
+    }
+    catch(const std::exception& e){
+      Core::Logger::warn("Unexpected answer of the bridge: ", e.what());
       return std::nullopt;
     }
-
-    return ClipParsing::channelMembers(*resources, areaId);
   }
 
 

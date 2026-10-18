@@ -913,6 +913,23 @@ input[type=color]::-webkit-color-swatch
 }
 
 
+.channelList > p:focus-visible
+{
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+
+/* Moves a lamp to the other list without dragging */
+.moveLampButton
+{
+  flex: none;
+  padding: 2px 8px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+
 /* Live color of a lamp: the only glowing element */
 .lampSwatch
 {
@@ -1020,6 +1037,22 @@ input[type=color]::-webkit-color-swatch
   fill: var(--text);
   stroke: var(--accent);
   stroke-width: 3px;
+}
+
+
+/* Focused with the keyboard */
+#uvArea > rect:focus-visible, .handler:focus-visible
+{
+  outline: none;
+  stroke: var(--accent);
+  stroke-width: 3px;
+}
+
+
+/* A touch on a handle or the region drags it instead of scrolling the page */
+.handler, #uvArea > rect
+{
+  touch-action: none;
 }
 
 

@@ -136,7 +136,7 @@ I18n.Translations = {
     "{lamp}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it":
       "{lamp}: der Bildschirmbereich, dem diese Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Wähle die Lampe in der Liste, um ihn zu bearbeiten",
     "There are no lamps in this entertainment area. Add them in the Hue app." : "In diesem Entertainment-Bereich gibt es keine Lampen. Füge sie in der Hue-App hinzu.",
-    "Drag a lamp from Available to Active to drive it." : "Ziehe eine Lampe von „Verfügbar“ nach „Aktiv“, um sie zu steuern.",
+    "Drag a lamp from Available to Active, or use its arrow, to drive it." : "Ziehe eine Lampe von „Verfügbar“ nach „Aktiv“ oder nutze ihren Pfeil, um sie zu steuern.",
     "Select an active lamp to edit its region" : "Wähle eine aktive Lampe, um ihren Bereich zu bearbeiten",
 
     // Static scene
@@ -199,13 +199,17 @@ I18n.Translations = {
     "Switching configuration..." : "Bereich wird gewechselt …",
     "Lamps of the entertainment area" : "Lampen des Entertainment-Bereichs",
     "Lamps" : "Lampen",
-    "Drag between lists" : "Zwischen den Listen ziehen",
+    "Drag between lists or use the arrows" : "Zwischen den Listen ziehen oder die Pfeile nutzen",
     "Lamps driven by this application. Click one to edit its screen region" : "Lampen, die diese Anwendung steuert. Klick bearbeitet ihren Bildschirmbereich",
     "Active" : "Aktiv",
-    "Lamps of the area left alone. Drag one to Active to drive it" : "Lampen des Bereichs, die unberührt bleiben. Nach „Aktiv“ ziehen, um sie zu steuern",
+    "Lamps of the area left alone. Drag one to Active, or use its arrow, to drive it" : "Lampen des Bereichs, die unberührt bleiben. Nach „Aktiv“ ziehen oder den Pfeil nutzen, um sie zu steuern",
     "Available" : "Verfügbar",
-    "{lamp}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it" : "{lamp}: Der Punkt zeigt die aktuelle Farbe. Klick bearbeitet den Bildschirmbereich, Ziehen nach „Verfügbar“ beendet die Steuerung",
-    "{lamp}: not driven. Drag to Active to have it follow the screen" : "{lamp}: nicht gesteuert. Nach „Aktiv“ ziehen, damit sie dem Bildschirm folgt",
+    "{lamp}: the dot shows its current color. Click or press Enter to edit its screen region, drag to Available or use the arrow to stop driving it" : "{lamp}: Der Punkt zeigt die aktuelle Farbe. Klick oder Enter bearbeitet den Bildschirmbereich, Ziehen nach „Verfügbar“ oder der Pfeil beendet die Steuerung",
+    "{lamp}: not driven. Drag to Active or use the arrow to have it follow the screen" : "{lamp}: nicht gesteuert. Nach „Aktiv“ ziehen oder den Pfeil nutzen, damit sie dem Bildschirm folgt",
+    "Drive this lamp: move it to Active" : "Lampe steuern: nach „Aktiv“ verschieben",
+    "Screen region of the lamp. Arrow keys move it, with Shift they resize it, with Alt left and right they put it on the previous or next monitor" : "Bildschirmbereich der Lampe. Pfeiltasten verschieben ihn, mit Umschalt ändern sie seine Größe, mit Alt links und rechts setzen sie ihn auf den vorigen oder nächsten Monitor",
+    "Gamma correction of the lamp. The arrow keys change it" : "Gammakorrektur der Lampe. Die Pfeiltasten verändern sie",
+    "Stop driving this lamp: move it to Available" : "Lampe nicht mehr steuern: nach „Verfügbar“ verschieben",
 
     // Settings
     "How the lamps react. Changes apply immediately and are kept" : "Wie die Lampen reagieren. Änderungen wirken sofort und bleiben gespeichert",
@@ -254,6 +258,8 @@ I18n.Translations = {
     // Footer and dialogs
     "Saves the lamps' screen regions, gamma and activity, loaded on every start. Settings and scenes are saved automatically" : "Speichert Bildschirmbereiche, Gamma und Aktivität der Lampen, geladen bei jedem Start. Einstellungen und Szenen werden automatisch gespeichert",
     "Save profile" : "Profil speichern",
+    "Profile saved" : "Profil gespeichert",
+    "Saving failed" : "Speichern fehlgeschlagen",
     "Stops the service: the lamps go back to their state from before. The desktop application can start it again" : "Beendet den Dienst: Die Lampen kehren in ihren vorherigen Zustand zurück. Die Desktop-Anwendung kann ihn wieder starten",
     "Shut down" : "Beenden",
     "Do you really want to stop Halomux?" : "Halomux wirklich beenden?",

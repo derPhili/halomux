@@ -45,10 +45,32 @@ namespace Halomux::Core
 
   void ChannelStore::replace(
     Hue::Api::Channels channels,
-    Grabber::Monitors monitors
+    Grabber::Monitors monitors,
+    std::optional<std::string> areaId
   )
   {
     std::lock_guard lock(m_mutex);
+    _replace(std::move(areaId), std::move(channels), std::move(monitors));
+  }
+
+
+  void ChannelStore::Access::replace(
+    std::string areaId,
+    Hue::Api::Channels channels,
+    Grabber::Monitors monitors
+  )
+  {
+    m_store._replace(std::move(areaId), std::move(channels), std::move(monitors));
+  }
+
+
+  void ChannelStore::_replace(
+    std::optional<std::string> areaId,
+    Hue::Api::Channels channels,
+    Grabber::Monitors monitors
+  )
+  {
+    m_areaId = std::move(areaId);
     m_channels = std::move(channels);
     m_streams.clear();
     _resolveMonitors(std::move(monitors));
@@ -96,9 +118,11 @@ namespace Halomux::Core
         }
       }
 
-      const size_t monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_monitors.size());
-      channel.monitor = Grabber::monitorRef(m_monitors[monitor]);
-      channel.monitorIndex = monitor;
+      // None if every monitor is unplugged: the lamp then stays dark
+      if(const auto monitor = Grabber::defaultMonitorForNewLamp(monitorsOfActiveLamps, m_monitors)){
+        channel.monitor = Grabber::monitorRef(m_monitors[*monitor]);
+        channel.monitorIndex = *monitor;
+      }
     }
 
     channel.setActive(active);
@@ -109,7 +133,8 @@ namespace Halomux::Core
   std::optional<Imaging::UVs> ChannelStore::setUV(
     uint8_t channelId,
     const Imaging::UV& uv,
-    Imaging::UVCorner corner
+    Imaging::UVCorner corner,
+    unsigned configuredSubsampleWidth
   )
   {
     std::lock_guard lock(m_mutex);
@@ -118,7 +143,16 @@ namespace Halomux::Core
       return std::nullopt;
     }
 
-    return channelIt->second.setUV(uv, corner);
+    auto& channel = channelIt->second;
+    channel.setUV(uv, corner);
+
+    // At least one cell of the subsample it's averaged on, or the region would average nothing
+    if(channel.monitorIndex.has_value() && *channel.monitorIndex < m_monitors.size()){
+      const auto [cellWidth, cellHeight] = _cellSize(*channel.monitorIndex, configuredSubsampleWidth);
+      channel.uvs = Grabber::minimalRegion(channel.uvs, cellWidth, cellHeight);
+    }
+
+    return channel.uvs;
   }
 
 
@@ -131,7 +165,8 @@ namespace Halomux::Core
   {
     std::lock_guard lock(m_mutex);
     auto channelIt = m_channels.find(channelId);
-    if(channelIt == m_channels.end() || monitor >= m_monitors.size()){
+    // An unplugged monitor has nothing to follow
+    if(channelIt == m_channels.end() || monitor >= m_monitors.size() || m_monitors[monitor].lost){
       return std::nullopt;
     }
 
@@ -143,17 +178,11 @@ namespace Halomux::Core
     const Imaging::UV b = clamp(uvs.max);
 
     // At least one cell of the monitor's subsample, which the region is averaged on
-    const auto& target = m_monitors[monitor];
-    int widestPixelWidth = 0;
-    for(const auto& captured : m_monitors){
-      widestPixelWidth = std::max(widestPixelWidth, captured.pixelWidth);
-    }
-    const int subsampleWidth = Grabber::subsampleWidthFor(configuredSubsampleWidth, widestPixelWidth, target.pixelWidth);
-    const int subsampleHeight = std::max(1, target.pixelWidth > 0 ? target.pixelHeight * subsampleWidth / target.pixelWidth : 1);
+    const auto [cellWidth, cellHeight] = _cellSize(monitor, configuredSubsampleWidth);
 
     auto& channel = channelIt->second;
-    channel.uvs = Grabber::minimalRegion({glm::min(a, b), glm::max(a, b)}, 1.f / static_cast<float>(subsampleWidth), 1.f / static_cast<float>(subsampleHeight));
-    channel.monitor = Grabber::monitorRef(target);
+    channel.uvs = Grabber::minimalRegion({glm::min(a, b), glm::max(a, b)}, cellWidth, cellHeight);
+    channel.monitor = Grabber::monitorRef(m_monitors[monitor]);
     channel.monitorIndex = monitor;
 
     return channel.uvs;
@@ -184,6 +213,30 @@ namespace Halomux::Core
   {
     std::lock_guard lock(m_mutex);
     return m_channels;
+  }
+
+
+  std::pair<float, float> ChannelStore::_cellSize(
+    size_t monitor,
+    unsigned configuredSubsampleWidth
+  ) const
+  {
+    const auto& target = m_monitors[monitor];
+    int widestPixelWidth = 0;
+    for(const auto& captured : m_monitors){
+      widestPixelWidth = std::max(widestPixelWidth, captured.pixelWidth);
+    }
+    const int subsampleWidth = Grabber::subsampleWidthFor(configuredSubsampleWidth, widestPixelWidth, target.pixelWidth);
+    const int subsampleHeight = std::max(1, target.pixelWidth > 0 ? target.pixelHeight * subsampleWidth / target.pixelWidth : 1);
+
+    return {1.f / static_cast<float>(subsampleWidth), 1.f / static_cast<float>(subsampleHeight)};
+  }
+
+
+  ChannelStore::AreaSnapshot ChannelStore::areaSnapshot() const
+  {
+    std::lock_guard lock(m_mutex);
+    return {.areaId = m_areaId, .channels = m_channels};
   }
 
 

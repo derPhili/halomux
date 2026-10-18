@@ -83,9 +83,7 @@ int main(int argc, char* argv[])
   }
 
   auto gpuImage = downscaler.importDmaBuf({
-    .fd = dmaBufFd,
-    .offset = gbm_bo_get_offset(bo, 0),
-    .stride = gbm_bo_get_stride(bo),
+    .planes = {{.fd = dmaBufFd, .offset = gbm_bo_get_offset(bo, 0), .stride = gbm_bo_get_stride(bo)}},
     .width = frame.cols,
     .height = frame.rows,
     .drmFormat = DRM_FORMAT_XRGB8888,
@@ -98,7 +96,8 @@ int main(int argc, char* argv[])
 
   int failures = 0;
 
-  for(int outputWidth : {160, 80, 320}){
+  // Blocks of 16, 32, 8 pixels, and 5 for odd blocks, averaged exactly too
+  for(int outputWidth : {160, 80, 320, 512}){
     const int outputHeight = frame.rows * outputWidth / frame.cols;
 
     cv::Mat gpuRgba;
@@ -220,9 +219,7 @@ int main(int argc, char* argv[])
 
     // The compositor may hand out new buffers afterwards
     auto newImage = downscaler.importDmaBuf({
-      .fd = dmaBufFd,
-      .offset = gbm_bo_get_offset(bo, 0),
-      .stride = gbm_bo_get_stride(bo),
+      .planes = {{.fd = dmaBufFd, .offset = gbm_bo_get_offset(bo, 0), .stride = gbm_bo_get_stride(bo)}},
       .width = frame.cols,
       .height = frame.rows,
       .drmFormat = DRM_FORMAT_XRGB8888,

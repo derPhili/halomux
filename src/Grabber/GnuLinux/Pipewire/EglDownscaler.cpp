@@ -1,5 +1,7 @@
 #include <Halomux/Grabber/GnuLinux/Pipewire/EglDownscaler.hpp>
 
+#include <array>
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -22,9 +24,10 @@ void main()
 )";
 
 
-    // Each output pixel averages a block of source texels. Taps are placed on the corners shared
-    // by 2x2 texels, where bilinear filtering returns their exact average: a 16x16 block takes
-    // 8x8 fetches and still accounts for every texel.
+    // Each output pixel averages a block of source texels. Along each axis, a tap sits on the edge
+    // shared by two texels, where bilinear filtering returns their exact average, and counts
+    // twice; an odd block ends with a tap on its last texel's center, counted once. A 16x16 block
+    // takes 8x8 fetches and a 5x5 one 3x3, both exact; fractional blocks are approximated.
     constexpr const char* FragmentShaderSource = R"(#version 300 es
 #extension GL_OES_EGL_image_external_essl3 : require
 precision highp float;
@@ -36,21 +39,34 @@ uniform ivec2 u_taps;
 
 out vec4 fragColor;
 
+// Offset in the block and weight of tap k along an axis
+vec2 axisTap(float extent, int k)
+{
+  float start = 2.0 * float(k);
+  float remaining = extent - start;
+  if(remaining >= 2.0){
+    return vec2(start + 1.0, 2.0);
+  }
+
+  return vec2(start + 0.5 * remaining, remaining);
+}
+
 void main()
 {
   // Output row 0 maps to the first source row, so the read back image is top row first
   vec2 blockOrigin = floor(gl_FragCoord.xy) * u_blockSize;
-  vec2 tapSpacing = u_blockSize / vec2(u_taps);
 
   vec4 sum = vec4(0.0);
   for(int y = 0; y < u_taps.y; y++){
+    vec2 tapY = axisTap(u_blockSize.y, y);
     for(int x = 0; x < u_taps.x; x++){
-      vec2 texel = blockOrigin + (vec2(x, y) + 0.5) * tapSpacing;
-      sum += texture(u_source, texel / u_sourceSize);
+      vec2 tapX = axisTap(u_blockSize.x, x);
+      vec2 texel = blockOrigin + vec2(tapX.x, tapY.x);
+      sum += texture(u_source, texel / u_sourceSize) * (tapX.y * tapY.y);
     }
   }
 
-  fragColor = sum / float(u_taps.x * u_taps.y);
+  fragColor = sum / (u_blockSize.x * u_blockSize.y);
 }
 )";
 
@@ -250,19 +266,39 @@ void main()
     const DmaBuf& dmaBuf
   )
   {
-    const EGLAttrib attributes[] = {
+    // Per plane: fd, offset, pitch and the modifier, the same for every plane
+    static constexpr std::array<std::array<EGLAttrib, 5>, MaxDmaBufPlanes> PlaneAttributes{{
+      {EGL_DMA_BUF_PLANE0_FD_EXT, EGL_DMA_BUF_PLANE0_OFFSET_EXT, EGL_DMA_BUF_PLANE0_PITCH_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT},
+      {EGL_DMA_BUF_PLANE1_FD_EXT, EGL_DMA_BUF_PLANE1_OFFSET_EXT, EGL_DMA_BUF_PLANE1_PITCH_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT},
+      {EGL_DMA_BUF_PLANE2_FD_EXT, EGL_DMA_BUF_PLANE2_OFFSET_EXT, EGL_DMA_BUF_PLANE2_PITCH_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT},
+      {EGL_DMA_BUF_PLANE3_FD_EXT, EGL_DMA_BUF_PLANE3_OFFSET_EXT, EGL_DMA_BUF_PLANE3_PITCH_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT}
+    }};
+
+    if(dmaBuf.planes.empty() || dmaBuf.planes.size() > MaxDmaBufPlanes){
+      Core::Logger::error("[gpu] Can't import a DMA-BUF with ", dmaBuf.planes.size(), " planes");
+      return nullptr;
+    }
+
+    std::vector<EGLAttrib> attributes{
       EGL_WIDTH, dmaBuf.width,
       EGL_HEIGHT, dmaBuf.height,
-      EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLAttrib>(dmaBuf.drmFormat),
-      EGL_DMA_BUF_PLANE0_FD_EXT, dmaBuf.fd,
-      EGL_DMA_BUF_PLANE0_OFFSET_EXT, static_cast<EGLAttrib>(dmaBuf.offset),
-      EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLAttrib>(dmaBuf.stride),
-      EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, static_cast<EGLAttrib>(dmaBuf.modifier & 0xffffffff),
-      EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, static_cast<EGLAttrib>(dmaBuf.modifier >> 32),
-      EGL_NONE
+      EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLAttrib>(dmaBuf.drmFormat)
     };
 
-    EGLImage eglImage = eglCreateImage(m_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
+    for(size_t i = 0; i < dmaBuf.planes.size(); i++){
+      const auto& plane = dmaBuf.planes[i];
+      const auto& names = PlaneAttributes[i];
+      attributes.insert(attributes.end(), {
+        names[0], plane.fd,
+        names[1], static_cast<EGLAttrib>(plane.offset),
+        names[2], static_cast<EGLAttrib>(plane.stride),
+        names[3], static_cast<EGLAttrib>(dmaBuf.modifier & 0xffffffff),
+        names[4], static_cast<EGLAttrib>(dmaBuf.modifier >> 32)
+      });
+    }
+    attributes.push_back(EGL_NONE);
+
+    EGLImage eglImage = eglCreateImage(m_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes.data());
     if(eglImage == EGL_NO_IMAGE){
       Core::Logger::error("[gpu] Failed to import DMA-BUF (EGL error 0x", std::hex, eglGetError(), std::dec, ")");
       return nullptr;
@@ -413,7 +449,7 @@ void main()
     const float blockWidth = static_cast<float>(image.width) / static_cast<float>(outputWidth);
     const float blockHeight = static_cast<float>(image.height) / static_cast<float>(outputHeight);
 
-    // One tap per 2x2 texels, at least one per block
+    // One tap per two texels along each axis, at least one per block (see FragmentShaderSource)
     const int tapsX = std::max(1, static_cast<int>(std::ceil(blockWidth / 2.f)));
     const int tapsY = std::max(1, static_cast<int>(std::ceil(blockHeight / 2.f)));
 

@@ -45,6 +45,9 @@ namespace Halomux::Pipewire
 
   void LoopThread::quit()
   {
+    // Held until this call is done with the object: the destructor's own quit() waits for a quit()
+    // of another thread to return before the loop thread may end and the object be freed
+    std::lock_guard lock(m_quitMutex);
     if(m_quitRequested.exchange(true)){
       return;
     }

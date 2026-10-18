@@ -1,10 +1,14 @@
 #include <filesystem>
 #include <fstream>
 
+#include <csignal>
+
+#include <sys/resource.h>
 #include <sys/stat.h>
 
 #include <Halomux/Core/Config.hpp>
 #include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Auth/Credentials.hpp>
 
 using namespace Halomux;
 namespace fs = std::filesystem;
@@ -64,6 +68,42 @@ int main()
     expect("Brightness limited", config.brightness() == 1.f);
     expect("Highlight boost limited", config.highlightBoost() == 0.f);
     expect("Subsample width left automatic", config.subsampleWidth() == 0);
+  }
+
+  {
+    // A verified certificate binds its bridge: another bridge's id starts unverified again
+    Core::Config config(root);
+    config.setBridgeIdentity("aabbccddeeff0011", true);
+    config.setBridgeIdentity("aabbccddeeff0011", false);
+    expect("Same bridge stays verified", config.bridgeCertificateVerified());
+    config.setBridgeIdentity("AABBCCDDEEFF0011", false);
+    expect("Same bridge in other case stays verified", config.bridgeCertificateVerified());
+    config.setBridgeIdentity("0011aabbccddeeff", false);
+    expect("Another bridge isn't verified", !config.bridgeCertificateVerified());
+  }
+
+  {
+    // A full disk while saving: the configuration on disk, with the credentials, stays as it was
+    {
+      Core::Config config(root);
+      config.setCredentials(Hue::Auth::Credentials("user", "00112233445566778899aabbccddeeff"));
+    }
+
+    std::signal(SIGXFSZ, SIG_IGN);
+    rlimit previous{};
+    getrlimit(RLIMIT_FSIZE, &previous);
+    {
+      Core::Config config(root);
+      rlimit limited = previous;
+      limited.rlim_cur = 64;
+      setrlimit(RLIMIT_FSIZE, &limited);
+      config.setBrightness(0.25f);
+      setrlimit(RLIMIT_FSIZE, &previous);
+    }
+
+    Core::Config config(root);
+    expect("Failed save keeps the credentials", config.credentials().has_value() && config.credentials()->username() == "user");
+    expect("Failed save keeps the previous values", config.brightness() != 0.25f);
   }
 
   fs::remove_all(root);

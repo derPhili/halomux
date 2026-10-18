@@ -72,8 +72,12 @@ int main()
 
   // Pairing with the bridge (v1 API): the link button pressed, not pressed, or something else
   {
-    const auto paired = pairing(Json::parse(R"([{"success": {"username": "u", "clientkey": "K"}}])"));
+    const auto paired = pairing(Json::parse(R"([{"success": {"username": "u", "clientkey": "00112233445566778899AABBCCDDEEFF"}}])"));
     expect("Paired", paired.credentials.has_value() && paired.credentials->at("username") == "u");
+
+    // The clientkey is the pre-shared key of the streaming connection: hexadecimal
+    const auto badKey = pairing(Json::parse(R"([{"success": {"username": "u", "clientkey": "K"}}])"));
+    expect("Non-hex clientkey refused", !badKey.credentials.has_value() && !badKey.error.empty());
 
     const auto notPressed = pairing(Json::parse(R"([{"error": {"type": 101, "description": "link button not pressed"}}])"));
     expect("Link button not pressed", !notPressed.credentials.has_value() && notPressed.error == "link button not pressed");
@@ -101,6 +105,7 @@ int main()
       }
 
       const auto tv = parsed->find("a0000000-0000-4000-8000-000000000002");
+      expect("Second area found", tv != parsed->end());
       if(tv != parsed->end()){
         expect("Missing light keeps an empty name", names(tv->second.devices) == std::vector<std::string>{"Lightstrip", ""});
       }
@@ -126,6 +131,20 @@ int main()
     expect("Several lamps on a channel", tv.has_value() && tv->size() == 1 && names(tv->at(0)) == std::vector<std::string>{"Play Left", "Lightstrip"});
 
     expect("Unknown area", !channelMembers(fixture(), "a0000000-0000-4000-8000-00000000000f").has_value());
+
+    // Fields of unexpected types in other resources are skipped, not thrown
+    Json odd = fixture();
+    odd.at("data").push_back(Json::parse(R"({"id": "d1", "type": "device", "metadata": {"name": 7}, "services": [{"rid": "x", "rtype": 5}, {"rid": 3, "rtype": "entertainment"}, 4]})"));
+    odd.at("data").push_back(Json::parse(R"({"id": "l1", "type": "light", "metadata": "x"})"));
+    try{
+      const auto oddMembers = channelMembers(odd, "a0000000-0000-4000-8000-000000000001");
+      expect("Odd resources skipped for members", oddMembers.has_value() && oddMembers->size() == 2);
+      const auto oddAreas = areas(odd);
+      expect("Odd resources skipped for areas", oddAreas.has_value() && oddAreas->size() == 2);
+    }
+    catch(const std::exception& e){
+      expect("Odd resources don't throw", false);
+    }
     expect("Error answer has no members", !channelMembers(Json::parse(R"({"errors": [{"description": "x"}], "data": []})"), "a").has_value());
   }
 

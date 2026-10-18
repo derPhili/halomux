@@ -6,6 +6,7 @@
 #include <unordered_set>
 
 #include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Auth/Credentials.hpp>
 
 
 namespace
@@ -117,6 +118,11 @@ namespace Halomux::Hue::Api::ClipParsing
     if(result.contains("success")){
       const Json& success = result.at("success");
       if(success.is_object() && success.contains("username") && success.at("username").is_string() && success.contains("clientkey") && success.at("clientkey").is_string()){
+        // The pre-shared key of the streaming connection: a key that isn't one would fail every connection
+        if(!Auth::Credentials(success.at("username").get<std::string>(), success.at("clientkey").get<std::string>()).hasValidClientkey()){
+          return {.credentials = std::nullopt, .error = "the bridge sent a clientkey that isn't hexadecimal"};
+        }
+
         return {.credentials = Json{{"username", success.at("username")}, {"clientkey", success.at("clientkey")}}, .error = ""};
       }
 
@@ -204,7 +210,7 @@ namespace Halomux::Hue::Api::ClipParsing
       }
 
       for(const Json& service : resource.at("services")){
-        if(service.is_object() && service.value("rtype", "") == "entertainment" && service.contains("rid") && service.at("rid").is_string()){
+        if(service.is_object() && service.contains("rtype") && service.at("rtype") == "entertainment" && service.contains("rid") && service.at("rid").is_string()){
           lamps.push_back({.id = service.at("rid").get<std::string>(), .name = nameOf(resource)});
         }
       }

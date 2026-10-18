@@ -120,7 +120,11 @@ class WebUI
     this.confirmStopButton.addEventListener("click", () => {this._stop();});
     
     this.cancelStopButton = document.getElementById("cancelStopButton");
-    this.cancelStopButton.addEventListener("click", () => {this.overlay.style.display = "none";});
+    this.cancelStopButton.addEventListener("click", () => {
+      // The section too: the overlay is shown again for other messages, such as while switching areas
+      document.getElementById("confirmStopSection").style.display = "none";
+      this.overlay.style.display = "none";
+    });
 
     this.languageSelectNode = document.getElementById("languageSelect");
     this.languageSelectNode.value = I18n.setting;
@@ -271,8 +275,14 @@ class WebUI
     this.reselectMonitorsButton.textContent = t(pending ? "Waiting for the screen selection…" : "Monitors…");
 
     if(pending){
-      // Until the dialog is answered
-      setTimeout(() => {this._refreshMonitors();}, 2000);
+      // Until the dialog is answered. One timer at a time: every answer, the periodic refresh and
+      // the button come here, and each scheduling its own would multiply the requests
+      if(!this.pendingMonitorsTimer){
+        this.pendingMonitorsTimer = setTimeout(() => {
+          this.pendingMonitorsTimer = null;
+          this._refreshMonitors();
+        }, 2000);
+      }
     }
     else if(previousSelection == "pending" && displayInfo.monitorSelection == "cancelled"){
       this.reselectMonitorsButton.textContent = t("Selection cancelled, nothing changed");
@@ -294,6 +304,7 @@ class WebUI
     if(monitorsChanged){
       this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth, monitors);
       this._redrawScreenWidget();
+      this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, displayInfo.subsampleWidth);
     }
   }
 
@@ -308,12 +319,13 @@ class WebUI
       return;
     }
 
-    this.screenWidget.currentChannel.gammaFactor = gammaFactor;
+    // The answer is for this lamp, even if another one is selected by then
+    const channel = this.screenWidget.currentChannel;
+    channel.gammaFactor = gammaFactor;
 
-    let promise = RequestUtils.put(`/api/setChannelGammaFactor/${this.screenWidget.currentChannel.channelId}`, JSON.stringify({gammaFactor : gammaFactor}));
+    let promise = RequestUtils.put(`/api/setChannelGammaFactor/${channel.channelId}`, JSON.stringify({gammaFactor : gammaFactor}));
     promise.then((gammaFactorData) => {
-      let gammaFactor = gammaFactorData.gammaFactor;
-      this.screenWidget.currentChannel.gammaFactor = Utils.truncate(gammaFactor, 2);
+      channel.gammaFactor = Utils.truncate(gammaFactorData.gammaFactor, 2);
     });
     promise.catch((error) => {log(error);});
   }
@@ -340,6 +352,11 @@ class WebUI
   {
     const activeChannels = channels.filter(channel => channel.active);
     const inactiveChannels = channels.filter(channel => !channel.active);
+
+    // New lamp objects, none selected: the former selection would point at an object no longer
+    // listed, possibly of another area whose lamps share channel ids
+    this.screenWidget.currentChannel = null;
+    this.screenWidget.showWidgets(false);
 
     this.activeChannels = {};
     this._refreshActiveChannels(activeChannels);
@@ -387,6 +404,17 @@ class WebUI
         this._manageChannel(channelData.channelId);
       });
 
+      // Selected with the keyboard too
+      newChannelEntryNode.tabIndex = 0;
+      newChannelEntryNode.setAttribute("role", "button");
+      newChannelEntryNode.setAttribute("aria-pressed", "false");
+      newChannelEntryNode.addEventListener("keydown", (event) => {
+        if(event.target == newChannelEntryNode && (event.key == "Enter" || event.key == " ")){
+          event.preventDefault();
+          this._manageChannel(channelData.channelId);
+        }
+      });
+
       this._fillChannelEntry(newChannelEntryNode, newChannel);
       this.lampSwatches[newChannel.channelId] = newChannelEntryNode.querySelector(".lampSwatch");
 
@@ -412,8 +440,8 @@ class WebUI
     entryNode.replaceChildren(swatch, name, id);
 
     entryNode.title = channel.node
-      ? t("{lamp}: the dot shows its current color. Click to edit its screen region, drag to Available to stop driving it", {lamp : channel.formatMembers()})
-      : t("{lamp}: not driven. Drag to Active to have it follow the screen", {lamp : channel.formatMembers()});
+      ? t("{lamp}: the dot shows its current color. Click or press Enter to edit its screen region, drag to Available or use the arrow to stop driving it", {lamp : channel.formatMembers()})
+      : t("{lamp}: not driven. Drag to Active or use the arrow to have it follow the screen", {lamp : channel.formatMembers()});
 
     if(channel.node && channel.monitorMissing){
       let missing = document.createElement("span");
@@ -422,12 +450,36 @@ class WebUI
       entryNode.insertBefore(missing, id);
       entryNode.title = t("The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.");
     }
+
+    // Here, as the entry is filled again when its lamp changes: active lamps have their node
+    this._addMoveButton(entryNode, channel.channelId, !channel.node);
+  }
+
+
+  // Moves a lamp to the other list without dragging: with the keyboard, a click or a touch
+  _addMoveButton(entryNode, channelId, activate)
+  {
+    let button = document.createElement("button");
+    button.type = "button";
+    button.className = "moveLampButton";
+    button.textContent = activate ? "←" : "→";
+    const label = t(activate ? "Drive this lamp: move it to Active" : "Stop driving this lamp: move it to Available");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.addEventListener("click", (event) => {
+      // Not a selection of the lamp
+      event.stopPropagation();
+      this._setChannelActivity(channelId, activate);
+    });
+
+    entryNode.appendChild(button);
   }
 
 
   _setItemSelected(channelNode, selected)
   {
     channelNode.selected = selected;
+    channelNode.setAttribute("aria-pressed", selected ? "true" : "false");
 
     if(channelNode.selected){
       channelNode.classList.add("selected");
@@ -495,21 +547,25 @@ class WebUI
     // The lamps may have arrived before the monitors
     this._redrawScreenWidget();
     this._monitorsCallback(displayInfo);
-    let subsampleResolutionCandidates = displayInfo.subsampleResolutionCandidates;
+    this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, subsampleWidth);
+  }
 
-    this.availableSubsamplesNode.innerHTML = "";
-    for(let subsampleCandidate of subsampleResolutionCandidates.reverse()){
+
+  // The resolutions offered depend on the captured monitors: built again when they change
+  _buildSubsampleOptions(subsampleResolutionCandidates, subsampleWidth)
+  {
+    this.availableSubsamplesNode.replaceChildren();
+    for(let subsampleCandidate of [...subsampleResolutionCandidates].reverse()){
       let newOption = document.createElement("option");
       let width = subsampleCandidate.x;
       let height = subsampleCandidate.y;
       let percentage = width / this.screenWidget.width * 100;
       percentage = MathUtils.roundPrecision(percentage, 2);
-      newOption.innerHTML = width + "x" + height;
-      newOption.innerHTML += ` (${percentage}%)`;
+      newOption.textContent = `${width}x${height} (${percentage}%)`;
       newOption.value = width;
       this.availableSubsamplesNode.appendChild(newOption);
     }
-    
+
     this.availableSubsamplesNode.value = subsampleWidth.toString();
   }
 
@@ -541,9 +597,9 @@ class WebUI
     let entertainmentConfigurations = entertainmentConfigurationsData.entertainmentConfigurations;
     let currentEntertainmentConfigurationId = entertainmentConfigurationsData.currentEntertainmentConfigurationId;
 
-    if(entertainmentConfigurations.length > 1){
-      this.entertainmentConfigurationsNode.style.display = "block";
-    }
+    // Shown once there's a choice; also called again after a refused switch, so built anew
+    this.entertainmentConfigurationsNode.style.display = entertainmentConfigurations.length > 1 ? "block" : "none";
+    this.entertainmentConfigurationsSelectNode.replaceChildren();
 
     for(let entertainmentConfiguration of entertainmentConfigurations){
       let newOption = document.createElement("option");
@@ -582,11 +638,18 @@ class WebUI
 
     this.screenWidget.setLegend(ScreenWidget.Legends.none);
 
+    const channel = this.activeChannels[channelId];
     let channelPromise = RequestUtils.get(`/api/channel/${channelId}`);
     channelPromise.then((channelData) => {
-      this.activeChannels[channelId].uvs = channelData.uvs;
-      this.activeChannels[channelId].monitor = channelData.monitor;
-      this.screenWidget.initChannelRegion(this.activeChannels[channelId]);
+      // The lamps may have been listed again meanwhile, such as after an area switch, or another
+      // lamp selected
+      if(this.activeChannels[channelId] !== channel || !channel.node.selected){
+        return;
+      }
+
+      channel.uvs = channelData.uvs;
+      channel.monitor = channelData.monitor;
+      this.screenWidget.initChannelRegion(channel);
     });
     channelPromise.catch((error) => {log(error);});
   }
@@ -794,7 +857,21 @@ class WebUI
 
   _saveProfile()
   {
-    RequestUtils.post("/api/saveProfile", JSON.stringify(null), (data) => {log("Saved profile");});
+    // The answer shows on the button for a moment: a failed save must not pass for a saved one
+    const showResult = (text) => {
+      this.saveProfileButton.textContent = t(text);
+      clearTimeout(this.saveProfileResetTimer);
+      this.saveProfileResetTimer = setTimeout(() => {this.saveProfileButton.textContent = t("Save profile");}, 3000);
+    };
+
+    this.saveProfileButton.disabled = true;
+    RequestUtils.post("/api/saveProfile", JSON.stringify(null))
+      .then(() => {showResult("Profile saved");})
+      .catch((error) => {
+        log(error);
+        showResult("Saving failed");
+      })
+      .finally(() => {this.saveProfileButton.disabled = false;});
   }
 
 

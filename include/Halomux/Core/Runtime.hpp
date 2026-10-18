@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <stop_token>
 #include <thread>
 
 #include <Halomux/Audio/AudioAnalyzer.hpp>
@@ -64,10 +65,12 @@ namespace Halomux::Core
 
     // Methods
     /**
-     * @brief Initiates Halomux and starts the main loop
-     * 
+     * @brief Initiates Halomux and runs the main loop until stopped
+     *
+     * @return true Stopped, or the user cancelled the setup or the screen selection
+     * @return false Failed to start, such as without any grabber: starting again may succeed
      */
-    void start();
+    bool start();
 
 
     /**
@@ -93,12 +96,17 @@ namespace Halomux::Core
 
 
     /**
-     * Brief Initializes a grabber based on the graphical session
-     * 
-     * @return true Relevant grabber was found and initialized
-     * @return false could not initialize a grabber
-    */
-    bool _initGrabber();
+     * @brief Initializes a grabber based on the graphical session
+     *
+     * @return GrabberStart Whether it started, the screen selection was cancelled, or it failed
+     */
+    enum class GrabberStart
+    {
+      Started,
+      Cancelled,
+      Failed
+    };
+    GrabberStart _initGrabber();
 
 
     /**
@@ -169,6 +177,8 @@ namespace Halomux::Core
     std::unique_ptr<CoreService> m_coreService;
 
     std::atomic<bool> m_keepLooping{true};
+    // Requested by stop(): aborts the screen selection dialog of the start
+    std::stop_source m_stopSource;
     bool m_openedSetup{false};
     std::unique_ptr<Timing::LoopRegulator> m_loopRegulator;
 
@@ -189,6 +199,8 @@ namespace Halomux::Core
 
     //  Image Processing
     mutable std::mutex m_grabberMutex;
+    // The only owner of the grabber: declared after m_config, so destroyed before the
+    // configuration its threads read
     std::shared_ptr<Grabber::IGrabber> m_grabber;
     // Set when a screen selection replaced the grabber, for the streaming thread
     std::atomic<bool> m_grabberReplaced{false};

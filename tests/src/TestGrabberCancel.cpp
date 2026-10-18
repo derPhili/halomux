@@ -54,11 +54,16 @@ int main()
 
   Core::Config config(std::filesystem::temp_directory_path() / "halomux-test-cancel");
   bool cancelled = false;
+  bool unavailable = false;
   try{
     Grabber::PipewireGrabber grabber(&config, true);
   }
   catch(const Grabber::GrabberCancelled&){
     cancelled = true;
+  }
+  catch(const Grabber::GrabberUnavailable&){
+    // No portal is a failure worth starting again, unlike a selection the user cancelled
+    unavailable = true;
   }
 
   const int before = ticks;
@@ -67,8 +72,8 @@ int main()
 
   running.reset();
 
-  if(!cancelled){
-    Core::Logger::error("The screen selection didn't fail");
+  if(!unavailable){
+    Core::Logger::error(cancelled ? "An unreachable portal was taken for a cancelled selection" : "The screen selection didn't fail");
     return 1;
   }
 

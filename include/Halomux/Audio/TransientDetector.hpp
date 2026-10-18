@@ -39,6 +39,11 @@ namespace Halomux::Audio
       float duration
     )
     {
+      // A broken sample would stick in the average and silence every later trigger
+      if(!std::isfinite(energy)){
+        return 0.f;
+      }
+
       if(!m_hasAverage){
         m_average = energy;
         m_hasAverage = true;

@@ -120,10 +120,21 @@ namespace Halomux::Core
     std::optional<std::string> currentAreaId() const;
 
 
+    /**
+     * @brief Loads the areas from the bridge again, such as ones created in the Hue app since
+     *
+     * @return Hue::Api::EntertainmentConfigurations Areas, the known ones if the bridge is unreachable
+     */
+    Hue::Api::EntertainmentConfigurations refreshAreas();
+
+
   private:
     // With m_operationMutex held
     bool _loadAreas();
-    void _ensureSelection();
+    // Removes the streamer, for the caller to end it outside the lock
+    std::unique_ptr<Stream::IStreamer> _takeStreamer();
+    // Selects the saved area, or another one if it no longer exists
+    void _ensureSelection(bool loadAreas = true);
     bool _select(const std::string& areaId);
 
     void _watch(

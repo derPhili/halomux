@@ -8,6 +8,7 @@
 
 #include <Halomux/Imaging/UV.hpp>
 #include <Halomux/Network/Http/Server/HttpDataStructs.hpp>
+#include <Halomux/Serialization/Json.hpp>
 
 
 namespace Halomux::Network::Http::Server
@@ -15,8 +16,8 @@ namespace Halomux::Network::Http::Server
   /**
    * @brief Thrown by a handler to answer with an error status
    *
-   * The server answers {"succeeded": false, "error": what()} with the status. Malformed JSON
-   * bodies (nlohmann exceptions) become 400 the same way, other exceptions 500.
+   * The server answers {"succeeded": false, "error": what()} with the status. Bodies that can't
+   * be read are reported through readBody(); any other exception becomes 500.
    */
   class HttpError : public std::runtime_error
   {
@@ -37,6 +38,33 @@ namespace Halomux::Network::Http::Server
   private:
     int m_status;
   };
+
+
+  /**
+   * @brief Reads the JSON body of a request
+   *
+   * Everything read from the body goes in read: a body that isn't valid JSON, misses a field or
+   * holds a wrong type or value is the client's error, answered 400. Exceptions after it are the
+   * light manager's, answered 500.
+   *
+   * @param request Request
+   * @param read Takes the parsed body and returns what the route needs from it
+   * @return What read returns
+   * @throw HttpError 400 if the body couldn't be read
+   */
+  template<typename Read>
+  auto readBody(
+    const Request& request,
+    Read&& read
+  )
+  {
+    try{
+      return read(Serialization::Json::parse(request.body));
+    }
+    catch(const std::exception& e){
+      throw HttpError(400, std::string("malformed request: ") + e.what());
+    }
+  }
 
 
   /**

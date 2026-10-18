@@ -98,6 +98,7 @@ set(AUDIO_SOURCE
 
 set(CORE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AreaSession.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AtomicFile.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelColor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp
@@ -218,6 +219,7 @@ target_sources(halomux PRIVATE
   ${PROTOCOLS_DIR}/xdg-output-unstable-v1-client-protocol.h
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/WaylandOutputs.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/PipewireGrabber.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/DmaBufPlanes.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/XdgDesktopPortal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp
 )
@@ -304,7 +306,10 @@ if(${BUILD_GUI})
 
   install(TARGETS halomux-gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
   install(FILES dist/halomux.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
-  install(FILES dist/halomux-tray.desktop DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/xdg/autostart)
+  # Only directories of XDG_CONFIG_DIRS are searched, /etc/xdg by default: under another prefix,
+  # such as /usr/local/etc, the tray wouldn't start at login
+  set(HALOMUX_AUTOSTART_DIR "/etc/xdg/autostart" CACHE PATH "Directory of the desktop app's autostart entry")
+  install(FILES dist/halomux-tray.desktop DESTINATION ${HALOMUX_AUTOSTART_DIR})
 endif()
 
 

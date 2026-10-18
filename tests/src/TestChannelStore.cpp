@@ -49,6 +49,23 @@ namespace
 
 int main()
 {
+  // The lamps belong to an area: saving reads both together, never one area's lamps with another's id
+  {
+    Core::ChannelStore store;
+    store.replace(lamps(), Desktop, "pc");
+    auto saved = store.areaSnapshot();
+    expect("Lamps read with their area", saved.areaId == "pc" && saved.channels.size() == 3);
+
+    {
+      auto access = store.access();
+      Hue::Api::Channels other;
+      other.emplace(5, Channel{true, {}, 0.f});
+      access.replace("garage", std::move(other), Desktop);
+    }
+    saved = store.areaSnapshot();
+    expect("Area and lamps replaced together", saved.areaId == "garage" && saved.channels.size() == 1 && saved.channels.contains(5));
+  }
+
   // Profiles from before monitors per lamp: active lamps follow the first monitor
   {
     Core::ChannelStore store;
@@ -81,11 +98,31 @@ int main()
   {
     Core::ChannelStore store;
     store.replace(lamps(), Desktop);
-    const auto uvs = store.setUV(0, {0.8f, -0.5f}, Imaging::UVCorner::TopLeft);
+    const auto uvs = store.setUV(0, {0.8f, -0.5f}, Imaging::UVCorner::TopLeft, 256);
     expect("Corner set", uvs.has_value());
     expect("Corner clamped to the screen", uvs && uvs->min.y == 0.f);
     expect("Opposite corner pushed along", uvs && uvs->max.x >= uvs->min.x);
-    expect("Unknown lamp's corner", !store.setUV(9, {0.f, 0.f}, Imaging::UVCorner::TopLeft).has_value());
+    expect("Unknown lamp's corner", !store.setUV(9, {0.f, 0.f}, Imaging::UVCorner::TopLeft, 256).has_value());
+  }
+
+  // A corner dragged onto the opposite one leaves at least one cell, which is averaged
+  {
+    Core::ChannelStore store;
+    store.replace(lamps(), Desktop);
+    // Lamp 0 on DP-1, 1920 of the widest 2560 pixels: 24 of 32 cells
+    const auto uvs = store.setUV(0, {0.495f, 0.f}, Imaging::UVCorner::TopLeft, 32);
+    expect("Region at least one cell wide", uvs && uvs->max.x - uvs->min.x >= 1.f / 24.f - 1e-5f);
+  }
+
+  // Unplugged monitors take no lamp
+  {
+    Core::ChannelStore store;
+    Grabber::Monitors firstLost = Desktop;
+    firstLost[0].lost = true;
+    store.replace(lamps(), firstLost);
+    store.setActivity(2, true);
+    expect("New lamp avoids the unplugged monitor", store.snapshot().at(2).monitorIndex == 1u);
+    expect("Lamp not moved onto an unplugged monitor", !store.setMonitor(1, 0, {{0.f, 0.f}, {1.f, 1.f}}, 256).has_value());
   }
 
   // Moving a region onto a monitor

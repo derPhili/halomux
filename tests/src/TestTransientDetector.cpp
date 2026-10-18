@@ -1,3 +1,4 @@
+#include <limits>
 #include <cmath>
 
 #include <Halomux/Audio/TransientDetector.hpp>
@@ -80,6 +81,22 @@ int main()
 
     const float loud = detector.process(base, BufferDuration);
     expect("Sound after silence triggers", loud == 1.f, loud);
+  }
+
+  {
+    // A buffer with an invalid sample (NaN, infinity) is ignored: the detection carries on
+    Audio::TransientDetector detector;
+    for(int i = 0; i < 100; i++){
+      detector.process(base, BufferDuration);
+    }
+    const float invalid = detector.process(std::numeric_limits<float>::quiet_NaN(), BufferDuration);
+    detector.process(std::numeric_limits<float>::infinity(), BufferDuration);
+    expect("Invalid buffer doesn't trigger", invalid == 0.f, invalid);
+    const float steady = detector.process(base, BufferDuration);
+    expect("Steady sound after an invalid buffer doesn't trigger", steady == 0.f, steady);
+
+    const float loud = detector.process(base * 100.f, BufferDuration);
+    expect("Detection carries on after an invalid buffer", loud == 1.f, loud);
   }
 
   if(failures > 0){

@@ -13,6 +13,8 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 
+#include <Halomux/Grabber/GnuLinux/Pipewire/DmaBufPlane.hpp>
+
 
 namespace Halomux::Grabber
 {
@@ -20,21 +22,20 @@ namespace Halomux::Grabber
    * @brief Downscales DMA-BUF screen frames on the GPU
    *
    * Frames are imported without copy as EGL images and reduced by a fragment shader computing
-   * the exact average of each block of source pixels. Only the small result is read back.
+   * the exact average of each block of source pixels, even or odd (fractional blocks are
+   * approximated). Only the small result is read back.
    * Every method must be called from the thread that called init().
    */
   class EglDownscaler
   {
   public:
     /**
-     * @brief Single plane DMA-BUF description
+     * @brief DMA-BUF description, with one to four planes
      *
      */
     struct DmaBuf
     {
-      int fd;
-      uint32_t offset;
-      uint32_t stride;
+      std::vector<DmaBufPlane> planes;
       int width;
       int height;
       uint32_t drmFormat;

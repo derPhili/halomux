@@ -1,6 +1,9 @@
 #include <Halomux/Network/Http/Server/WebUIBackend.hpp>
 
 #include <filesystem>
+#include <string>
+#include <tuple>
+#include <utility>
 
 #include <Halomux/Core/CoreService.hpp>
 #include <Halomux/Network/Http/Server/RouteTools.hpp>
@@ -95,7 +98,8 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Get, "/api/entertainmentConfigurations", [this](const Request& /*req*/, Response& res){
-      const auto entertainmentConfigurations = m_coreService->entertainmentConfigurations();
+      // Asked again, so that areas created in the Hue app since show up when the page loads
+      const auto entertainmentConfigurations = m_coreService->refreshEntertainmentConfigurations();
       // None while the bridge is unreachable or has no area yet
       const auto currentEntertainmentConfigurationId = m_coreService->currentEntertainmentConfigurationId();
 
@@ -260,7 +264,7 @@ namespace Halomux::Network::Http::Server
     // PUT METHODS
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setEntertainmentConfiguration", [this](const Request& req, Response& res){
-      const std::string entertainmentConfigurationId = Json::parse(req.body).get<std::string>();
+      const std::string entertainmentConfigurationId = readBody(req, [](const Json& body){return body.get<std::string>();});
 
       if(!m_coreService->setEntertainmentConfiguration(entertainmentConfigurationId)){
         throw HttpError(404, "unknown entertainment area, or its lamps couldn't be loaded");
@@ -281,12 +285,10 @@ namespace Halomux::Network::Http::Server
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelUV/:channelId", [this](const Request& req, Response& res){
       const uint8_t channelId = channelIdOf(req);
 
-      const std::string& data = req.body;
-      Json jsonUV = Json::parse(data);
-
-      float x = jsonUV.at("x");
-      float y = jsonUV.at("y");
-      const auto uvCorner = parseUVCorner(jsonUV.at("type").get<int>());
+      const auto [x, y, cornerType] = readBody(req, [](const Json& body){
+        return std::tuple{body.at("x").get<float>(), body.at("y").get<float>(), body.at("type").get<int>()};
+      });
+      const auto uvCorner = parseUVCorner(cornerType);
       if(!uvCorner.has_value()){
         throw HttpError(400, "unknown corner");
       }
@@ -313,9 +315,9 @@ namespace Halomux::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelMonitor/:channelId", [this](const Request& req, Response& res){
       const uint8_t channelId = channelIdOf(req);
-      const Json jsonData = Json::parse(req.body);
-      const size_t monitor = jsonData.at("monitor").get<size_t>();
-      const Imaging::UVs uvs = jsonData.at("uvs").get<Imaging::UVs>();
+      const auto [monitor, uvs] = readBody(req, [](const Json& body){
+        return std::pair{body.at("monitor").get<size_t>(), body.at("uvs").get<Imaging::UVs>()};
+      });
 
       if(!m_coreService->setChannelMonitor(channelId, monitor, uvs).has_value()){
         throw HttpError(404, "unknown channel or monitor");
@@ -328,9 +330,7 @@ namespace Halomux::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelGammaFactor/:channelId", [this](const Request& req, Response& res){
       const uint8_t channelId = channelIdOf(req);
-      const std::string& data = req.body;
-      Json jsonGammaFactorData = Json::parse(data);
-      float gammaFactor = jsonGammaFactorData.at("gammaFactor");
+      const float gammaFactor = readBody(req, [](const Json& body){return body.at("gammaFactor").get<float>();});
 
       if(!m_coreService->setChannelGammaFactor(channelId, gammaFactor)){
         throw HttpError(404, "unknown channel");
@@ -348,8 +348,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setSubsampleWidth", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      unsigned subsampleWidth = Json::parse(data).get<unsigned>();
+      const unsigned subsampleWidth = readBody(req, [](const Json& body){return body.get<unsigned>();});
       m_coreService->setSubsampleWidth(subsampleWidth);
 
       glm::ivec2 displayResolution = m_coreService->displayResolution();
@@ -366,8 +365,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setRefreshRate", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      unsigned refreshRate = Json::parse(data).get<unsigned>();
+      const unsigned refreshRate = readBody(req, [](const Json& body){return body.get<unsigned>();});
       m_coreService->setRefreshRate(refreshRate);
 
       Json jsonRefreshRate{
@@ -381,8 +379,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setTransitionSmoothing", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      float transitionSmoothing = Json::parse(data).get<float>();
+      const float transitionSmoothing = readBody(req, [](const Json& body){return body.get<float>();});
       m_coreService->setTransitionSmoothing(transitionSmoothing);
 
       Json jsonTransitionSmoothing{
@@ -396,7 +393,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setBrightness", [this](const Request& req, Response& res){
-      m_coreService->setBrightness(Json::parse(req.body).get<float>());
+      m_coreService->setBrightness(readBody(req, [](const Json& body){return body.get<float>();}));
 
       res.contentType = "application/json";
       res.body = Json{{"brightness", m_coreService->brightness()}}.dump();
@@ -404,7 +401,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setHighlightBoost", [this](const Request& req, Response& res){
-      m_coreService->setHighlightBoost(Json::parse(req.body).get<float>());
+      m_coreService->setHighlightBoost(readBody(req, [](const Json& body){return body.get<float>();}));
 
       res.contentType = "application/json";
       res.body = Json{{"highlightBoost", m_coreService->highlightBoost()}}.dump();
@@ -412,7 +409,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setAudioReactive", [this](const Request& req, Response& res){
-      m_coreService->setAudioReactive(Json::parse(req.body).get<bool>());
+      m_coreService->setAudioReactive(readBody(req, [](const Json& body){return body.get<bool>();}));
 
       res.contentType = "application/json";
       res.body = Json{{"audioReactive", m_coreService->audioReactive()}}.dump();
@@ -420,7 +417,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setSyncEnabled", [this](const Request& req, Response& res){
-      m_coreService->setSyncEnabled(Json::parse(req.body).get<bool>());
+      m_coreService->setSyncEnabled(readBody(req, [](const Json& body){return body.get<bool>();}));
 
       res.contentType = "application/json";
       res.body = Json{{"syncEnabled", m_coreService->syncEnabled()}}.dump();
@@ -428,7 +425,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setStaticColors", [this](const Request& req, Response& res){
-      m_coreService->setStaticColors(Json::parse(req.body).get<Core::Config::StaticColors>());
+      m_coreService->setStaticColors(readBody(req, [](const Json& body){return body.get<Core::Config::StaticColors>();}));
 
       res.contentType = "application/json";
       res.body = Json{{"staticColors", m_coreService->staticColors()}}.dump();
@@ -436,11 +433,13 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/saveScene", [this](const Request& req, Response& res){
-      const Json jsonScene = Json::parse(req.body);
-      const bool saved = m_coreService->saveScene(jsonScene.at("name"), jsonScene.at("colors").get<Core::Config::StaticColors>());
+      const auto [name, colors] = readBody(req, [](const Json& body){
+        return std::pair{body.at("name").get<std::string>(), body.at("colors").get<Core::Config::StaticColors>()};
+      });
+      const bool saved = m_coreService->saveScene(name, colors);
 
       if(!saved){
-        res.status = 400;
+        throw HttpError(400, "invalid scene name");
       }
 
       res.contentType = "application/json";
@@ -457,8 +456,8 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setLanguage", [this](const Request& req, Response& res){
-      if(!m_coreService->setLanguage(Json::parse(req.body).get<std::string>())){
-        res.status = 400;
+      if(!m_coreService->setLanguage(readBody(req, [](const Json& body){return body.get<std::string>();}))){
+        throw HttpError(400, "unsupported language");
       }
 
       res.contentType = "application/json";
@@ -467,11 +466,13 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/applyScene", [this](const Request& req, Response& res){
-      const Json jsonScene = Json::parse(req.body);
-      const bool applied = m_coreService->applyScene(jsonScene.at("name"), jsonScene.value("builtin", false));
+      const auto [name, builtin] = readBody(req, [](const Json& body){
+        return std::pair{body.at("name").get<std::string>(), body.contains("builtin") ? body.at("builtin").get<bool>() : false};
+      });
+      const bool applied = m_coreService->applyScene(name, builtin);
 
       if(!applied){
-        res.status = 404;
+        throw HttpError(404, "unknown scene");
       }
 
       res.contentType = "application/json";
@@ -493,10 +494,10 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Delete, "/api/scene", [this](const Request& req, Response& res){
-      const bool deleted = m_coreService->deleteScene(Json::parse(req.body).at("name"));
+      const bool deleted = m_coreService->deleteScene(readBody(req, [](const Json& body){return body.at("name").get<std::string>();}));
 
       if(!deleted){
-        res.status = 404;
+        throw HttpError(404, "unknown scene");
       }
 
       res.contentType = "application/json";
@@ -508,9 +509,7 @@ namespace Halomux::Network::Http::Server
     m_httpServer.addRoute(HttpMethod::Post, "/api/setChannelActivity/:channelId", [this](const Request& req, Response& res){
       const uint8_t channelId = channelIdOf(req);
 
-      const std::string& data = req.body;
-      Json jsonChannelData = Json::parse(data);
-      bool active = jsonChannelData.at("active");
+      const bool active = readBody(req, [](const Json& body){return body.at("active").get<bool>();});
 
       if(!m_coreService->setChannelActivity(channelId, active)){
         throw HttpError(404, "unknown channel");

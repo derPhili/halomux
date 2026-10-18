@@ -25,12 +25,13 @@ get_target_property(APP_LINK_LIBRARIES halomux LINK_LIBRARIES)
 #   [ARGS <arguments>]
 #   [TIMEOUT <seconds>]
 #   [ENVIRONMENT <variables>]
+#   [RUNNER <command>]                runs the test through it, such as dbus-run-session --
 #   [MANUAL])                         built, but not run by ctest
 #
 # Builds Test<Name> and registers it as the ctest test <Name>. Tests find their data files under
 # HALOMUX_TEST_FIXTURES.
 function(halomux_add_test name)
-  cmake_parse_arguments(PARSE_ARGV 1 TEST "WITH_APP;MANUAL" "SANITIZE;TIMEOUT" "SOURCES;LIBRARIES;INCLUDES;DEPENDS;ARGS;ENVIRONMENT")
+  cmake_parse_arguments(PARSE_ARGV 1 TEST "WITH_APP;MANUAL" "SANITIZE;TIMEOUT" "SOURCES;LIBRARIES;INCLUDES;DEPENDS;ARGS;ENVIRONMENT;RUNNER")
 
   set(target Test${name})
 
@@ -68,7 +69,7 @@ function(halomux_add_test name)
     return()
   endif()
 
-  add_test(NAME ${name} COMMAND ${target} ${TEST_ARGS})
+  add_test(NAME ${name} COMMAND ${TEST_RUNNER} $<TARGET_FILE:${target}> ${TEST_ARGS})
   if(TEST_TIMEOUT)
     set_tests_properties(${name} PROPERTIES TIMEOUT ${TEST_TIMEOUT})
   endif()
@@ -100,6 +101,14 @@ halomux_add_test(GrabberCancel WITH_APP
   LIBRARIES ${OpenCV_LIBS}
 )
 
+# The screen selection against a fake portal on a private session bus: cancelled by the user,
+# refused by the portal, and stopped while its dialog is open
+halomux_add_test(PortalCancel WITH_APP
+  LIBRARIES ${OpenCV_LIBS}
+  RUNNER dbus-run-session --
+  TIMEOUT 60
+)
+
 # GPU downscale of a real DMA-BUF against the exact CPU area average
 halomux_add_test(GpuDownscale
   SOURCES ${SRC}/Grabber/GnuLinux/Pipewire/EglDownscaler.cpp ${SRC}/Imaging/ImageProcessing.cpp
@@ -107,6 +116,12 @@ halomux_add_test(GpuDownscale
   LIBRARIES glm::glm ${OpenCV_LIBS} ${GPU_LIBRARIES} ${GBM_LIBRARIES}
   SANITIZE none
   ARGS ${CMAKE_CURRENT_SOURCE_DIR}/screenshots/WebUI.png
+)
+
+# Planes of DMA-BUF buffers of Pipewire, several with compressed formats
+halomux_add_test(DmaBufPlanes
+  SOURCES ${SRC}/Grabber/GnuLinux/Pipewire/DmaBufPlanes.cpp
+  INCLUDES ${LIB_PIPEWIRE_INCLUDE_DIRS}
 )
 
 # Matching monitors between the portal, the compositor and the profile
@@ -199,12 +214,17 @@ halomux_add_test(LoopThread
 
 # Reading mDNS answers, which come from the network
 halomux_add_test(BridgeDiscovery
-  SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp
+  SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp ${SRC}/Hue/Api/BridgeTls.cpp
+)
+
+# Which bridge ids the certificate checks accept
+halomux_add_test(BridgeTls
+  SOURCES ${SRC}/Hue/Api/BridgeTls.cpp
 )
 
 # Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
 halomux_add_test(ClipParsing
-  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp
+  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp ${SRC}/Hue/Auth/Credentials.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
@@ -237,6 +257,13 @@ halomux_add_test(DtlsClient
 )
 
 
+# Limits of HTTP requests, whose answers come from the network
+halomux_add_test(CurlClient
+  SOURCES ${SRC}/Network/Http/Client/CurlClient.cpp
+  LIBRARIES CURL::libcurl httplib::httplib nlohmann_json::nlohmann_json
+)
+
+
 # Light manager and configuration
 
 # Which Host headers the light manager answers, against DNS rebinding
@@ -250,15 +277,20 @@ halomux_add_test(HttpErrors
   LIBRARIES httplib::httplib nlohmann_json::nlohmann_json glm::glm
 )
 
+# Files only ever replaced by a complete content
+halomux_add_test(AtomicFile
+  SOURCES ${SRC}/Core/AtomicFile.cpp
+)
+
 # How the configuration, which holds the bridge credentials, is stored
 halomux_add_test(ConfigFile
-  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Core/AtomicFile.cpp ${SRC}/Hue/Auth/Credentials.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 
 # Configuration read while the setup writes it, under ThreadSanitizer
 halomux_add_test(ConfigThreads
-  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  SOURCES ${SRC}/Core/Config.cpp ${SRC}/Core/AtomicFile.cpp ${SRC}/Hue/Auth/Credentials.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
   SANITIZE thread
   ENVIRONMENT "TSAN_OPTIONS=halt_on_error=1"

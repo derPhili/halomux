@@ -39,7 +39,7 @@ class Handle
     this.handleNode = document.getElementById(handleId);
     this.screenWidget = screenWidget;
     this.parentNode = parentNode;
-    this.handleNode.addEventListener("mousedown", () => {this.drag();});
+    this.handleNode.addEventListener("pointerdown", (event) => {event.preventDefault(); this.drag();});
     this.type = Handle.MapHandleTypeId[handleId];
   }
 
@@ -90,7 +90,7 @@ class GammaHandle
     this.screenWidget = screenWidget;
     this.parentNode = parentNode;
     this.handleNode = document.getElementById("gammaCursor");
-    this.handleNode.addEventListener("mousedown", () => {this.drag();});
+    this.handleNode.addEventListener("pointerdown", (event) => {event.preventDefault(); this.drag();});
   }
 
 
@@ -122,6 +122,7 @@ class GammaHandle
     gammaFactor *= 2;
     gammaFactor -= 1;
     gammaFactor = Utils.truncate(gammaFactor, 1)
+    this.handleNode.setAttribute("aria-valuenow", gammaFactor);
 
     this.screenWidget.webApp.updateGammaFactor(gammaFactor);
   }
@@ -161,7 +162,7 @@ class ScreenWidget
   static Legends = {
     none : "",
     noChannel : "There are no lamps in this entertainment area. Add them in the Hue app.",
-    pleaseDrag : "Drag a lamp from Available to Active to drive it.",
+    pleaseDrag : "Drag a lamp from Available to Active, or use its arrow, to drive it.",
     pleaseSelect : "Select an active lamp to edit its region"
   };
 
@@ -190,11 +191,22 @@ class ScreenWidget
     };
 
     // Dragging the region itself moves it, onto another monitor too
-    this.uvAreaNode.querySelector("rect").addEventListener("mousedown", (event) => {this._startMove(event);});
+    // Pointer events: mouse, touch and pen alike
+    this.uvAreaNode.querySelector("rect").addEventListener("pointerdown", (event) => {this._startMove(event);});
 
-    document.addEventListener("mouseup", () => {this.drop();})
-    this.svgAreaNode.addEventListener("mousemove", (event) => {this._updateMousePosition(event);});
-    this.svgAreaNode.addEventListener("mouseup", () => {this.drop();});
+    document.addEventListener("pointerup", () => {this.drop();});
+    document.addEventListener("pointercancel", () => {this.drop();});
+    this.svgAreaNode.addEventListener("pointermove", (event) => {this._updateMousePosition(event);});
+
+    // Keyboard: the region and the gamma cursor can be focused and moved with the arrow keys
+    this.regionNode = this.uvAreaNode.querySelector("rect");
+    this.regionNode.setAttribute("tabindex", "0");
+    this.regionNode.addEventListener("keydown", (event) => {this._onRegionKey(event);});
+    this.gammaCursor.handleNode.setAttribute("tabindex", "0");
+    this.gammaCursor.handleNode.setAttribute("role", "slider");
+    this.gammaCursor.handleNode.setAttribute("aria-valuemin", "-1");
+    this.gammaCursor.handleNode.setAttribute("aria-valuemax", "1");
+    this.gammaCursor.handleNode.addEventListener("keydown", (event) => {this._onGammaKey(event);});
 
     this.draggedHandle = null;
     this.move = null;
@@ -425,7 +437,76 @@ class ScreenWidget
     this.gammaAreaNode.style.display = display;
     if(show){
       this.gammaCursor.affectFactor(this.currentChannel.gammaFactor);
+
+      // Set here, once the language is known
+      this.regionNode.setAttribute("aria-label", t(ScreenWidget.RegionKeysLabel));
+      this.gammaCursor.handleNode.setAttribute("aria-label", t(ScreenWidget.GammaKeysLabel));
     }
+  }
+
+
+  /**
+   * Arrow keys move the region by one subsample cell, with Shift they move its bottom right
+   * corner, with Alt left and right they put it on the previous or next monitor
+   */
+  _onRegionKey(event)
+  {
+    const direction = {ArrowLeft : [-1, 0], ArrowRight : [1, 0], ArrowUp : [0, -1], ArrowDown : [0, 1]}[event.key];
+    if(!direction || !this.currentChannel || !this.currentChannel.uvs){
+      return;
+    }
+
+    event.preventDefault();
+
+    const channelId = this.currentChannel.channelId;
+    const index = this._shownMonitor(this.currentChannel);
+    const uvs = this.currentChannel.uvs;
+
+    if(event.altKey){
+      const target = index + direction[0];
+      if(direction[0] != 0 && target >= 0 && target < this.monitorRects.length){
+        this.webApp.moveChannelRegion(channelId, target, uvs);
+      }
+      return;
+    }
+
+    const monitor = this.monitorRects[index];
+    if(!monitor){
+      return;
+    }
+
+    const cellWidth = 1 / monitor.subsampleWidth;
+    const cellHeight = 1 / monitor.subsampleHeight;
+    let a = {x : uvs.uvA.x, y : uvs.uvA.y};
+    let b = {x : uvs.uvB.x, y : uvs.uvB.y};
+
+    if(event.shiftKey){
+      // At least one cell
+      b.x = Utils.clamp(b.x + direction[0] * cellWidth, Math.min(a.x + cellWidth, 1), 1);
+      b.y = Utils.clamp(b.y + direction[1] * cellHeight, Math.min(a.y + cellHeight, 1), 1);
+    }
+    else{
+      const width = b.x - a.x;
+      const height = b.y - a.y;
+      a.x = Utils.clamp(a.x + direction[0] * cellWidth, 0, 1 - width);
+      a.y = Utils.clamp(a.y + direction[1] * cellHeight, 0, 1 - height);
+      b = {x : a.x + width, y : a.y + height};
+    }
+
+    this.webApp.moveChannelRegion(channelId, index, {uvA : a, uvB : b});
+  }
+
+
+  // Left and right (or down and up) arrows move the gamma cursor by one of its steps
+  _onGammaKey(event)
+  {
+    const step = {ArrowLeft : -0.2, ArrowDown : -0.2, ArrowRight : 0.2, ArrowUp : 0.2}[event.key];
+    if(step === undefined || !this.currentChannel){
+      return;
+    }
+
+    event.preventDefault();
+    this.gammaCursor.affectFactor(Utils.clamp(Utils.truncate(this.currentChannel.gammaFactor + step, 1), -1, 1));
   }
 
 
@@ -688,3 +769,5 @@ class ScreenWidget
 
 
 ScreenWidget.IdleRegionFill = "rgba(255, 255, 255, 0.04)";
+ScreenWidget.RegionKeysLabel = "Screen region of the lamp. Arrow keys move it, with Shift they resize it, with Alt left and right they put it on the previous or next monitor";
+ScreenWidget.GammaKeysLabel = "Gamma correction of the lamp. The arrow keys change it";

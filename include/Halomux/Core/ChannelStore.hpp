@@ -52,6 +52,20 @@ namespace Halomux::Core
       ) const;
 
 
+      /**
+       * @brief Replaces the lamps by those of another entertainment area, see ChannelStore::replace
+       *
+       * @param areaId Entertainment area of the lamps
+       * @param channels Lamps of the area
+       * @param monitors Captured monitors, read while this access holds the lock
+       */
+      void replace(
+        std::string areaId,
+        Hue::Api::Channels channels,
+        Grabber::Monitors monitors
+      );
+
+
       Hue::Api::Channels& channels;
       Hue::Api::ChannelStreams& streams;
       const Grabber::Monitors& monitors;
@@ -83,10 +97,12 @@ namespace Halomux::Core
      *
      * @param channels Lamps of the area
      * @param monitors Captured monitors
+     * @param areaId Entertainment area of the lamps
      */
     void replace(
       Hue::Api::Channels channels,
-      Grabber::Monitors monitors
+      Grabber::Monitors monitors,
+      std::optional<std::string> areaId = std::nullopt
     );
 
 
@@ -123,12 +139,14 @@ namespace Halomux::Core
      * @param channelId Lamp
      * @param uv New position of the corner
      * @param corner Corner
+     * @param configuredSubsampleWidth Configured subsample width: the region keeps at least one cell
      * @return std::optional<Imaging::UVs> Resulting region, nothing if the lamp doesn't exist
      */
     std::optional<Imaging::UVs> setUV(
       uint8_t channelId,
       const Imaging::UV& uv,
-      Imaging::UVCorner corner
+      Imaging::UVCorner corner,
+      unsigned configuredSubsampleWidth
     );
 
 
@@ -170,6 +188,21 @@ namespace Halomux::Core
     Hue::Api::Channels snapshot() const;
 
 
+    struct AreaSnapshot
+    {
+      std::optional<std::string> areaId;
+      Hue::Api::Channels channels;
+    };
+
+
+    /**
+     * @brief Returns a copy of the lamps with the entertainment area they belong to, read together
+     *
+     * @return AreaSnapshot Area, nothing if none was set, and its lamps
+     */
+    AreaSnapshot areaSnapshot() const;
+
+
     /**
      * @brief Returns the horizontal center of each active lamp's region on the whole desktop
      *
@@ -184,6 +217,18 @@ namespace Halomux::Core
       Grabber::Monitors monitors
     );
 
+    // Width and height of a subsample cell of a monitor, normalized
+    std::pair<float, float> _cellSize(
+      size_t monitor,
+      unsigned configuredSubsampleWidth
+    ) const;
+
+    void _replace(
+      std::optional<std::string> areaId,
+      Hue::Api::Channels channels,
+      Grabber::Monitors monitors
+    );
+
     static float _desktopCenterX(
       const Hue::Api::Channel& channel,
       const Grabber::Monitors& monitors
@@ -194,5 +239,7 @@ namespace Halomux::Core
     Hue::Api::Channels m_channels;
     Hue::Api::ChannelStreams m_streams;
     Grabber::Monitors m_monitors;
+    // Entertainment area the lamps belong to
+    std::optional<std::string> m_areaId;
   };
 }

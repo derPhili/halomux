@@ -31,8 +31,8 @@
   - Identität ist die repo-lokale (noreply).
   - Trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - **Tests:**
-  - Gebaut in einem eigenen Verzeichnis: `cmake -S . -B /tmp/claude-1000/-home-philip-git-huenicorn/176c1386-40e0-410a-947a-50f4efb7a981/scratchpad/build-tests -DBUILD_TESTS=ON`.
-  - Ausgeführt mit `ctest --test-dir …/build-tests --output-on-failure`.
+  - Gebaut in einem eigenen Verzeichnis: `cmake -S . -B <build-tests> -DBUILD_TESTS=ON`, `<build-tests>` außerhalb des Repositorys.
+  - Ausgeführt mit `ctest --test-dir <build-tests> --output-on-failure`.
   - Alle bestehenden Tests bleiben grün.
 - **Live-Tests:**
   - Der Dienst wird gestoppt, bevor ein Test-Binary läuft (Port 8215, Bridge-Stream).

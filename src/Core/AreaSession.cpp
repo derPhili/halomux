@@ -60,9 +60,23 @@ namespace Halomux::Core
       return;
     }
 
-    // Unknown (bridge unreachable): try again on the next check rather than restarting blindly
     const std::optional<bool> active = m_bridge->streamingActive(*current);
-    if(!active.has_value() || *active){
+    if(!active.has_value()){
+      // The area may have been deleted in the Hue app, which the bridge answers with an error:
+      // then another one is used. Unreachable, the bridge is asked again on the next check.
+      if(_loadAreas() && !areas().contains(*current)){
+        Logger::warn("The entertainment area no longer exists: using another one");
+        _takeStreamer().reset();
+        {
+          std::lock_guard stateLock(m_stateMutex);
+          m_currentAreaId.reset();
+        }
+        _ensureSelection(false);
+      }
+      return;
+    }
+
+    if(*active){
       return;
     }
 
@@ -112,8 +126,7 @@ namespace Halomux::Core
 
     {
       // The DTLS session is closed before the bridge is asked to stop streaming
-      std::lock_guard streamerLock(m_streamerMutex);
-      m_streamer.reset();
+      _takeStreamer().reset();
     }
 
     std::optional<Hue::Api::EntertainmentConfigurationEntry> area;
@@ -141,10 +154,25 @@ namespace Halomux::Core
   }
 
 
+  Hue::Api::EntertainmentConfigurations AreaSession::refreshAreas()
+  {
+    std::lock_guard lock(m_operationMutex);
+    _loadAreas();
+    return areas();
+  }
+
+
   std::optional<std::string> AreaSession::currentAreaId() const
   {
     std::lock_guard lock(m_stateMutex);
     return m_currentAreaId;
+  }
+
+
+  std::unique_ptr<Stream::IStreamer> AreaSession::_takeStreamer()
+  {
+    std::lock_guard lock(m_streamerMutex);
+    return std::move(m_streamer);
   }
 
 
@@ -167,9 +195,11 @@ namespace Halomux::Core
   }
 
 
-  void AreaSession::_ensureSelection()
+  void AreaSession::_ensureSelection(
+    bool loadAreas
+  )
   {
-    if(!_loadAreas()){
+    if(loadAreas && !_loadAreas()){
       return;
     }
 
@@ -241,10 +271,9 @@ namespace Halomux::Core
       return false;
     }
 
-    {
-      std::lock_guard streamerLock(m_streamerMutex);
-      m_streamer.reset();
-    }
+    // Ended outside the lock: it may wait for a DTLS handshake attempt, which must not hold the
+    // streaming loop
+    _takeStreamer().reset();
 
     if(former.has_value()){
       m_bridge->setStreaming(*former, false);

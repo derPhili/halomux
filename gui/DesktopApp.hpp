@@ -1,9 +1,11 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 
 #include <QJsonObject>
 #include <QLocalServer>
+#include <QLockFile>
 #include <QMenu>
 #include <QNetworkAccessManager>
 #include <QPointer>
@@ -98,6 +100,9 @@ namespace Halomux::Gui
 
     void _startService();
 
+    // Starts the service if it doesn't answer, refreshes the tray otherwise
+    void _ensureService();
+
 
     /**
      * @brief Shows the window if the current notice wasn't accepted yet
@@ -109,6 +114,8 @@ namespace Halomux::Gui
     // Attributes
     QUrl m_baseUrl;
     QNetworkAccessManager m_network;
+    // Held while this instance runs
+    std::unique_ptr<QLockFile> m_instanceLock;
     QLocalServer m_instanceServer;
 
     QSystemTrayIcon m_tray;

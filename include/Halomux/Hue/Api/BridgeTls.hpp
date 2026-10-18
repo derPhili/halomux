@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include <Halomux/Network/Http/Client/Client.hpp>
 
@@ -30,6 +31,17 @@ sFgDAiEA1Fj/C3AN5psFMjo0//mrQebo0eKd3aWRx+pQY08mk48=
 
 
   /**
+   * @brief Tells whether a text is a bridge id: 16 hexadecimal digits, the name in its certificate
+   *
+   * @param bridgeId Text, such as the bridgeid a bridge answers
+   * @return true It's a bridge id
+   */
+  bool isBridgeId(
+    std::string_view bridgeId
+  );
+
+
+  /**
    * @brief Registers which bridge an address belongs to, for the certificate checks
    *
    * @param bridgeAddress Address of the bridge
@@ -37,8 +49,9 @@ sFgDAiEA1Fj/C3AN5psFMjo0//mrQebo0eKd3aWRx+pQY08mk48=
    * @param requireVerification Whether the bridge's certificate passed the check before: then it
    *                            must always pass it. Bridges whose certificate never did (other CA,
    *                            old firmware) are accepted unverified, as before the checks existed
+   * @return false The id isn't a bridge id, and nothing was registered
    */
-  void registerBridge(
+  bool registerBridge(
     const std::string& bridgeAddress,
     const std::string& bridgeId,
     bool requireVerification
