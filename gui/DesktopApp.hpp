@@ -100,6 +100,9 @@ namespace Halomux::Gui
 
     void _startService();
 
+    // Starts the service if it doesn't answer, refreshes the tray otherwise
+    void _ensureService();
+
 
     /**
      * @brief Shows the window if the current notice wasn't accepted yet

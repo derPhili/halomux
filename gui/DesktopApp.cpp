@@ -68,6 +68,12 @@ namespace Halomux::Gui
       m_refreshTimer.start(RefreshInterval);
     }
 
+    _ensureService();
+  }
+
+
+  void DesktopApp::_ensureService()
+  {
     // Started from the desktop while the service is stopped: start it
     QNetworkReply* reply = m_network.get(QNetworkRequest(m_baseUrl.resolved(QUrl("/api/version"))));
     connect(reply, &QNetworkReply::finished, this, [this, reply](){
@@ -120,6 +126,8 @@ namespace Halomux::Gui
       QLocalSocket* client = m_instanceServer.nextPendingConnection();
       connect(client, &QLocalSocket::readyRead, this, [this, client](){
         if(client->readAll() == "show"){
+          // Started again from the desktop, such as after a cancelled setup stopped the service
+          _ensureService();
           this->showWindow();
         }
         client->deleteLater();
