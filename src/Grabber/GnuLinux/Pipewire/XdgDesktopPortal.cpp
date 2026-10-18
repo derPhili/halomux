@@ -106,6 +106,29 @@ namespace Halomux::Grabber
         g_cancellable_cancel(capture->cancellable);
       }
 
+      if(!capture->fdReadyResolved){
+        capture->cancelled = true;
+      }
+      resolveCapture(capture, false);
+    }
+
+
+    void XdgDesktopPortal::rejectCapture(
+      Capture* capture,
+      uint32_t response
+    )
+    {
+      // Response codes of the portal requests: 1 cancelled by the user, 2 ended in another way
+      if(response == 1){
+        Core::Logger::warn("The screen selection was cancelled");
+        if(!capture->fdReadyResolved){
+          capture->cancelled = true;
+        }
+      }
+      else{
+        Core::Logger::error("The screen capture portal refused the request (response ", response, ")");
+      }
+
       resolveCapture(capture, false);
     }
 
@@ -363,8 +386,7 @@ namespace Halomux::Grabber
       g_variant_get(parameters, "(u@a{sv})", &response, &result);
 
       if(response != 0){
-        Core::Logger::warn("Failed to start screencast, denied or cancelled by user.");
-        resolveCapture(capture, false);
+        rejectCapture(capture, response);
         return;
       }
 
@@ -474,8 +496,7 @@ namespace Halomux::Grabber
       g_variant_get(parameters, "(u@a{sv})", &response, &ret);
 
       if(response != 0){
-        Core::Logger::error("failed to select source, denied or cancelled by user");
-        resolveCapture(capture, false);
+        rejectCapture(capture, response);
         return;
       }
 
@@ -575,8 +596,7 @@ namespace Halomux::Grabber
       g_variant_get(parameters, "(u@a{sv})", &response, &result);
 
       if(response != 0){
-        Core::Logger::warn("failed to create session, denied or cancelled by user");
-        resolveCapture(capture, false);
+        rejectCapture(capture, response);
         return;
       }
 

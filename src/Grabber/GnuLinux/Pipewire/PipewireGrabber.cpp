@@ -113,7 +113,12 @@ namespace Halomux::Grabber
       }
 
       if(!fdReadyFuture.get()){
-        throw Grabber::GrabberCancelled("Failed to get monitor file descriptor");
+        if(m_capture.cancelled){
+          throw Grabber::GrabberCancelled("Screen selection cancelled");
+        }
+
+        // Such as no portal yet at login: worth trying again
+        throw Grabber::GrabberUnavailable("The screen capture portal failed to provide the monitors");
       }
 
       // Names the streams in the log, and the monitors once their sizes are known
