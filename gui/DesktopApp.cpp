@@ -204,7 +204,13 @@ namespace Halomux::Gui
     m_menu.addSeparator();
 
     m_quitAction = m_menu.addAction(QIcon::fromTheme("application-exit"), QString());
-    connect(m_quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    connect(m_quitAction, &QAction::triggered, this, [this](){
+      // Closed first, so it saves its geometry and its web engine ends before the application
+      if(m_window){
+        m_window->close();
+      }
+      QApplication::quit();
+    });
 
     connect(&m_menu, &QMenu::aboutToShow, this, &DesktopApp::_refresh);
 
