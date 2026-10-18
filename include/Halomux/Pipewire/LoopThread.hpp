@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <functional>
+#include <mutex>
 #include <thread>
 
 #pragma GCC diagnostic push
@@ -78,6 +79,7 @@ namespace Halomux::Pipewire
 
     pw_main_loop* m_loop{nullptr};
     spa_source* m_quitEvent{nullptr};
+    std::mutex m_quitMutex;
     std::atomic<bool> m_quitRequested{false};
     // Set once the quitting call returned: the loop thread waits for it before destroying the loop
     std::atomic<bool> m_quitReturned{false};
