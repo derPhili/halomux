@@ -1,3 +1,4 @@
+#include <future>
 #include <chrono>
 #include <thread>
 
@@ -121,6 +122,30 @@ int main()
     std::thread earlyListener([&early](){early.listen();});
     earlyListener.join();
     expect("Listening ends at once after an early stop", std::chrono::steady_clock::now() - start < std::chrono::seconds(2));
+  }
+
+  // A stop right as listening starts, before httplib runs, isn't lost either
+  {
+    bool allEnded = true;
+    for(int i = 0; i < 300 && allEnded; i++){
+      auto racing = std::make_unique<HttpServer>();
+      racing->addRoute(HttpMethod::Get, "/", [](const Request&, Response&){});
+      if(!racing->bind("127.0.0.1", static_cast<unsigned>(port + 2))){
+        continue;
+      }
+
+      auto ended = std::async(std::launch::async, [&racing](){racing->listen();});
+      // Lands anywhere between the stop check and httplib running
+      std::this_thread::sleep_for(std::chrono::microseconds(i % 300));
+      racing->stop();
+      allEnded = ended.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
+      if(!allEnded){
+        // Unblocked for the test to end: the stop was lost
+        racing->stop();
+        racing.release();
+      }
+    }
+    expect("A stop racing the start of listening ends it", allEnded);
   }
 
   if(failures > 0){

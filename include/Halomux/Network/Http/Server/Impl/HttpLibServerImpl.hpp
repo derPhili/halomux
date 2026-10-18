@@ -1,8 +1,10 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <optional>
+#include <thread>
 
 #include <httplib.h>
 
@@ -175,6 +177,12 @@ namespace Halomux::Network::Http::Server
         return true;
       }
 
+      // httplib ignores a stop until it runs: a listen() that passed its check but doesn't run
+      // yet is waited for, briefly. From a handler it already runs, so this never waits there.
+      while(m_listening && !m_service->is_running()){
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+
       // Only signal the server to stop. The httplib::Server instance must outlive
       // the thread blocked in listen() and the worker currently running a handler
       // (e.g. /api/finishSetup stops the server from inside its own handler).
@@ -196,14 +204,24 @@ namespace Halomux::Network::Http::Server
 
     bool listen()
     {
-      if(!m_service || m_stopRequested){
+      if(!m_service){
         return false;
       }
 
-      return m_service->listen_after_bind();
+      // Set before the stop is checked: a stop either is seen here, or sees this and waits
+      m_listening = true;
+      if(m_stopRequested){
+        m_listening = false;
+        return false;
+      }
+
+      const bool listened = m_service->listen_after_bind();
+      m_listening = false;
+      return listened;
     }
 
     std::optional<httplib::Server> m_service;
     std::atomic<bool> m_stopRequested{false};
+    std::atomic<bool> m_listening{false};
   };
 }
