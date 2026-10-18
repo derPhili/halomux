@@ -552,9 +552,9 @@ class WebUI
     let entertainmentConfigurations = entertainmentConfigurationsData.entertainmentConfigurations;
     let currentEntertainmentConfigurationId = entertainmentConfigurationsData.currentEntertainmentConfigurationId;
 
-    if(entertainmentConfigurations.length > 1){
-      this.entertainmentConfigurationsNode.style.display = "block";
-    }
+    // Shown once there's a choice; also called again after a refused switch, so built anew
+    this.entertainmentConfigurationsNode.style.display = entertainmentConfigurations.length > 1 ? "block" : "none";
+    this.entertainmentConfigurationsSelectNode.replaceChildren();
 
     for(let entertainmentConfiguration of entertainmentConfigurations){
       let newOption = document.createElement("option");
