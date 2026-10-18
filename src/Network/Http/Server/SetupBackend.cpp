@@ -106,7 +106,7 @@ namespace Halomux::Network::Http::Server
     // PUT METHODS
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setLanguage", [this](const Request& req, Response& res){
-      if(!m_coreService->setLanguage(Serialization::Json::parse(req.body).get<std::string>())){
+      if(!m_coreService->setLanguage(readBody(req, [](const Serialization::Json& body){return body.get<std::string>();}))){
         res.status = 400;
       }
 
@@ -124,10 +124,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/validateBridgeAddress", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      Serialization::Json jsonBridgeAddressData = Serialization::Json::parse(data);
-
-      std::string bridgeAddress = jsonBridgeAddressData.at("bridgeAddress");
+      const std::string bridgeAddress = readBody(req, [](const Serialization::Json& body){return body.at("bridgeAddress").get<std::string>();});
 
       Serialization::Json jsonResponse = {{"succeeded", m_coreService->validateBridgeAddress(bridgeAddress)}};
 
@@ -138,10 +135,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/validateCredentials", [this](const Request& req, Response& res){
-      const std::string& data = req.body;
-      Serialization::Json jsonCredentials = Serialization::Json::parse(data);
-
-      auto credentials = jsonCredentials.get<Hue::Auth::Credentials>();
+      const auto credentials = readBody(req, [](const Serialization::Json& body){return body.get<Hue::Auth::Credentials>();});
 
       Serialization::Json jsonResponse = {{"succeeded", m_coreService->validateCredentials(credentials)}};
 

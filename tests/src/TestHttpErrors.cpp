@@ -59,7 +59,12 @@ int main()
   // Errors of the handlers become answers of the same shape
   HttpServer server;
   server.addRoute(HttpMethod::Put, "/json", [](const Request& req, Response& res){
-    res.body = Json{{"value", Json::parse(req.body).at("value").get<int>()}}.dump();
+    const int value = readBody(req, [](const Json& body){return body.at("value").get<int>();});
+    res.body = Json{{"value", value}}.dump();
+  });
+  // Such as an unexpected answer of the bridge: not the client's error, and not disclosed
+  server.addRoute(HttpMethod::Get, "/internalJson", [](const Request&, Response& res){
+    res.body = Json::parse(R"({"field": 1})").at("missing").dump();
   });
   server.addRoute(HttpMethod::Get, "/channel/:channelId", [](const Request& req, Response& res){
     res.body = Json{{"channelId", channelIdOf(req)}}.dump();
@@ -103,6 +108,10 @@ int main()
 
   const auto conflict = client.Get("/conflict");
   expect("Chosen status kept", conflict && conflict->status == 409 && errorShaped(conflict));
+
+  const auto internalJson = client.Get("/internalJson");
+  expect("Internal JSON error is a server error", internalJson && internalJson->status == 500 && errorShaped(internalJson));
+  expect("Internal JSON error not disclosed", internalJson && internalJson->body.find("missing") == std::string::npos);
 
   const auto bug = client.Get("/bug");
   expect("Unexpected error is a server error", bug && bug->status == 500 && errorShaped(bug));

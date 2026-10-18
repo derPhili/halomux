@@ -93,10 +93,6 @@ namespace Halomux::Network::Http::Server
         catch(const HttpError& e){
           w = _errorResponse(e.status(), e.what());
         }
-        catch(const nlohmann::json::exception& e){
-          // Malformed body: missing fields, wrong types, invalid JSON
-          w = _errorResponse(400, std::string("malformed request: ") + e.what());
-        }
         catch(const std::exception& e){
           // A bug rather than a bad request: logged, not disclosed
           Core::Logger::error("Request ", req.method, " ", req.path, " failed: ", e.what());
