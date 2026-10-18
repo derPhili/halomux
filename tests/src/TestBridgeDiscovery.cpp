@@ -1,3 +1,5 @@
+#include <memory>
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -108,7 +110,10 @@ int main()
 
   // Every truncation is rejected or read safely, never read beyond the message
   for(size_t size = 0; size < valid.bytes.size(); size++){
-    Hue::Api::parseDiscoveryAnswer(valid.bytes.data(), size);
+    // Each in an allocation of its exact size, so AddressSanitizer catches any read beyond it
+    const auto truncated = std::make_unique<uint8_t[]>(size);
+    std::copy_n(valid.bytes.data(), size, truncated.get());
+    Hue::Api::parseDiscoveryAnswer(truncated.get(), size);
   }
 
   // Another service
