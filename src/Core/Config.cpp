@@ -22,6 +22,9 @@ namespace Halomux::Core
 
     // Above, colors would barely move: at 1 they never would
     constexpr float MaxTransitionSmoothing = 0.97f;
+
+    // The profile's file, profile.json next to the configuration
+    constexpr const char* DefaultProfileName = "profile";
   }
 
   Config::Config(
@@ -415,7 +418,7 @@ namespace Halomux::Core
       .boundBackendIP = "127.0.0.1",
       .bridgeAddress = std::nullopt,
       .credentials = std::nullopt,
-      .profileName = std::nullopt,
+      .profileName = DefaultProfileName,
       .refreshRate = 0,
       .subsampleWidth = 0,
       .transitionSmoothing = 0.f,
@@ -478,6 +481,13 @@ namespace Halomux::Core
 
     if(!configData.restServerPort.has_value()){
       configData.restServerPort = defaultConfigData.restServerPort.value();
+      requireSave = true;
+    }
+
+    // Without it, the profile saved would be neither read nor kept: its first save would replace
+    // it with the current area's lamps alone
+    if(!configData.profileName.has_value()){
+      configData.profileName = DefaultProfileName;
       requireSave = true;
     }
 

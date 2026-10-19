@@ -71,6 +71,22 @@ int main()
     expect("Subsample width left automatic", config.subsampleWidth() == 0);
   }
 
+  // A configuration without profile name, such as one written again after deleting it: the
+  // profile is still the one saved, read and kept, not replaced
+  {
+    std::ofstream file(configFile);
+    file << R"({"brightness": 0.5})";
+  }
+  {
+    Core::Config config(root);
+    expect("Profile name by default", config.profileName() == "profile");
+  }
+  fs::remove(configFile);
+  {
+    Core::Config config(root);
+    expect("Profile name of a new configuration", config.profileName() == "profile");
+  }
+
   // A negative width reads as a huge unsigned one: limited like what the setter takes
   {
     std::ofstream file(configFile);

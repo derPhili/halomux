@@ -649,10 +649,6 @@ namespace Halomux::Core
     // The other areas' lamp settings are kept
     const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
 
-    if(!m_config.profileName().has_value()){
-      m_config.setProfileName("profile");
-    }
-
     // Never left truncated, whatever happens while writing
     return writeFileAtomically(profilePath(), profile.dump(2) + "\n");
   }
