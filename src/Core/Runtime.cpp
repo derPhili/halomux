@@ -179,6 +179,11 @@ namespace Halomux::Core
         return streamer;
       },
       [this](const std::string& areaId, const Hue::Api::ChannelMembers& members){_onAreaSelected(areaId, members);},
+      [this](){
+        // No lamps without their area: they'd show and be saved as if it still existed
+        auto access = m_channelStore.access();
+        access.replace(std::nullopt, {}, grabber()->monitors());
+      },
       std::chrono::duration_cast<std::chrono::milliseconds>(AreaCheckInterval)
     );
 

@@ -89,6 +89,7 @@ namespace
     FakeBridge* bridge;
     std::vector<std::string> streamersCreated;
     std::vector<std::string> selected;
+    int lost{0};
     int reconnects{0};
     std::chrono::milliseconds streamerTeardown{0};
     std::unique_ptr<Core::AreaSession> session;
@@ -106,6 +107,7 @@ namespace
           return std::make_unique<FakeStreamer>(&reconnects, streamerTeardown);
         },
         [this](const std::string& areaId, const Hue::Api::ChannelMembers&){selected.push_back(areaId);},
+        [this](){lost++;},
         0ms // No watchdog thread: tick() is called by the test
       );
     }
@@ -246,6 +248,17 @@ int main()
     expect("Deleted area replaced", h.session->currentAreaId() == "pc");
     expect("Lamps of the other area loaded", !h.selected.empty() && h.selected.back() == "pc");
     expect("Streamer for the other area", !h.streamersCreated.empty() && h.streamersCreated.back() == "pc");
+  }
+
+  // The only area deleted in the Hue app: its lamps are dropped, not kept as if it still existed
+  {
+    Harness h({{"garage", {.name = "Garage"}}});
+    h.session->start("garage");
+    h.bridge->configuredAreas.clear();
+    h.bridge->status = std::nullopt;
+    h.session->tick();
+    expect("No area left", !h.session->currentAreaId().has_value());
+    expect("Lost area reported", h.lost == 1);
   }
 
   // Replacing a streamer that takes long to end doesn't hold the streaming loop

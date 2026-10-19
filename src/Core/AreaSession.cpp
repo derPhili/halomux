@@ -10,11 +10,13 @@ namespace Halomux::Core
     std::unique_ptr<Hue::Api::BridgeApi> bridge,
     StreamerFactory streamerFactory,
     SelectedCallback onSelected,
+    LostCallback onLost,
     std::chrono::milliseconds watchInterval
   ):
   m_bridge(std::move(bridge)),
   m_streamerFactory(std::move(streamerFactory)),
   m_onSelected(std::move(onSelected)),
+  m_onLost(std::move(onLost)),
   m_watchInterval(watchInterval)
   {}
 
@@ -71,6 +73,8 @@ namespace Halomux::Core
           std::lock_guard stateLock(m_stateMutex);
           m_currentAreaId.reset();
         }
+        // Its lamps go with it, even if no other area is left to replace them
+        m_onLost();
         _ensureSelection(false);
       }
       return;

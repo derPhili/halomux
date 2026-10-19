@@ -55,7 +55,7 @@ namespace Halomux::Core
 
 
   void ChannelStore::Access::replace(
-    std::string areaId,
+    std::optional<std::string> areaId,
     Hue::Api::Channels channels,
     Grabber::Monitors monitors
   )
