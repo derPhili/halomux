@@ -25,7 +25,7 @@ namespace Halomux::Hue::Api
    *        streaming connection
    *
    * @param bridgeAddress Sanitized address (see sanitizeBridgeAddress())
-   * @return std::string Host, IPv6 addresses without their brackets
+   * @return std::string Host, IPv6 addresses without their brackets, their zone plain
    */
   std::string bridgeHost(
     const std::string& bridgeAddress

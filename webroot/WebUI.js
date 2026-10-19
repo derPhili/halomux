@@ -6,6 +6,9 @@ class WebUI
     // time so dragging a handle doesn't flood the backend and responses can't arrive out of order.
     this.pendingUVs = new Map();
     this.uvRequestInFlight = false;
+    // Gamma factors to send, by lamp, one request at a time like the regions
+    this.pendingGammaFactors = new Map();
+    this.gammaRequestInFlight = false;
     // Region move waiting for the corner updates before it
     this.pendingMove = null;
 
@@ -199,6 +202,8 @@ class WebUI
       let isCurrentChannel = this.screenWidget.currentChannel && this.screenWidget.currentChannel.channelId == pending.channelId;
       if(isCurrentChannel && this.pendingUVs.size == 0){
         this.screenWidget.uvCallback(checkedUVs);
+        // Moved left or right of other lamps, for the scenes
+        this.staticScene.refreshLamps();
       }
     })
     .catch((error) => {log(error);})
@@ -231,6 +236,8 @@ class WebUI
         this.lampSwatches[channelId] = channel.node.querySelector(".lampSwatch");
       }
 
+      // Moved left or right of other lamps, for the scenes
+      this.staticScene.refreshLamps();
       this._refreshMonitors();
     })
     .catch((error) => {log(error);})
@@ -308,6 +315,8 @@ class WebUI
       this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth, monitors);
       this._redrawScreenWidget();
       this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, displayInfo.subsampleWidth);
+      // The scenes order the lamps across the monitors' arrangement
+      this.staticScene.refreshLamps();
     }
   }
 
@@ -326,11 +335,38 @@ class WebUI
     const channel = this.screenWidget.currentChannel;
     channel.gammaFactor = gammaFactor;
 
-    let promise = RequestUtils.put(`/api/setChannelGammaFactor/${channel.channelId}`, JSON.stringify({gammaFactor : gammaFactor}));
-    promise.then((gammaFactorData) => {
-      channel.gammaFactor = Utils.truncate(gammaFactorData.gammaFactor, 2);
+    // Sent one after the other, the newest of each lamp: in parallel, an older one could arrive
+    // last and be the one saved
+    this.pendingGammaFactors.set(channel.channelId, {channel : channel, gammaFactor : gammaFactor});
+    if(!this.gammaRequestInFlight){
+      this._sendPendingGammaFactor();
+    }
+  }
+
+
+  _sendPendingGammaFactor()
+  {
+    let next = this.pendingGammaFactors.entries().next();
+    if(next.done){
+      return;
+    }
+
+    let [channelId, pending] = next.value;
+    this.pendingGammaFactors.delete(channelId);
+    this.gammaRequestInFlight = true;
+
+    RequestUtils.put(`/api/setChannelGammaFactor/${channelId}`, JSON.stringify({gammaFactor : pending.gammaFactor}))
+    .then((gammaFactorData) => {
+      // A newer one waiting stays shown
+      if(!this.pendingGammaFactors.has(channelId)){
+        pending.channel.gammaFactor = Utils.truncate(gammaFactorData.gammaFactor, 2);
+      }
+    })
+    .catch((error) => {log(error);})
+    .finally(() => {
+      this.gammaRequestInFlight = false;
+      this._sendPendingGammaFactor();
     });
-    promise.catch((error) => {log(error);});
   }
 
 
@@ -556,8 +592,9 @@ class WebUI
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
     this.screenWidget.setDimensions(x, y, subsampleWidth, displayInfo.monitors);
-    // The lamps may have arrived before the monitors
+    // The lamps may have arrived before the monitors, which the scenes order them across
     this._redrawScreenWidget();
+    this.staticScene.refreshLamps();
     this._monitorsCallback(displayInfo);
     this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, subsampleWidth);
   }
@@ -945,6 +982,8 @@ class WebUI
 
   _askStopConfirmation()
   {
+    // Not the answer of a former attempt
+    document.getElementById("stopError").textContent = "";
     document.getElementById("confirmStopSection").style.display = "block";
     // On the harmless answer
     this._showOverlay(true, this.cancelStopButton);
@@ -974,6 +1013,14 @@ class WebUI
     }
 
     if(shown){
+      // Named after its visible section's first text, for screen readers
+      const section = [...this.overlay.querySelector(".overlayContent").children].find(node => node.style.display == "block");
+      const label = section && section.querySelector("p, strong");
+      if(label){
+        label.id = label.id || `${section.id}Label`;
+        this.overlay.setAttribute("aria-labelledby", label.id);
+      }
+
       (focusNode || this.overlay.querySelector(".overlayContent")).focus();
     }
     else if(wasShown && this.focusBeforeOverlay && document.contains(this.focusBeforeOverlay)){

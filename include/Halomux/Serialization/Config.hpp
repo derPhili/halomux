@@ -1,8 +1,13 @@
 #pragma once
 
+#include <limits>
+#include <stdexcept>
+
 #include <Halomux/Serialization/JsonSerializer.hpp>
 #include <Halomux/Serialization/Credentials.hpp>
+#include <Halomux/Serialization/Numbers.hpp>
 #include <Halomux/Core/Config.hpp>
+#include <Halomux/Core/Logger.hpp>
 
 
 namespace Halomux::Serialization
@@ -102,6 +107,10 @@ namespace Halomux::Serialization
         jsonConfigData["bridgeCertificateVerified"] = *configData.bridgeCertificateVerified;
       }
 
+      if(configData.bridgePublicKey.has_value()){
+        jsonConfigData["bridgePublicKey"] = *configData.bridgePublicKey;
+      }
+
       if(configData.noticeAccepted.has_value()){
         jsonConfigData["noticeAccepted"] = {
           {"version", configData.noticeAccepted->version},
@@ -136,9 +145,22 @@ namespace Halomux::Serialization
       Halomux::Core::Config::Data& configData
     )
     {
-      if(jsonConfigData.contains("restServerPort")){
-        configData.restServerPort = jsonConfigData.at("restServerPort");
-      }
+      // Whole numbers in their range, not wrapped: others keep their default, such as a negative
+      // number read as a huge unsigned one
+      const auto readUnsigned = [&jsonConfigData](const char* key, std::optional<unsigned>& value, unsigned min, unsigned max){
+        if(!jsonConfigData.contains(key)){
+          return;
+        }
+
+        try{
+          value = readInteger(jsonConfigData.at(key), min, max);
+        }
+        catch(const std::invalid_argument&){
+          Halomux::Core::Logger::warn("Ignoring the invalid ", key, " of the configuration: ", jsonConfigData.at(key).dump());
+        }
+      };
+
+      readUnsigned("restServerPort", configData.restServerPort, 1u, 65535u);
 
       if(jsonConfigData.contains("boundBackendIP")){
         configData.boundBackendIP = jsonConfigData.at("boundBackendIP");
@@ -156,13 +178,8 @@ namespace Halomux::Serialization
         configData.profileName.emplace(jsonConfigData.at("profileName"));
       }
 
-      if(jsonConfigData.contains("refreshRate")){
-        configData.refreshRate = jsonConfigData.at("refreshRate");
-      }
-
-      if(jsonConfigData.contains("subsampleWidth")){
-        configData.subsampleWidth = jsonConfigData.at("subsampleWidth");
-      }
+      readUnsigned("refreshRate", configData.refreshRate, 0u, std::numeric_limits<unsigned>::max());
+      readUnsigned("subsampleWidth", configData.subsampleWidth, 0u, std::numeric_limits<unsigned>::max());
 
       if(jsonConfigData.contains("transitionSmoothing")){
         configData.transitionSmoothing = jsonConfigData.at("transitionSmoothing");
@@ -202,6 +219,10 @@ namespace Halomux::Serialization
 
       if(jsonConfigData.contains("bridgeCertificateVerified")){
         configData.bridgeCertificateVerified = jsonConfigData.at("bridgeCertificateVerified");
+      }
+
+      if(jsonConfigData.contains("bridgePublicKey")){
+        configData.bridgePublicKey = jsonConfigData.at("bridgePublicKey");
       }
 
       if(jsonConfigData.contains("noticeAccepted")){

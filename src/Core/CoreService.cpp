@@ -58,6 +58,9 @@ namespace Halomux::Core
     const std::string& bridgeAddress
   )
   {
+    // One setup request at a time: the setup page may send them together, from two tabs too
+    std::lock_guard setupLock(m_setupMutex);
+
     // Until another bridge passes, none is to be paired with
     m_setupBridgeTrust.invalidate();
 
@@ -68,8 +71,11 @@ namespace Halomux::Core
       return std::nullopt;
     }
 
-    // Not identified yet: only the CA of its certificate can be checked
-    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(sanitizedAddress));
+    // Not identified yet: only the CA of its certificate can be checked. Its public key is read,
+    // to be required later if the user confirms a certificate failing the check
+    auto tls = Hue::Api::bridgeTls(sanitizedAddress);
+    tls.readPublicKey = true;
+    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, tls);
     if(!response.has_value()){
       return std::nullopt;
     }
@@ -81,14 +87,22 @@ namespace Halomux::Core
         return std::nullopt;
       }
 
-      m_config.setBridgeAddress(sanitizedAddress);
-      m_config.setBridgeIdentity(responseData.at("bridgeid"), response->tlsVerified());
-      _registerBridge();
-
       // Verified once, the bridge is checked as verified from then on
-      const bool verified = m_config.bridgeCertificateVerified();
-      m_setupBridgeTrust.validated(sanitizedAddress, verified);
-      return verified;
+      const SetupBridgeTrust::Bridge bridge{
+        .address = sanitizedAddress,
+        .bridgeId = responseData.at("bridgeid").get<std::string>(),
+        .verified = m_config.bridgeVerifiedWith(responseData.at("bridgeid").get<std::string>(), response->tlsVerified()),
+        .publicKeyPin = response->publicKeyPin()
+      };
+      m_setupBridgeTrust.validated(bridge);
+
+      // Saved once trusted: right away if verified, otherwise once the user confirmed it. Saved
+      // before, a bridge whose warning the user cancelled would get the credentials at the next start
+      if(bridge.verified){
+        _takeOverBridge(bridge);
+      }
+
+      return bridge.verified;
     }
     catch(const std::exception& e){
       Logger::error(e.what());
@@ -97,14 +111,34 @@ namespace Halomux::Core
   }
 
 
-  bool CoreService::acceptUnverifiedBridge()
+  bool CoreService::acceptUnverifiedBridge(
+    const std::string& bridgeAddress
+  )
   {
-    if(!m_setupBridgeTrust.acceptUnverified()){
+    std::lock_guard setupLock(m_setupMutex);
+
+    // The address the user saw: another one validated meanwhile isn't confirmed by it
+    const auto bridge = m_setupBridgeTrust.acceptUnverified(Hue::Api::sanitizeBridgeAddress(bridgeAddress));
+    if(!bridge.has_value()){
       return false;
     }
 
-    Logger::warn("Pairing with a bridge whose certificate isn't signed by the Hue CA, as confirmed by the user");
+    if(m_config.bridgeAddress() != bridge->address || m_config.bridgeId() != bridge->bridgeId){
+      Logger::warn("Pairing with a bridge whose certificate isn't signed by the Hue CA, as confirmed by the user");
+      _takeOverBridge(*bridge);
+    }
+
     return true;
+  }
+
+
+  void CoreService::_takeOverBridge(
+    const SetupBridgeTrust::Bridge& bridge
+  )
+  {
+    // Credentials of another bridge are dropped: they'd be sent to this one
+    m_config.setBridge(bridge.address, bridge.bridgeId, bridge.verified, bridge.publicKeyPin);
+    _registerBridge();
   }
 
 
@@ -112,10 +146,15 @@ namespace Halomux::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    // The setup validates the address first, and pairs only with a bridge it trusts
-    if(!m_config.bridgeAddress().has_value() || !m_setupBridgeTrust.trusted(*m_config.bridgeAddress())){
+    std::lock_guard setupLock(m_setupMutex);
+
+    // The setup validates the address first, and pairs only with a bridge it trusts. Read once:
+    // the address checked is the one the credentials go to
+    const auto savedAddress = m_config.bridgeAddress();
+    if(!savedAddress.has_value() || !m_setupBridgeTrust.trusted(*savedAddress)){
       return false;
     }
+    const std::string bridgeAddress = *savedAddress;
 
     // The bridge only checks the username: a mistyped clientkey would fail every streaming connection
     if(!credentials.hasValidClientkey()){
@@ -123,7 +162,6 @@ namespace Halomux::Core
       return false;
     }
 
-    const std::string bridgeAddress = m_config.bridgeAddress().value();
     const Network::Http::Client::Headers headers = {{"hue-application-key", credentials.username()}};
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/clip/v2/resource/bridge", "GET", "", headers, Hue::Api::bridgeTls(bridgeAddress));
     if(!response.has_value()){
@@ -150,17 +188,20 @@ namespace Halomux::Core
 
   Serialization::Json CoreService::registerNewUser()
   {
-    // The setup validates the address first
-    if(!m_config.bridgeAddress().has_value()){
+    std::lock_guard setupLock(m_setupMutex);
+
+    // The setup validates the address first. Read once: the address checked is the one paired with
+    const auto bridgeAddress = m_config.bridgeAddress();
+    if(!bridgeAddress.has_value()){
       return {{"succeeded", false}, {"error", "no bridge address yet"}};
     }
 
     // Any device of the network could pass itself off as the bridge and keep the credentials
-    if(!m_setupBridgeTrust.trusted(*m_config.bridgeAddress())){
+    if(!m_setupBridgeTrust.trusted(*bridgeAddress)){
       return {{"succeeded", false}, {"error", "the bridge isn't confirmed"}};
     }
 
-    auto response = Hue::Api::ApiTools::registerNewUser(m_config.bridgeAddress().value());
+    auto response = Hue::Api::ApiTools::registerNewUser(*bridgeAddress);
 
     if(!response.has_value()){
       return {{"succeeded", false}, {"error", "unreachable bridge"}};
@@ -441,6 +482,9 @@ namespace Halomux::Core
     unsigned refreshRate
   )
   {
+    // One change at a time: two quick ones could leave the loop and the capture at different rates
+    std::lock_guard lock(m_refreshRateMutex);
+
     refreshRate = std::min(refreshRate, maxRefreshRate());
 
     m_config.setRefreshRate(refreshRate);
@@ -612,10 +656,6 @@ namespace Halomux::Core
     // The other areas' lamp settings are kept
     const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
 
-    if(!m_config.profileName().has_value()){
-      m_config.setProfileName("profile");
-    }
-
     // Never left truncated, whatever happens while writing
     return writeFileAtomically(profilePath(), profile.dump(2) + "\n");
   }
@@ -634,13 +674,26 @@ namespace Halomux::Core
     const auto savedId = m_config.bridgeId();
     if(!savedId.has_value() || !Hue::Api::isBridgeId(*savedId) || !m_config.bridgeCertificateVerified()){
       const std::string bridgeAddress = m_config.bridgeAddress().value();
-      auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
+
+      // Registered as saved first: the identification itself then requires the key it had
+      if(savedId.has_value()){
+        Hue::Api::registerBridge(bridgeAddress, *savedId, false, m_config.bridgePublicKey().value_or(""));
+      }
+
+      auto tls = Hue::Api::bridgeTls(bridgeAddress);
+      tls.readPublicKey = true;
+      auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, tls);
 
       try{
         if(response.has_value()){
           const auto answer = response->asJson();
           if(answer.contains("bridgeid") && answer.at("bridgeid").is_string() && Hue::Api::isBridgeId(answer.at("bridgeid").get<std::string>())){
             m_config.setBridgeIdentity(answer.at("bridgeid").get<std::string>(), response->tlsVerified());
+
+            // Set up before keys were required: its key is learnt now, and required from then on
+            if(!response->tlsVerified() && !m_config.bridgePublicKey().has_value() && !response->publicKeyPin().empty()){
+              m_config.setBridgePublicKey(response->publicKeyPin());
+            }
           }
         }
       }
@@ -661,13 +714,13 @@ namespace Halomux::Core
     }
 
     const bool verified = m_config.bridgeCertificateVerified();
-    if(!Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified)){
+    if(!Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified, m_config.bridgePublicKey().value_or(""))){
       Logger::error("The bridge answered no valid id: its certificate can't be checked against it");
       return;
     }
 
     if(!verified){
-      Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");
+      Logger::warn("The certificate of the bridge isn't signed by the Hue CA: only its public key, as it was when the bridge was set up, is checked");
     }
   }
 

@@ -49,12 +49,15 @@ sFgDAiEA1Fj/C3AN5psFMjo0//mrQebo0eKd3aWRx+pQY08mk48=
    * @param requireVerification Whether the bridge's certificate passed the check before: then it
    *                            must always pass it. Bridges whose certificate never did (other CA,
    *                            old firmware) are accepted unverified, as before the checks existed
+   * @param publicKeyPin Public key the certificate of a bridge accepted unverified must have
+   *                     (see TlsPolicy::pinnedPublicKey), empty for any
    * @return false The id isn't a bridge id, and nothing was registered
    */
   bool registerBridge(
     const std::string& bridgeAddress,
     const std::string& bridgeId,
-    bool requireVerification
+    bool requireVerification,
+    const std::string& publicKeyPin = {}
   );
 
 

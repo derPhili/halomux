@@ -60,6 +60,8 @@ namespace Halomux::Core
       std::optional<std::string> bridgeId;
       // Whether the bridge's certificate passed the check once: then it always has to
       std::optional<bool> bridgeCertificateVerified{false};
+      // Public key of a bridge whose certificate didn't, required from then on
+      std::optional<std::string> bridgePublicKey;
       std::optional<std::string> restoreToken;
     };
 
@@ -221,17 +223,16 @@ namespace Halomux::Core
     std::optional<std::string> restoreToken() const;
 
 
-    // Setters
     /**
-     * @brief Registers Hue bridge address
-     * 
-     * @param bridgeAddress Address of the Hue bridge
+     * @brief Returns the public key of the bridge's certificate, required while the certificate
+     *        doesn't pass the check (see Network::Http::Client::TlsPolicy::pinnedPublicKey)
+     *
+     * @return std::optional<std::string> Its pin, nothing if unknown
      */
-    void setBridgeAddress(
-      const std::string& bridgeAddress
-    );
+    std::optional<std::string> bridgePublicKey() const;
 
 
+    // Setters
     /**
      * @brief Registers credentials
      * 
@@ -239,16 +240,6 @@ namespace Halomux::Core
      */
     void setCredentials(
       const Hue::Auth::Credentials& credentials
-    );
-
-
-    /**
-     * @brief Registers current profile name
-     * 
-     * @param profileName Profile name to use
-     */
-    void setProfileName(
-      const std::string& profileName
     );
 
 
@@ -401,6 +392,48 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Takes over the bridge the setup trusts: its address and identity
+     *
+     * Credentials paired with another bridge, or at another address, are dropped: they'd be sent
+     * to this one.
+     *
+     * @param bridgeAddress Address of the bridge
+     * @param bridgeId Id of the bridge, the name its certificate carries
+     * @param certificateVerified Whether its certificate passed the check (see setBridgeIdentity())
+     * @param publicKeyPin Public key of its certificate (see bridgePublicKey()), empty if unknown
+     */
+    void setBridge(
+      const std::string& bridgeAddress,
+      const std::string& bridgeId,
+      bool certificateVerified,
+      const std::string& publicKeyPin = {}
+    );
+
+
+    /**
+     * @brief Registers the public key of the bridge's certificate, learnt after it was set up
+     *
+     * @param publicKeyPin Its pin (see bridgePublicKey())
+     */
+    void setBridgePublicKey(
+      const std::string& publicKeyPin
+    );
+
+
+    /**
+     * @brief Tells whether a bridge would count as verified once its identity is registered
+     *
+     * @param bridgeId Id of the bridge
+     * @param certificateVerified Whether its certificate passed the check now
+     * @return true It did, or the same bridge did before
+     */
+    bool bridgeVerifiedWith(
+      const std::string& bridgeId,
+      bool certificateVerified
+    ) const;
+
+
+    /**
      * @brief Registers the identity of the bridge
      *
      * @param bridgeId Id of the bridge, the name its certificate carries
@@ -443,6 +476,18 @@ namespace Halomux::Core
      */
     void _save(
       std::unique_lock<std::mutex>& lock
+    );
+
+
+    /**
+     * @brief Tells whether a bridge is the one saved, whatever the case of its id
+     *
+     * @param data Configuration, read under m_mutex
+     * @param bridgeId Id of the bridge
+     */
+    static bool _isSavedBridge(
+      const Data& data,
+      const std::string& bridgeId
     );
 
 

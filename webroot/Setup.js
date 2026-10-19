@@ -39,7 +39,8 @@ class SetupWizard
     this.bridgeAddressNode.addEventListener("keydown", (event) => {if(event.key == "Enter"){this._validateAddress();}});
     this.bridgeCandidatesNode = document.getElementById("bridgeCandidates");
     this.bridgeSearchNode = document.getElementById("bridgeSearch");
-    document.getElementById("validateAddressButton").addEventListener("click", () => {this._validateAddress();});
+    this.validateAddressButton = document.getElementById("validateAddressButton");
+    this.validateAddressButton.addEventListener("click", () => {this._validateAddress();});
     this.bridgeAddressNode.addEventListener("input", () => {this._showUnverifiedBridge(false);});
     this.unverifiedBridgeNode = document.getElementById("unverifiedBridgeSection");
     this.unverifiedBridgeConfirmNode = document.getElementById("unverifiedBridgeConfirm");
@@ -208,6 +209,30 @@ class SetupWizard
       return;
     }
 
+    // One request at a time, such as on a double click: a second confirmation would check the
+    // address again, which takes the confirmation back
+    if(this.addressRequestPending){
+      return;
+    }
+
+    const request = (url, body, onAnswer) => {
+      this.addressRequestPending = true;
+      this.validateAddressButton.disabled = true;
+
+      RequestUtils.put(url, JSON.stringify(body))
+      .then((data) => {
+        // Another address was picked meanwhile, or the step was left: the answer isn't for it
+        if(this.currentStep == "bridge" && this.bridgeAddressNode.value.trim() == address){
+          onAnswer(data);
+        }
+      })
+      .catch((error) => {log(error);})
+      .finally(() => {
+        this.addressRequestPending = false;
+        this.validateAddressButton.disabled = false;
+      });
+    };
+
     // Its certificate isn't signed by the Hue CA: paired only once the user confirmed the address
     if(!this.unverifiedBridgeNode.hidden){
       if(!this.unverifiedBridgeConfirmNode.checked){
@@ -215,23 +240,21 @@ class SetupWizard
         return;
       }
 
-      RequestUtils.put("/api/acceptUnverifiedBridge", JSON.stringify(null))
-      .then((data) => {
+      // The address confirmed goes along: another one checked meanwhile isn't confirmed by it
+      request("/api/acceptUnverifiedBridge", {bridgeAddress : address}, (data) => {
         if(data.succeeded){
           this._showStep("pairing");
         }
         else{
-          // Validated again meanwhile, from another page: start over
+          // Another address was checked meanwhile, such as from another page
           this._showUnverifiedBridge(false);
-          this._validateAddress();
+          this._showError("bridgeAddressError", t("Another address was checked meanwhile. Continue to check this one again."));
         }
-      })
-      .catch((error) => {log(error);});
+      });
       return;
     }
 
-    RequestUtils.put("/api/validateBridgeAddress", JSON.stringify({bridgeAddress : address}))
-    .then((data) => {
+    request("/api/validateBridgeAddress", {bridgeAddress : address}, (data) => {
       if(!data.succeeded){
         this._showError("bridgeAddressError", t("No Hue bridge answers at {address}.", {address : address}));
       }
@@ -242,8 +265,7 @@ class SetupWizard
         this._showError("bridgeAddressError", "");
         this._showUnverifiedBridge(true);
       }
-    })
-    .catch((error) => {log(error);});
+    });
   }
 
 
@@ -252,6 +274,11 @@ class SetupWizard
   {
     this.unverifiedBridgeNode.hidden = !shown;
     this.unverifiedBridgeConfirmNode.checked = false;
+
+    // Announced, and the confirmation next for the keyboard
+    if(shown){
+      this.unverifiedBridgeConfirmNode.focus();
+    }
   }
 
 

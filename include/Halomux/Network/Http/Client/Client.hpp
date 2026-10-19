@@ -36,6 +36,13 @@ namespace Halomux::Network::Http::Client
 
     // Whether a certificate failing the check is accepted anyway, unverified
     bool allowUnverified{false};
+
+    // Whether the answer tells the certificate's public key (see Response::publicKeyPin())
+    bool readPublicKey{false};
+
+    // Public key a certificate failing the check must have, "sha256//" and the base64 SHA-256
+    // of its DER encoding; empty for any. A certificate passing the check needs none
+    std::string pinnedPublicKey;
   };
 
   class Response
@@ -43,10 +50,12 @@ namespace Halomux::Network::Http::Client
   public:
     Response(
       const std::string& response,
-      bool tlsVerified = true
+      bool tlsVerified = true,
+      const std::string& publicKeyPin = {}
     ):
     m_response(response),
-    m_tlsVerified(tlsVerified)
+    m_tlsVerified(tlsVerified),
+    m_publicKeyPin(publicKeyPin)
     {}
 
     const std::string& asString() const
@@ -69,9 +78,21 @@ namespace Halomux::Network::Http::Client
       return m_tlsVerified;
     }
 
+    /**
+     * @brief Returns the public key of the server certificate, as TlsPolicy::pinnedPublicKey
+     *        takes it
+     *
+     * @return const std::string& Its pin, empty unless TlsPolicy::readPublicKey asked for it
+     */
+    const std::string& publicKeyPin() const
+    {
+      return m_publicKeyPin;
+    }
+
   private:
     const std::string m_response{};
     const bool m_tlsVerified{true};
+    const std::string m_publicKeyPin{};
   };
 
 

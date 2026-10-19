@@ -337,7 +337,11 @@ namespace Halomux::Grabber
     for(size_t i = 0; i < monitors.size() && i < m_pwData.streams.size(); i++){
       const StreamData& stream = *m_pwData.streams[i];
       // As negotiated last: a resolution or scale changed while capturing renegotiates the stream
-      if(stream.pixelWidth > 0 && stream.pixelHeight > 0){
+      if(stream.pixelWidth > 0 && stream.pixelHeight > 0 && (stream.pixelWidth != monitors[i].pixelWidth || stream.pixelHeight != monitors[i].pixelHeight)){
+        // A description made of the former size tells the new one
+        if(monitors[i].description == fallbackMonitorDescription(i, monitors[i].pixelWidth, monitors[i].pixelHeight)){
+          monitors[i].description = fallbackMonitorDescription(i, stream.pixelWidth, stream.pixelHeight);
+        }
         monitors[i].pixelWidth = stream.pixelWidth;
         monitors[i].pixelHeight = stream.pixelHeight;
       }
@@ -750,8 +754,12 @@ namespace Halomux::Grabber
       Core::Logger::log("Capture path (", stream->label, "): GPU (DMA-BUF, modifier 0x", std::hex, stream->format.info.raw.modifier, std::dec, ")");
     }
 
-    stream->pixelWidth = static_cast<int>(stream->format.info.raw.size.width);
-    stream->pixelHeight = static_cast<int>(stream->format.info.raw.size.height);
+    {
+      // Together: read as a pair by monitors()
+      auto lock = std::lock_guard(pw->processingInfoMutex);
+      stream->pixelWidth = static_cast<int>(stream->format.info.raw.size.width);
+      stream->pixelHeight = static_cast<int>(stream->format.info.raw.size.height);
+    }
     stream->hasFormat = true;
 
     // Ready once every monitor has its format

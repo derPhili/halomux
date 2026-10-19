@@ -56,10 +56,13 @@ namespace Halomux::Core
      * @brief Trusts the validated bridge, whose certificate isn't signed by the Hue CA, as the
      *        user confirmed that it's their bridge
      *
+     * @param bridgeAddress Address the user confirmed
      * @return true The setup may now pair with it
-     * @return false No such bridge awaited the confirmation
+     * @return false No bridge was validated at that address
      */
-    bool acceptUnverifiedBridge();
+    bool acceptUnverifiedBridge(
+      const std::string& bridgeAddress
+    );
 
 
     /**
@@ -583,13 +586,27 @@ namespace Halomux::Core
     void _registerBridge();
 
 
+    /**
+     * @brief Saves the bridge the setup trusts, and registers it for the certificate checks
+     *
+     * @param bridge The bridge
+     */
+    void _takeOverBridge(
+      const SetupBridgeTrust::Bridge& bridge
+    );
+
+
     Runtime& m_runtime;
     Config& m_config;
 
     std::mutex m_profileMutex;
+    // Applies a refresh rate to the configuration, the loop and the capture together
+    std::mutex m_refreshRateMutex;
 
     // The bridge the setup may pair with
     SetupBridgeTrust m_setupBridgeTrust;
+    // One setup request at a time: they read and write the bridge and its credentials
+    std::mutex m_setupMutex;
 
     std::mutex m_setupBackendMutex;
     Network::Http::Server::SetupBackend* m_setupBackend{nullptr};

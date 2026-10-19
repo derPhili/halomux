@@ -109,6 +109,9 @@ int main()
     expect("Center with negative coordinates", std::abs(desktopCenterX({{0.f, 0.f}, {1.f, 1.f}}, {-1920, 0, 1920, 1080}, shifted) - 960.f / 4480.f) < 1e-4f);
   }
 
+  // Monitors without an output are described by their number and size, which may change
+  expect("Description by number and size", fallbackMonitorDescription(1, 2560, 1440) == "Monitor 2 · 2560×1440");
+
   // subsampleWidthFor: same ratio on every monitor
   expect("Subsample of a smaller monitor", subsampleWidthFor(256, 2560, 1920) == 192);
   expect("Subsample of the reference monitor", subsampleWidthFor(256, 2560, 2560) == 256);

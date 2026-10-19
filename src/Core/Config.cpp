@@ -9,6 +9,7 @@
 #include <fstream>
 
 #include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Serialization/Config.hpp>
 
 
@@ -22,6 +23,9 @@ namespace Halomux::Core
 
     // Above, colors would barely move: at 1 they never would
     constexpr float MaxTransitionSmoothing = 0.97f;
+
+    // The profile's file, profile.json next to the configuration
+    constexpr const char* DefaultProfileName = "profile";
   }
 
   Config::Config(
@@ -164,32 +168,12 @@ namespace Halomux::Core
   }
 
 
-  void Config::setBridgeAddress(
-    const std::string& bridgeAddress
-  )
-  {
-    std::unique_lock lock(m_mutex);
-    m_configData.value().bridgeAddress.emplace(bridgeAddress);
-    _save(lock);
-  }
-
-
   void Config::setCredentials(
     const Hue::Auth::Credentials& credentials
   )
   {
     std::unique_lock lock(m_mutex);
     m_configData.value().credentials.emplace(credentials);
-    _save(lock);
-  }
-
-
-  void Config::setProfileName(
-    const std::string& profileName
-  )
-  {
-    std::unique_lock lock(m_mutex);
-    m_configData.value().profileName.emplace(profileName);
     _save(lock);
   }
 
@@ -320,23 +304,85 @@ namespace Halomux::Core
   }
 
 
+  bool Config::_isSavedBridge(
+    const Data& data,
+    const std::string& bridgeId
+  )
+  {
+    const auto lowercase = [](std::string id){
+      std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c){return std::tolower(c);});
+      return id;
+    };
+
+    return data.bridgeId.has_value() && lowercase(*data.bridgeId) == lowercase(bridgeId);
+  }
+
+
+  bool Config::bridgeVerifiedWith(
+    const std::string& bridgeId,
+    bool certificateVerified
+  ) const
+  {
+    std::lock_guard lock(m_mutex);
+    const auto& data = m_configData.value();
+
+    // Verified once, a bridge must always be: but that binds this bridge, not another one
+    return certificateVerified || (_isSavedBridge(data, bridgeId) && data.bridgeCertificateVerified.value_or(false));
+  }
+
+
+  void Config::setBridge(
+    const std::string& bridgeAddress,
+    const std::string& bridgeId,
+    bool certificateVerified,
+    const std::string& publicKeyPin
+  )
+  {
+    const bool verified = bridgeVerifiedWith(bridgeId, certificateVerified);
+
+    std::unique_lock lock(m_mutex);
+    auto& data = m_configData.value();
+
+    if(!_isSavedBridge(data, bridgeId) || data.bridgeAddress != bridgeAddress){
+      data.credentials.reset();
+    }
+
+    data.bridgeAddress = bridgeAddress;
+    data.bridgeId = bridgeId;
+    data.bridgeCertificateVerified = verified;
+    data.bridgePublicKey = publicKeyPin.empty() ? std::nullopt : std::optional<std::string>(publicKeyPin);
+    _save(lock);
+  }
+
+
+  void Config::setBridgePublicKey(
+    const std::string& publicKeyPin
+  )
+  {
+    std::unique_lock lock(m_mutex);
+    m_configData.value().bridgePublicKey = publicKeyPin;
+    _save(lock);
+  }
+
+
+  std::optional<std::string> Config::bridgePublicKey() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().bridgePublicKey;
+  }
+
+
   void Config::setBridgeIdentity(
     const std::string& bridgeId,
     bool certificateVerified
   )
   {
+    const bool verified = bridgeVerifiedWith(bridgeId, certificateVerified);
+
     std::unique_lock lock(m_mutex);
     auto& data = m_configData.value();
-
-    // Verified once, a bridge must always be: but that binds this bridge, not another one
-    const auto lowercase = [](std::string id){
-      std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c){return std::tolower(c);});
-      return id;
-    };
-    const bool sameBridge = data.bridgeId.has_value() && lowercase(*data.bridgeId) == lowercase(bridgeId);
-
     data.bridgeId = bridgeId;
-    data.bridgeCertificateVerified = (sameBridge && data.bridgeCertificateVerified.value_or(false)) || certificateVerified;
+    data.bridgeCertificateVerified = verified;
     _save(lock);
   }
 
@@ -382,7 +428,7 @@ namespace Halomux::Core
       .boundBackendIP = "127.0.0.1",
       .bridgeAddress = std::nullopt,
       .credentials = std::nullopt,
-      .profileName = std::nullopt,
+      .profileName = DefaultProfileName,
       .refreshRate = 0,
       .subsampleWidth = 0,
       .transitionSmoothing = 0.f,
@@ -396,6 +442,7 @@ namespace Halomux::Core
       .noticeAccepted = std::nullopt,
       .bridgeId = std::nullopt,
       .bridgeCertificateVerified = false,
+      .bridgePublicKey = std::nullopt,
       .restoreToken = std::nullopt
     };
 
@@ -445,6 +492,23 @@ namespace Halomux::Core
 
     if(!configData.restServerPort.has_value()){
       configData.restServerPort = defaultConfigData.restServerPort.value();
+      requireSave = true;
+    }
+
+    // As the setup saves addresses now: former versions kept a port, which the streaming
+    // connection can't resolve
+    if(configData.bridgeAddress.has_value()){
+      const std::string sanitized = Hue::Api::sanitizeBridgeAddress(*configData.bridgeAddress);
+      if(!sanitized.empty() && sanitized != *configData.bridgeAddress){
+        configData.bridgeAddress = sanitized;
+        requireSave = true;
+      }
+    }
+
+    // Without it, the profile saved would be neither read nor kept: its first save would replace
+    // it with the current area's lamps alone
+    if(!configData.profileName.has_value()){
+      configData.profileName = DefaultProfileName;
       requireSave = true;
     }
 

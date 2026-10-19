@@ -71,10 +71,48 @@ int main()
     expect("Subsample width left automatic", config.subsampleWidth() == 0);
   }
 
-  // A negative width reads as a huge unsigned one: limited like what the setter takes
+  // A configuration without profile name, such as one written again after deleting it: the
+  // profile is still the one saved, read and kept, not replaced
   {
     std::ofstream file(configFile);
-    file << R"({"subsampleWidth": -1})";
+    file << R"({"brightness": 0.5})";
+  }
+  {
+    Core::Config config(root);
+    expect("Profile name by default", config.profileName() == "profile");
+  }
+  fs::remove(configFile);
+  {
+    Core::Config config(root);
+    expect("Profile name of a new configuration", config.profileName() == "profile");
+  }
+
+  // Addresses saved by former versions, which kept the port: as the setup saves them now
+  {
+    std::ofstream file(configFile);
+    file << R"({"bridgeAddress": "192.168.0.42:443"})";
+  }
+  {
+    Core::Config config(root);
+    expect("Saved address without its port", config.bridgeAddress() == "192.168.0.42");
+  }
+
+  // Negative numbers aren't read as huge unsigned ones: such values get their default
+  {
+    std::ofstream file(configFile);
+    file << R"({"subsampleWidth": -1, "restServerPort": -1, "refreshRate": -5})";
+  }
+  {
+    Core::Config config(root);
+    expect("Negative subsample width automatic", config.subsampleWidth() == 0);
+    expect("Negative port the default one", config.restServerPort() == 8215);
+    expect("Negative refresh rate automatic", config.refreshRate() == 0);
+  }
+
+  // A width too large: limited like what the setter takes
+  {
+    std::ofstream file(configFile);
+    file << R"({"subsampleWidth": 20000})";
   }
   {
     Core::Config config(root);
@@ -93,6 +131,37 @@ int main()
     expect("Same bridge in other case stays verified", config.bridgeCertificateVerified());
     config.setBridgeIdentity("0011aabbccddeeff", false);
     expect("Another bridge isn't verified", !config.bridgeCertificateVerified());
+  }
+
+  {
+    // The setup takes over a bridge: credentials of another bridge don't go with it
+    Core::Config config(root);
+    config.setBridge("192.168.0.42", "aabbccddeeff0011", true);
+    config.setCredentials(Hue::Auth::Credentials("user", "00112233445566778899aabbccddeeff"));
+    config.setBridge("192.168.0.42", "AABBCCDDEEFF0011", false);
+    expect("Same bridge keeps its credentials", config.credentials().has_value());
+    expect("Same bridge stays verified when taken over again", config.bridgeCertificateVerified());
+    config.setBridge("192.168.0.43", "0011aabbccddeeff", false);
+    expect("Another bridge drops the credentials", !config.credentials().has_value());
+    expect("Another bridge's address saved", config.bridgeAddress() == "192.168.0.43");
+    expect("Another bridge isn't verified", !config.bridgeCertificateVerified());
+    config.setCredentials(Hue::Auth::Credentials("user", "00112233445566778899aabbccddeeff"));
+    config.setBridge("192.168.0.44", "0011aabbccddeeff", false);
+    expect("Same bridge at another address drops the credentials", !config.credentials().has_value());
+
+    // The public key of a bridge whose certificate isn't signed by the CA, pinned from then on
+    config.setBridge("192.168.0.45", "0011aabbccddeeff", false, "sha256//key");
+    expect("Public key saved", config.bridgePublicKey() == "sha256//key");
+    config.setBridge("192.168.0.46", "0011aabbccddee00", false);
+    expect("Another bridge has no key yet", !config.bridgePublicKey().has_value());
+    config.setBridgePublicKey("sha256//other");
+    expect("Public key learnt later", config.bridgePublicKey() == "sha256//other");
+
+    // Whether a bridge would be verified, before it's taken over
+    config.setBridge("192.168.0.42", "aabbccddeeff0011", true);
+    expect("Verified bridge again", config.bridgeVerifiedWith("AABBCCDDEEFF0011", false));
+    expect("Other bridge unverified", !config.bridgeVerifiedWith("0011aabbccddeeff", false));
+    expect("Other bridge verified by its certificate", config.bridgeVerifiedWith("0011aabbccddeeff", true));
   }
 
   {
