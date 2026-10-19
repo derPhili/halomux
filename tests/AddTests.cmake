@@ -271,6 +271,11 @@ halomux_add_test(HostCheck
   SOURCES ${SRC}/Network/Http/Server/HostCheck.cpp
 )
 
+# Numbers of requests and files, read without wrapping, cutting or casting out of range
+halomux_add_test(JsonNumbers
+  LIBRARIES nlohmann_json::nlohmann_json
+)
+
 # Malformed requests get 400, unknown resources 404, in one answer shape
 halomux_add_test(HttpErrors
   SOURCES ${SRC}/Network/Http/Server/HttpServer.cpp ${SRC}/Network/Http/Server/HostCheck.cpp ${SRC}/Network/Http/Server/RouteTools.cpp
