@@ -136,6 +136,8 @@ journalctl --user -u halomux.service -f
 
 Jedes Bedienelement erklärt sich in einem Tooltip.
 
+Alles lässt sich auch mit der Tastatur bedienen. Mit Tab erreichst du die Lampen, Enter oder Leertaste wählt eine aus, und ihr Pfeil-Button verschiebt sie zwischen den Listen. Den Bereich der gewählten Lampe verschieben die Pfeiltasten um eine Zelle des Subsamples, Umschalt mit den Pfeiltasten ändert seine Größe, und Alt mit links oder rechts setzt ihn auf den vorigen oder nächsten Monitor. Hat der Cursor der Gammakorrektur den Fokus, verändern die Pfeiltasten auch sie.
+
 ### Verarbeitung auf der GPU
 
 Der Compositor liefert die Bilder als DMA-BUF im Grafikspeicher. Halomux importiert sie ohne Kopie über EGL und berechnet die Lampenfarben auf der GPU: Ein Shader verkleinert das Bild auf die Subsample-Auflösung, zwei weitere Durchläufe mitteln den Bereich jeder Lampe, und zurückgelesen wird nur ein Pixel pro Lampe. Das Log zeigt den aktiven Pfad:

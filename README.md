@@ -136,6 +136,8 @@ journalctl --user -u halomux.service -f
 
 Every control explains itself in a tooltip.
 
+Everything works with the keyboard too. Tab reaches the lamps, Enter or Space selects one, and its arrow button moves it between the lists. The selected lamp's region moves with the arrow keys by one cell of the subsample, Shift and the arrow keys resize it, and Alt with left or right puts it on the previous or next monitor. The arrow keys also change the gamma correction once its cursor has the focus.
+
 ### GPU processing
 
 The compositor delivers frames as DMA-BUF in video memory. Halomux imports them through EGL without copying and computes the lamp colors on the GPU: a shader averages the frame down to the subsample resolution, two more passes average each lamp's region, and only one pixel per lamp is read back. The log shows the active path:

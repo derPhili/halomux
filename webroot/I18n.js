@@ -115,8 +115,8 @@ I18n.Translations = {
     // Screen regions
     "Which part of the screen each lamp follows. With several monitors, drag a region onto another monitor to make the lamp follow it.":
       "Welchem Bildschirmbereich jede Lampe folgt. Bei mehreren Monitoren: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt.",
-    "Drag to move the region. With several monitors, drop it onto another monitor to make the lamp follow it":
-      "Ziehen, um den Bereich zu verschieben. Bei mehreren Monitoren: Auf einen anderen Monitor ziehen, damit die Lampe ihm folgt",
+    "Drag to move the region. With several monitors, drop it onto another monitor to make the lamp follow it. With the keyboard: the arrow keys move it, with Shift they resize it, with Alt left and right they put it on the previous or next monitor":
+      "Ziehen, um den Bereich zu verschieben. Bei mehreren Monitoren: Auf einen anderen Monitor ziehen, damit die Lampe ihm folgt. Mit der Tastatur: Pfeiltasten verschieben ihn, mit Umschalt ändern sie seine Größe, mit Alt links und rechts setzen sie ihn auf den vorigen oder nächsten Monitor",
     "{monitor}: captured, a lamp follows it" : "{monitor}: wird erfasst, eine Lampe folgt ihm",
     "{monitor}: no lamp follows it, so it isn't captured" : "{monitor}: Keine Lampe folgt ihm, daher wird er nicht erfasst",
     "Monitor not captured – lamp is off" : "Monitor nicht erfasst – Lampe aus",
@@ -131,8 +131,8 @@ I18n.Translations = {
     "Drag to move the bottom left corner of the region" : "Ziehen, um die untere linke Ecke des Bereichs zu verschieben",
     "Drag to move the bottom right corner of the region" : "Ziehen, um die untere rechte Ecke des Bereichs zu verschieben",
     "Gamma correction" : "Gammakorrektur",
-    "Gamma correction of this lamp: to the right, dim colors get brighter; to the left, darker. In the middle, unchanged.":
-      "Gammakorrektur dieser Lampe: Nach rechts werden dunkle Farben heller, nach links dunkler. In der Mitte unverändert.",
+    "Gamma correction of this lamp: to the right, dim colors get brighter; to the left, darker. In the middle, unchanged. The arrow keys change it too.":
+      "Gammakorrektur dieser Lampe: Nach rechts werden dunkle Farben heller, nach links dunkler. In der Mitte unverändert. Die Pfeiltasten verändern sie auch.",
     "{lamp}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it":
       "{lamp}: der Bildschirmbereich, dem diese Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Wähle die Lampe in der Liste, um ihn zu bearbeiten",
     "There are no lamps in this entertainment area. Add them in the Hue app." : "In diesem Entertainment-Bereich gibt es keine Lampen. Füge sie in der Hue-App hinzu.",
