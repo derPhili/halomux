@@ -98,6 +98,21 @@ namespace Halomux::Grabber
 
 
   /**
+   * @brief Describes a monitor without a matching compositor output
+   *
+   * @param index Its index among the captured monitors
+   * @param pixelWidth Its width in pixels
+   * @param pixelHeight Its height in pixels
+   * @return std::string Its number and pixel size
+   */
+  std::string fallbackMonitorDescription(
+    size_t index,
+    int pixelWidth,
+    int pixelHeight
+  );
+
+
+  /**
    * @brief Names the monitors after the compositor outputs with the same logical geometry
    *
    * Monitors without a matching output are described by their number and pixel size.

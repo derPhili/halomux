@@ -44,6 +44,16 @@ namespace Halomux::Grabber
   }
 
 
+  std::string fallbackMonitorDescription(
+    size_t index,
+    int pixelWidth,
+    int pixelHeight
+  )
+  {
+    return "Monitor " + std::to_string(index + 1) + " · " + std::to_string(pixelWidth) + "×" + std::to_string(pixelHeight);
+  }
+
+
   void nameMonitors(
     Monitors& monitors,
     const std::vector<WaylandOutput>& outputs
@@ -58,7 +68,7 @@ namespace Halomux::Grabber
 
       if(output == outputs.end()){
         monitor.name.clear();
-        monitor.description = "Monitor " + std::to_string(i + 1) + " · " + std::to_string(monitor.pixelWidth) + "×" + std::to_string(monitor.pixelHeight);
+        monitor.description = fallbackMonitorDescription(i, monitor.pixelWidth, monitor.pixelHeight);
         continue;
       }
 
