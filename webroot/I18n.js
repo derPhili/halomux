@@ -320,6 +320,7 @@ I18n.Translations = {
     "The lamps are driven through an entertainment area of the bridge, which you set up in the Hue app." : "Die Lampen werden über einen Entertainment-Bereich der Bridge gesteuert, den du in der Hue-App einrichtest.",
     "{count} lamps" : "{count} Lampen",
     "1 lamp" : "1 Lampe",
+    "Halomux couldn't be shut down." : "Halomux konnte nicht beendet werden.",
     "Channel {id}" : "Kanal {id}",
     "Not found – Halomux" : "Nicht gefunden – Halomux",
     "Page not found" : "Seite nicht gefunden",

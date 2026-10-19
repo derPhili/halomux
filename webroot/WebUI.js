@@ -975,14 +975,44 @@ class WebUI
 
   _stop()
   {
+    const stopError = document.getElementById("stopError");
+    stopError.textContent = "";
+
     let promise = RequestUtils.post("/api/stop", JSON.stringify(null));
     promise.then((data) => {
-      if(data.succeeded){
-        document.getElementById("confirmStopSection").style.display = "none";
-        document.getElementById("stoppedInfoSection").style.display = "block";
-        this._showOverlay(true);
+      if(!data.succeeded){
+        stopError.textContent = t("Halomux couldn't be shut down.");
+        return;
       }
+
+      document.getElementById("confirmStopSection").style.display = "none";
+      document.getElementById("stoppedInfoSection").style.display = "block";
+      this._showOverlay(true);
+      this._reloadOnceRunning();
     });
+    promise.catch((error) => {
+      log(error);
+      stopError.textContent = t("Halomux couldn't be shut down.");
+    });
+  }
+
+
+  // Started again, such as from the tray's menu: the page comes back instead of staying on
+  // "Halomux is now off". Answers until it's down are those of the service still ending.
+  _reloadOnceRunning(wasDown = false)
+  {
+    setTimeout(() => {
+      RequestUtils.get("/api/version")
+      .then(() => {
+        if(wasDown){
+          location.reload();
+        }
+        else{
+          this._reloadOnceRunning(false);
+        }
+      })
+      .catch(() => {this._reloadOnceRunning(true);});
+    }, WebUI.RestartCheckInterval);
   }
 
 
@@ -1008,6 +1038,9 @@ class WebUI
 // Interval between live lamp color updates [ms]. Each update costs a frame in the web engine:
 // 4 per second keep the dots live at about half the CPU time of 8
 WebUI.LampColorsInterval = 250;
+
+// Checks whether the stopped service runs again [ms]
+WebUI.RestartCheckInterval = 2000;
 
 // Transition smoothing presets [%]
 WebUI.GamingSmoothing = 10;
