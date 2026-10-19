@@ -439,15 +439,13 @@ namespace Halomux::Core
 
     const bool previewing = previewTime >= 0.f;
 
+    // Grabbers with asynchronous capture may produce slower than the core consumes. Compositors
+    // send frames on changes only: on a still screen after sync was resumed, there may be none for
+    // long. The lamps waiting for one keep their last colors below, which keeps the bridge's
+    // stream alive, while lamps shut down or without monitor still change.
     Grabber::IGrabber::ChannelColors channelColors;
-    if(syncing && !grabber->grabChannelColors(channelColors) && !previewing){
-      // Grabbers with asynchronous capture may produce slower than the core consumes. Compositors
-      // send frames on changes only: on a still screen after sync was resumed, the bridge would
-      // end the stream for want of messages. The last colors keep it alive until a frame comes.
-      if(m_areaSession){
-        m_areaSession->stream(channelStreams);
-      }
-      return;
+    if(syncing){
+      grabber->grabChannelColors(channelColors);
     }
 
     const ChannelColor::Settings colorSettings{
@@ -471,7 +469,8 @@ namespace Halomux::Core
       const bool monitorMissing = !channel.monitorIndex.has_value();
 
       if(channel.state == Hue::Api::Channel::State::Active && syncing && colorIt == channelColors.end() && !previewing && !monitorMissing){
-        // Activated after the last captured frame: wait for the next one
+        // No color of its monitor yet, such as activated after the last frame: its last color
+        // is streamed again until the next frame
         continue;
       }
 
