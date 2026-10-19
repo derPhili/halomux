@@ -235,7 +235,7 @@ halomux_add_test(SetupBridgeTrust)
 
 # Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
 halomux_add_test(ClipParsing
-  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp ${SRC}/Hue/Auth/Credentials.cpp
+  SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp ${SRC}/Hue/Auth/Credentials.cpp ${SRC}/Hue/Api/BridgeTls.cpp
   LIBRARIES nlohmann_json::nlohmann_json glm::glm
 )
 

@@ -148,6 +148,18 @@ int main()
     expect("Error answer has no members", !channelMembers(Json::parse(R"({"errors": [{"description": "x"}], "data": []})"), "a").has_value());
   }
 
+  // Channel ids beyond a byte or with a fraction aren't wrapped or cut onto another channel
+  for(const char* channelId : {"4294967297", "1.9", "256"}){
+    Json odd = fixture();
+    for(auto& resource : odd.at("data")){
+      if(resource.value("id", "") == "a0000000-0000-4000-8000-000000000001"){
+        resource.at("channels").at(1).at("channel_id") = Json::parse(channelId);
+      }
+    }
+    const auto oddAreas = areas(odd);
+    expect("Area with an odd channel id left out", oddAreas.has_value() && oddAreas->size() == 1);
+  }
+
   // The discovery service of Philips, an answer from the internet
   {
     const auto bridges = discoveredBridges(Json::parse(R"([
@@ -156,6 +168,8 @@ int main()
       {"internalipaddress": "192.168.0.44"},
       {"id": "001788fffe0a0b0d"},
       {"id": "001788fffe0a0b0e", "internalipaddress": ""},
+      {"id": "not a bridge id", "internalipaddress": "192.168.0.45"},
+      {"id": "001788fffe0a0b0f", "internalipaddress": "evil.example"},
       "garbage"
     ])"));
     expect("Discovered bridges", bridges.size() == 2);

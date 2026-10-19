@@ -5,8 +5,12 @@
 #include <stdexcept>
 #include <unordered_set>
 
+#include <arpa/inet.h>
+
 #include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Api/BridgeTls.hpp>
 #include <Halomux/Hue/Auth/Credentials.hpp>
+#include <Halomux/Serialization/Numbers.hpp>
 
 
 namespace
@@ -51,17 +55,23 @@ namespace
   }
 
 
+  // Whether a text is an IPv4 or IPv6 address
+  bool isIpAddress(
+    const std::string& text
+  )
+  {
+    in6_addr address{};
+    return inet_pton(AF_INET, text.c_str(), &address) == 1 || inet_pton(AF_INET6, text.c_str(), &address) == 1;
+  }
+
+
   // The ID of a channel of an entertainment area, throws if it isn't one
   uint8_t channelIdOf(
     const Json& channel
   )
   {
-    const int channelId = channel.at("channel_id").get<int>();
-    if(channelId < 0 || channelId > 255){
-      throw std::out_of_range("channel_id " + std::to_string(channelId));
-    }
-
-    return static_cast<uint8_t>(channelId);
+    // Not wrapped or cut onto another channel
+    return static_cast<uint8_t>(Halomux::Serialization::readInteger(channel.at("channel_id"), 0, 255));
   }
 }
 
@@ -256,8 +266,9 @@ namespace Halomux::Hue::Api::ClipParsing
         continue;
       }
 
+      // An address of the network and a bridge id, as the bridge search in the network finds them
       const auto address = entry.at("internalipaddress").get<std::string>();
-      if(address.empty() || (entry.contains("id") && !entry.at("id").is_string())){
+      if(!isIpAddress(address) || (entry.contains("id") && (!entry.at("id").is_string() || !isBridgeId(entry.at("id").get<std::string>())))){
         continue;
       }
 
