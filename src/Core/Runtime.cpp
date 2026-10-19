@@ -432,7 +432,9 @@ namespace Halomux::Core
       previewTime = std::chrono::duration<float>(elapsed).count();
 
       if(previewTime >= PreviewSequence::Duration){
-        m_previewStart = 0;
+        // Unless a new preview started meanwhile
+        int64_t ended = previewStart;
+        m_previewStart.compare_exchange_strong(ended, 0);
         previewTime = -1.f;
       }
     }
