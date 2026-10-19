@@ -202,6 +202,8 @@ class WebUI
       let isCurrentChannel = this.screenWidget.currentChannel && this.screenWidget.currentChannel.channelId == pending.channelId;
       if(isCurrentChannel && this.pendingUVs.size == 0){
         this.screenWidget.uvCallback(checkedUVs);
+        // Moved left or right of other lamps, for the scenes
+        this.staticScene.refreshLamps();
       }
     })
     .catch((error) => {log(error);})
@@ -234,6 +236,8 @@ class WebUI
         this.lampSwatches[channelId] = channel.node.querySelector(".lampSwatch");
       }
 
+      // Moved left or right of other lamps, for the scenes
+      this.staticScene.refreshLamps();
       this._refreshMonitors();
     })
     .catch((error) => {log(error);})
@@ -311,6 +315,8 @@ class WebUI
       this.screenWidget.setDimensions(displayInfo.x, displayInfo.y, displayInfo.subsampleWidth, monitors);
       this._redrawScreenWidget();
       this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, displayInfo.subsampleWidth);
+      // The scenes order the lamps across the monitors' arrangement
+      this.staticScene.refreshLamps();
     }
   }
 
@@ -586,8 +592,9 @@ class WebUI
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
     this.screenWidget.setDimensions(x, y, subsampleWidth, displayInfo.monitors);
-    // The lamps may have arrived before the monitors
+    // The lamps may have arrived before the monitors, which the scenes order them across
     this._redrawScreenWidget();
+    this.staticScene.refreshLamps();
     this._monitorsCallback(displayInfo);
     this._buildSubsampleOptions(displayInfo.subsampleResolutionCandidates, subsampleWidth);
   }
