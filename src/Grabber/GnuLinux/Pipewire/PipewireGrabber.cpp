@@ -1,6 +1,7 @@
 #include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
 #include <Halomux/Grabber/GnuLinux/Pipewire/DmaBufPlanes.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/FrameLayout.hpp>
 
 #include <algorithm>
 #include <utility>
@@ -549,12 +550,14 @@ namespace Halomux::Grabber
       return false;
     }
 
-    const size_t step = data.chunk->stride > 0
-      ? static_cast<size_t>(data.chunk->stride)
-      : static_cast<size_t>(width) * 4;
+    // Read only inside the buffer: a chunk not matching the frame would be read past its end
+    const auto layout = sharedMemoryFrame(data.chunk->offset, data.chunk->stride, data.maxsize, width, height);
+    if(!layout.has_value()){
+      return false;
+    }
 
     // View on the Pipewire memory, which becomes invalid after queue_buffer()
-    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + data.chunk->offset, step);
+    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + layout->offset, layout->stride);
     const Imaging::ImageData frameViewData{.imageMatrix = frameView, .format = pixelFormat};
 
     // Downscale straight from the shared memory instead of copying the full

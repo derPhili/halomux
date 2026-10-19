@@ -124,6 +124,9 @@ halomux_add_test(DmaBufPlanes
   INCLUDES ${LIB_PIPEWIRE_INCLUDE_DIRS}
 )
 
+# Frames in shared memory buffers, read only inside the buffer
+halomux_add_test(FrameLayout)
+
 # Matching monitors between the portal, the compositor and the profile
 halomux_add_test(Monitors
   SOURCES ${SRC}/Grabber/Monitors.cpp
