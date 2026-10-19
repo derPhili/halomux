@@ -67,6 +67,12 @@ namespace Halomux::Platform
       }
     }
 
+    // A browser started from here would belong to the service: confined by its hardening, and
+    // ended with it. Started as a unit of its own too, directly only without systemd-run.
+    if(system(("systemd-run --user --quiet --collect xdg-open " + url + " >/dev/null 2>&1").c_str()) == 0){
+      return;
+    }
+
     if(system(std::string("xdg-open " + url).c_str()) != 0){
       Core::Logger::error("Failed to open browser");
     }
