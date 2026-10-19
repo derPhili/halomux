@@ -133,6 +133,7 @@ journalctl --user -u halomux.service -f
 * **Statische Szene**: eine Farbe für alle Lampen, eine Farbe pro Lampe, eingebaute Szenen, deren Farben von links nach rechts über die Lampen verteilt werden, und eigene gespeicherte Szenen. Eine Auswahl schaltet Sync aus
 * **Einstellungen**: Helligkeit, Übergangsglättung (Vorlagen „Gaming“ und „Film“), Highlight-Boost (Vorlagen von „Dezent“ bis „Intensiv“), Reaktion auf Sound, Aufnahmeauflösung und Bildwiederholrate
 * **Vorschau**: spielt Farbschnitte, Blitze links, rechts und beidseitig, einen langsamen Verlauf und einen Schnitt von Schwarz auf Weiß mit den aktuellen Einstellungen ab
+* **Logs** (Fußzeile): die letzten Zeilen aus dem Journal des Dienstes, alle paar Sekunden aktualisiert, wie `journalctl --user -u halomux`
 
 Jedes Bedienelement erklärt sich in einem Tooltip.
 

@@ -90,6 +90,7 @@ set(AUDIO_SOURCE
 set(CORE_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AreaSession.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/AtomicFile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Journal.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelColor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ChannelStore.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/Config.cpp

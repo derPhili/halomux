@@ -79,6 +79,18 @@ namespace Halomux::Platform
 
 
     /**
+     * @brief Returns the last lines of the service's journal
+     *
+     * @param lines How many lines
+     * @return std::string One JSON object per line (journalctl --output=json), empty if the
+     *         journal can't be read
+     */
+    virtual std::string serviceJournal(
+      size_t lines
+    ) const = 0;
+
+
+    /**
      * @brief Starts a grabber that restores the saved screen selection, or asks for one
      *
      * The caller owns the grabber: it must be destroyed before the configuration it was given,

@@ -311,6 +311,12 @@ halomux_add_test(SetupBackend WITH_APP
   LIBRARIES ${OpenCV_LIBS}
 )
 
+# The service's journal, for the light manager's log page
+halomux_add_test(Journal
+  SOURCES ${SRC}/Core/Journal.cpp
+  LIBRARIES nlohmann_json::nlohmann_json
+)
+
 # Files only ever replaced by a complete content
 halomux_add_test(AtomicFile
   SOURCES ${SRC}/Core/AtomicFile.cpp

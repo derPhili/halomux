@@ -1170,14 +1170,14 @@ body.i18nPending
 }
 
 
-#versionSection, #sourceLink
+#versionSection, #sourceLink, #logsLink
 {
   color: var(--textFaint);
   font-size: 12px;
 }
 
 
-#sourceLink:hover
+#sourceLink:hover, #logsLink:hover
 {
   color: var(--text);
 }
@@ -1614,6 +1614,95 @@ body.i18nPending
 
 
 /* Not found */
+
+/* Log page */
+
+.logsBack
+{
+  margin-left: auto;
+  color: var(--textFaint);
+  font-size: 13px;
+}
+
+
+.logsBack:hover
+{
+  color: var(--text);
+}
+
+
+.logs
+{
+  max-width: 1320px;
+  margin: 24px auto;
+}
+
+
+@media (max-width: 1368px)
+{
+  .logs
+  {
+    margin: 24px;
+  }
+}
+
+
+.logLines
+{
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+.logLine
+{
+  display: flex;
+  gap: 12px;
+  padding: 1px 0;
+}
+
+
+.logLine time
+{
+  flex: none;
+  color: var(--textFaint);
+}
+
+
+.logLine span
+{
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+
+.logLine.warning span
+{
+  color: var(--warning);
+}
+
+
+.logLine.error span
+{
+  color: var(--danger);
+}
+
+
+/* Narrow screens: the time above its message */
+@media (max-width: 640px)
+{
+  .logLine
+  {
+    flex-direction: column;
+    gap: 0;
+    padding: 3px 0;
+  }
+}
+
 
 .notFound
 {

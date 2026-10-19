@@ -14,6 +14,8 @@
 #include <Halomux/Core/CoreService.hpp>
 
 #include <Halomux/Core/AtomicFile.hpp>
+#include <Halomux/Core/Journal.hpp>
+#include <Halomux/Platform/Selector.hpp>
 #include <Halomux/Core/Logger.hpp>
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
@@ -226,6 +228,21 @@ namespace Halomux::Core
     return {{"succeeded", true}};
   }
 
+
+
+  Serialization::Json CoreService::serviceLog() const
+  {
+    // About the current run and the ones before it
+    static constexpr size_t LogLines = 500;
+
+    Serialization::Json jsonLines = Serialization::Json::array();
+    for(const auto& line : parseJournal(Platform::adapter.serviceJournal(LogLines))){
+      const char* level = line.level == JournalLine::Level::Error ? "error" : line.level == JournalLine::Level::Warning ? "warning" : "info";
+      jsonLines.push_back({{"time", line.time}, {"level", level}, {"message", line.message}});
+    }
+
+    return jsonLines;
+  }
 
 
   Serialization::Json CoreService::bridgeEntertainmentAreas() const
