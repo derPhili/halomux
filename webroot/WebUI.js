@@ -6,6 +6,9 @@ class WebUI
     // time so dragging a handle doesn't flood the backend and responses can't arrive out of order.
     this.pendingUVs = new Map();
     this.uvRequestInFlight = false;
+    // Gamma factors to send, by lamp, one request at a time like the regions
+    this.pendingGammaFactors = new Map();
+    this.gammaRequestInFlight = false;
     // Region move waiting for the corner updates before it
     this.pendingMove = null;
 
@@ -326,11 +329,38 @@ class WebUI
     const channel = this.screenWidget.currentChannel;
     channel.gammaFactor = gammaFactor;
 
-    let promise = RequestUtils.put(`/api/setChannelGammaFactor/${channel.channelId}`, JSON.stringify({gammaFactor : gammaFactor}));
-    promise.then((gammaFactorData) => {
-      channel.gammaFactor = Utils.truncate(gammaFactorData.gammaFactor, 2);
+    // Sent one after the other, the newest of each lamp: in parallel, an older one could arrive
+    // last and be the one saved
+    this.pendingGammaFactors.set(channel.channelId, {channel : channel, gammaFactor : gammaFactor});
+    if(!this.gammaRequestInFlight){
+      this._sendPendingGammaFactor();
+    }
+  }
+
+
+  _sendPendingGammaFactor()
+  {
+    let next = this.pendingGammaFactors.entries().next();
+    if(next.done){
+      return;
+    }
+
+    let [channelId, pending] = next.value;
+    this.pendingGammaFactors.delete(channelId);
+    this.gammaRequestInFlight = true;
+
+    RequestUtils.put(`/api/setChannelGammaFactor/${channelId}`, JSON.stringify({gammaFactor : pending.gammaFactor}))
+    .then((gammaFactorData) => {
+      // A newer one waiting stays shown
+      if(!this.pendingGammaFactors.has(channelId)){
+        pending.channel.gammaFactor = Utils.truncate(gammaFactorData.gammaFactor, 2);
+      }
+    })
+    .catch((error) => {log(error);})
+    .finally(() => {
+      this.gammaRequestInFlight = false;
+      this._sendPendingGammaFactor();
     });
-    promise.catch((error) => {log(error);});
   }
 
 
