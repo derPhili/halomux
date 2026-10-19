@@ -442,17 +442,6 @@ namespace Halomux::Core
 
     const bool previewing = previewTime >= 0.f;
 
-    // Wall test: white on every lamp, through its wall's compensation, to match the wall by eye
-    bool wallTesting = false;
-    if(const int64_t wallTestStart = m_wallTestStart; wallTestStart != 0){
-      const auto elapsed = std::chrono::steady_clock::now().time_since_epoch() - std::chrono::steady_clock::duration(wallTestStart);
-      wallTesting = std::chrono::duration<float>(elapsed).count() < WallTestDuration;
-      if(!wallTesting){
-        int64_t ended = wallTestStart;
-        m_wallTestStart.compare_exchange_strong(ended, 0);
-      }
-    }
-
     // Grabbers with asynchronous capture may produce slower than the core consumes. Compositors
     // send frames on changes only: on a still screen after sync was resumed, there may be none for
     // long. The lamps waiting for one keep their last colors below, which keeps the bridge's
@@ -466,11 +455,9 @@ namespace Halomux::Core
       .tickDuration = 1.f / static_cast<float>(std::max(1u, m_config.refreshRate())),
       .transitionSmoothing = m_config.transitionSmoothing(),
       .brightness = m_config.brightness(),
-      // White doesn't flash
-      .highlightBoost = wallTesting ? 0.f : m_config.highlightBoost(),
+      .highlightBoost = m_config.highlightBoost(),
       .syncing = syncing,
-      .previewing = previewing,
-      .wallColor = m_config.wallColor()
+      .previewing = previewing
     };
 
     for(auto& [channelId, channel] : channels){
@@ -484,7 +471,7 @@ namespace Halomux::Core
 
       const bool monitorMissing = !channel.monitorIndex.has_value();
 
-      if(channel.state == Hue::Api::Channel::State::Active && syncing && colorIt == channelColors.end() && !previewing && !wallTesting && !monitorMissing){
+      if(channel.state == Hue::Api::Channel::State::Active && syncing && colorIt == channelColors.end() && !previewing && !monitorMissing){
         // No color of its monitor yet, such as activated after the last frame: its last color
         // is streamed again until the next frame
         continue;
@@ -512,10 +499,7 @@ namespace Halomux::Core
       const float pan = access.desktopCenterX(channel);
 
       Imaging::Color color;
-      if(wallTesting){
-        color = Imaging::Color(255, 255, 255);
-      }
-      else if(previewing){
+      if(previewing){
         color = PreviewSequence::colorAt(previewTime, pan);
       }
       else if(!syncing){

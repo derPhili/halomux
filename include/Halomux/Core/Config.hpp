@@ -53,8 +53,6 @@ namespace Halomux::Core
       std::optional<float> brightness{1.f};
       std::optional<bool> syncEnabled{true};
       std::optional<StaticColors> staticColors{StaticColors{}};
-      // Color of the surface the lamps shine on, white for none
-      std::optional<Imaging::Color> wallColor{Imaging::Color{255, 255, 255}};
       std::optional<Scenes> scenes{Scenes{}};
       std::optional<std::string> language{"auto"};
       std::optional<NoticeAcceptance> noticeAccepted;
@@ -202,15 +200,6 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Returns the color of the surface the lamps shine on, which their colors make up for
-     *
-     * @return Imaging::Color Color of the wall in white light, white for none. A lamp may have its
-     *         own (see Hue::Api::Channel::wallColor)
-     */
-    Imaging::Color wallColor() const;
-
-
-    /**
      * @brief Returns the scenes saved by the user
      *
      * @return Scenes Static colors by scene name
@@ -331,16 +320,6 @@ namespace Halomux::Core
     */
     void setStaticColors(
       const StaticColors& staticColors
-    );
-
-
-    /**
-     * @brief Registers the color of the surface the lamps shine on
-     *
-     * @param wallColor Its color in white light
-     */
-    void setWallColor(
-      const Imaging::Color& wallColor
     );
 
 
