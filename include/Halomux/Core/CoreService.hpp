@@ -600,6 +600,8 @@ namespace Halomux::Core
     Config& m_config;
 
     std::mutex m_profileMutex;
+    // Applies a refresh rate to the configuration, the loop and the capture together
+    std::mutex m_refreshRateMutex;
 
     // The bridge the setup may pair with
     SetupBridgeTrust m_setupBridgeTrust;

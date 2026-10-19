@@ -478,6 +478,9 @@ namespace Halomux::Core
     unsigned refreshRate
   )
   {
+    // One change at a time: two quick ones could leave the loop and the capture at different rates
+    std::lock_guard lock(m_refreshRateMutex);
+
     refreshRate = std::min(refreshRate, maxRefreshRate());
 
     m_config.setRefreshRate(refreshRate);
