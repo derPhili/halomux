@@ -27,6 +27,6 @@ class Channel
   formatMembers()
   {
     let names = this.membersNames();
-    return names.length > 0 ? names.join(", ") : `Channel ${this.channelId}`;
+    return names.length > 0 ? names.join(", ") : t("Channel {id}", {id : this.channelId});
   }
 }

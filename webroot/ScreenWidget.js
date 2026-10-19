@@ -100,17 +100,18 @@ class GammaHandle
   }
 
 
-  affectFactor(factor)
+  // Shows a lamp's factor; notify sends it, as only the user's changes should be saved
+  affectFactor(factor, notify = false)
   {
     factor += 1;
     factor /= 2
     factor *= this.screenWidget.gammaAreaDimensions().x;
 
-    this.setPosition({x : factor});
+    this.setPosition({x : factor}, notify);
   }
 
 
-  setPosition(position)
+  setPosition(position, notify = false)
   {
     let areaDimensions = this.screenWidget.gammaAreaDimensions();
     let gammaFactor =  Utils.clamp(position.x / areaDimensions.x, 0, 1);
@@ -124,7 +125,10 @@ class GammaHandle
     gammaFactor = Utils.truncate(gammaFactor, 1)
     this.handleNode.setAttribute("aria-valuenow", gammaFactor);
 
-    this.screenWidget.webApp.updateGammaFactor(gammaFactor);
+    // Selecting a lamp shows its factor: sent, it would be rounded to the slider's steps
+    if(notify){
+      this.screenWidget.webApp.updateGammaFactor(gammaFactor);
+    }
   }
 
 
@@ -552,7 +556,7 @@ class ScreenWidget
     }
 
     event.preventDefault();
-    this.gammaCursor.affectFactor(Utils.clamp(Utils.truncate(this.currentChannel.gammaFactor + step, 1), -1, 1));
+    this.gammaCursor.affectFactor(Utils.clamp(Utils.truncate(this.currentChannel.gammaFactor + step, 1), -1, 1), true);
   }
 
 

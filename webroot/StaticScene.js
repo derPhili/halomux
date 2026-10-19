@@ -88,10 +88,24 @@ class StaticScenePanel
   }
 
 
-  // Active lamps from left to right
+  // Active lamps from left to right on the whole desktop, as the backend orders them to spread
+  // the built-in scenes (ChannelStore::activeLampCenters())
   _lamps()
   {
-    let center = (channel) => channel.uvs ? (channel.uvs.uvA.x + channel.uvs.uvB.x) / 2 : 0.5;
+    const monitors = this.webUI.screenWidget.monitors;
+    const left = Math.min(...monitors.map(monitor => monitor.x));
+    const right = Math.max(...monitors.map(monitor => monitor.x + monitor.width));
+
+    let center = (channel) => {
+      const monitor = channel.monitor !== null ? monitors[channel.monitor] : undefined;
+      if(!channel.uvs || !monitor || !(right > left)){
+        return 0.5;
+      }
+
+      const x = monitor.x + (channel.uvs.uvA.x + channel.uvs.uvB.x) / 2 * monitor.width;
+      return Utils.clamp((x - left) / (right - left), 0, 1);
+    };
+
     return Object.values(this.webUI.activeChannels).sort((a, b) => center(a) - center(b));
   }
 

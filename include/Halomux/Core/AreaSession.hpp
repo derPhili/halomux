@@ -31,6 +31,9 @@ namespace Halomux::Core
     using StreamerFactory = std::function<std::unique_ptr<Stream::IStreamer>(const std::string& areaId)>;
     // Called once an area is selected, with its lamps, while no other selection runs
     using SelectedCallback = std::function<void(const std::string& areaId, const Hue::Api::ChannelMembers& members)>;
+    // Called once the selected area is gone, such as deleted in the Hue app, before another one
+    // is selected
+    using LostCallback = std::function<void()>;
 
 
     /**
@@ -39,12 +42,14 @@ namespace Halomux::Core
      * @param bridge The bridge
      * @param streamerFactory Creates the streamer of an area
      * @param onSelected Called once an area is selected
+     * @param onLost Called once the selected area is gone
      * @param watchInterval Interval of the checks (tick()), 0 for none
      */
     AreaSession(
       std::unique_ptr<Hue::Api::BridgeApi> bridge,
       StreamerFactory streamerFactory,
       SelectedCallback onSelected,
+      LostCallback onLost,
       std::chrono::milliseconds watchInterval
     );
 
@@ -145,6 +150,7 @@ namespace Halomux::Core
     std::unique_ptr<Hue::Api::BridgeApi> m_bridge;
     StreamerFactory m_streamerFactory;
     SelectedCallback m_onSelected;
+    LostCallback m_onLost;
     std::chrono::milliseconds m_watchInterval;
 
     // Serializes the operations talking to the bridge: selections and checks

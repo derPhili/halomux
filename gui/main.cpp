@@ -22,14 +22,24 @@ namespace
   constexpr int TrayWaitSeconds = 30;
 
   /**
+   * @brief Returns the path of the service's configuration file
+   *
+   * @return QString Where the service keeps it: under $HOME/.config, whatever XDG_CONFIG_HOME says
+   */
+  QString serviceConfigPath()
+  {
+    return QDir::homePath() + "/.config/" + AppId + "/config.json";
+  }
+
+
+  /**
    * @brief Returns the configuration of the service
    *
    * @return QJsonObject Content of its configuration file, empty if it can't be read
    */
   QJsonObject serviceConfig()
   {
-    // Where the service keeps it: under $HOME/.config, whatever XDG_CONFIG_HOME says
-    QFile configFile(QDir::homePath() + "/.config/" + AppId + "/config.json");
+    QFile configFile(serviceConfigPath());
     if(!configFile.open(QIODevice::ReadOnly)){
       return {};
     }
@@ -92,6 +102,13 @@ int main(int argc, char* argv[])
 
   const bool showWindow = !parser.isSet(trayOption);
 
+  // Started at login for every user of the computer: one who never used Halomux gets no tray, and
+  // no service started for them, which would also contend for another user's port. The service
+  // writes its configuration on its first start.
+  if(!showWindow && !QFile::exists(serviceConfigPath())){
+    return 0;
+  }
+
   const QJsonObject config = serviceConfig();
   Gui::Texts::setLanguage(config.value("language").toString("auto"));
 
@@ -122,8 +139,15 @@ int main(int argc, char* argv[])
         desktopApp.start(true);
       }
       else if(++waitedSeconds >= TrayWaitSeconds){
-        // No tray on this desktop: an invisible instance would be useless
         trayWait->stop();
+
+        // Opened from the desktop meanwhile: its window stays, as without a tray from the start
+        if(desktopApp.windowShown()){
+          QApplication::setQuitOnLastWindowClosed(true);
+          return;
+        }
+
+        // No tray on this desktop: an invisible instance would be useless
         QApplication::quit();
       }
     });

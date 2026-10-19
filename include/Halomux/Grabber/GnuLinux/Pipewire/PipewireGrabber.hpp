@@ -288,6 +288,18 @@ namespace Halomux::Grabber
 
 
     /**
+     * @brief Moves a stream to shared memory buffers for good, as its DMA-BUFs can't be used
+     *
+     * @param stream Stream
+     * @param reason Why, shown in the light manager and the log
+     */
+    static void _fallBackToSharedMemory(
+      StreamData* stream,
+      const std::string& reason
+    );
+
+
+    /**
      * @brief Averages the channel regions of a DMA-BUF frame on the GPU
      *
      * @return true Colors were computed

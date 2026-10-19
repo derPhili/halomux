@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iomanip>
 #include <optional>
+#include <stdexcept>
+#include <string>
 
 #include <glm/common.hpp>
 
@@ -52,40 +54,57 @@ namespace Halomux::Core
   }
 
 
-  bool CoreService::validateBridgeAddress(
+  std::optional<bool> CoreService::validateBridgeAddress(
     const std::string& bridgeAddress
   )
   {
+    // Until another bridge passes, none is to be paired with
+    m_setupBridgeTrust.invalidate();
+
     // Trailing slashes are already stripped by the sanitization
     std::string sanitizedAddress = Hue::Api::sanitizeBridgeAddress(bridgeAddress);
 
     if(sanitizedAddress.empty()){
-      return false;
+      return std::nullopt;
     }
 
     // Not identified yet: only the CA of its certificate can be checked
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(sanitizedAddress));
     if(!response.has_value()){
-      return false;
+      return std::nullopt;
     }
 
     try{
       auto responseData = response->asJson();
       // Its id names its certificate: without a valid one, it isn't a bridge to trust
       if(!responseData.contains("name") || !responseData.contains("bridgeid") || !responseData.at("bridgeid").is_string() || !Hue::Api::isBridgeId(responseData.at("bridgeid").get<std::string>())){
-        return false;
+        return std::nullopt;
       }
 
       m_config.setBridgeAddress(sanitizedAddress);
       m_config.setBridgeIdentity(responseData.at("bridgeid"), response->tlsVerified());
       _registerBridge();
 
-      return true;
+      // Verified once, the bridge is checked as verified from then on
+      const bool verified = m_config.bridgeCertificateVerified();
+      m_setupBridgeTrust.validated(sanitizedAddress, verified);
+      return verified;
     }
     catch(const std::exception& e){
       Logger::error(e.what());
+      return std::nullopt;
+    }
+  }
+
+
+  bool CoreService::acceptUnverifiedBridge()
+  {
+    if(!m_setupBridgeTrust.acceptUnverified()){
       return false;
     }
+
+    Logger::warn("Pairing with a bridge whose certificate isn't signed by the Hue CA, as confirmed by the user");
+    return true;
   }
 
 
@@ -93,14 +112,14 @@ namespace Halomux::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    // The setup validates the address first
-    if(!m_config.bridgeAddress().has_value()){
+    // The setup validates the address first, and pairs only with a bridge it trusts
+    if(!m_config.bridgeAddress().has_value() || !m_setupBridgeTrust.trusted(*m_config.bridgeAddress())){
       return false;
     }
 
     // The bridge only checks the username: a mistyped clientkey would fail every streaming connection
     if(!credentials.hasValidClientkey()){
-      Logger::error("The clientkey isn't hexadecimal");
+      Logger::error("The clientkey isn't 32 hexadecimal digits");
       return false;
     }
 
@@ -134,6 +153,11 @@ namespace Halomux::Core
     // The setup validates the address first
     if(!m_config.bridgeAddress().has_value()){
       return {{"succeeded", false}, {"error", "no bridge address yet"}};
+    }
+
+    // Any device of the network could pass itself off as the bridge and keep the credentials
+    if(!m_setupBridgeTrust.trusted(*m_config.bridgeAddress())){
+      return {{"succeeded", false}, {"error", "the bridge isn't confirmed"}};
     }
 
     auto response = Hue::Api::ApiTools::registerNewUser(m_config.bridgeAddress().value());
@@ -574,15 +598,16 @@ namespace Halomux::Core
 
   bool CoreService::saveProfile()
   {
+    // Read, changed and written by one save at a time: concurrent saves would drop each other's
+    // area, and an older snapshot written last would make its area the current one again
+    std::lock_guard lock(m_profileMutex);
+
     // The lamps with the area they belong to, read together: an area switch can't mix them up
     const auto lamps = m_runtime.m_channelStore.areaSnapshot();
     if(!lamps.areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
       return false;
     }
-
-    // Read, changed and written by one save at a time: concurrent saves would drop each other's area
-    std::lock_guard lock(m_profileMutex);
 
     // The other areas' lamp settings are kept
     const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
@@ -674,16 +699,21 @@ namespace Halomux::Core
       m_setupBackend = &sb;
     }
 
-    bool succeeded = sb.execute(port, boundBackendIP);
+    const std::optional<bool> completed = sb.execute(port, boundBackendIP);
 
     {
       std::lock_guard lock(m_setupBackendMutex);
       m_setupBackend = nullptr;
     }
 
+    // Not the user's choice: the service fails, and is started again
+    if(!completed.has_value()){
+      throw std::runtime_error("Could not open the setup on " + boundBackendIP + ":" + std::to_string(port) + ", which may be in use");
+    }
+
     m_runtime.m_openedSetup = true;
 
-    if(!succeeded){
+    if(!*completed){
       Logger::log("Initial setup was aborted");
       return false;
     }

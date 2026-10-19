@@ -143,12 +143,11 @@ namespace Halomux::Grabber
       return 1;
     }
 
-    if(referencePixelWidth <= 0){
-      return std::clamp(static_cast<int>(configuredWidth), 1, monitorPixelWidth);
-    }
-
-    const double width = std::round(static_cast<double>(configuredWidth) * monitorPixelWidth / referencePixelWidth);
-    return std::clamp(static_cast<int>(width), 1, monitorPixelWidth);
+    // Capped before the cast: a width beyond int would be cast out of range
+    const double width = referencePixelWidth <= 0
+      ? static_cast<double>(configuredWidth)
+      : std::round(static_cast<double>(configuredWidth) * monitorPixelWidth / referencePixelWidth);
+    return static_cast<int>(std::clamp(width, 1.0, static_cast<double>(monitorPixelWidth)));
   }
 
 

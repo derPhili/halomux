@@ -125,6 +125,24 @@ int main()
   const auto foreignRead = client.Get("/channel/3", httplib::Headers{{"Origin", "http://evil.example"}});
   expect("Reading from another origin left to the browser's own rules", foreignRead && foreignRead->status == 200);
 
+  // Other sites may not frame the light manager to have its buttons clicked unseen (clickjacking)
+  {
+    const auto framed = [](const httplib::Result& result){
+      return result
+        && result->get_header_value("X-Frame-Options") == "DENY"
+        && result->get_header_value("Content-Security-Policy") == "frame-ancestors 'none'"
+        && result->get_header_value("X-Content-Type-Options") == "nosniff";
+    };
+    expect("Answers can't be framed", framed(client.Get("/channel/3")));
+    expect("Errors can't be framed", framed(client.Get("/conflict")));
+    expect("Refused requests can't be framed", framed(foreignHost));
+    expect("Unknown paths can't be framed", framed(client.Get("/unknown")));
+  }
+
+  // Bodies are small JSON documents: a huge one is refused before it's read into memory
+  const auto huge = client.Put("/json", std::string(1024 * 1024, ' ') + R"({"value": 3})", "application/json");
+  expect("Huge body refused", huge && huge->status == 413);
+
   const auto internalJson = client.Get("/internalJson");
   expect("Internal JSON error is a server error", internalJson && internalJson->status == 500 && errorShaped(internalJson));
   expect("Internal JSON error not disclosed", internalJson && internalJson->body.find("missing") == std::string::npos);

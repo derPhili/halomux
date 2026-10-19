@@ -1,6 +1,7 @@
 #include <Halomux/Grabber/GnuLinux/Pipewire/PipewireGrabber.hpp>
 
 #include <Halomux/Grabber/GnuLinux/Pipewire/DmaBufPlanes.hpp>
+#include <Halomux/Grabber/GnuLinux/Pipewire/FrameLayout.hpp>
 
 #include <algorithm>
 #include <utility>
@@ -218,7 +219,7 @@ namespace Halomux::Grabber
   IGrabber::Resolution PipewireGrabber::displayResolution() const
   {
     Resolution widest{0, 0};
-    for(const auto& monitor : m_monitors){
+    for(const auto& monitor : monitors()){
       if(monitor.pixelWidth > widest.x){
         widest = {monitor.pixelWidth, monitor.pixelHeight};
       }
@@ -335,6 +336,11 @@ namespace Halomux::Grabber
     auto lock = std::lock_guard(m_pwData.processingInfoMutex);
     for(size_t i = 0; i < monitors.size() && i < m_pwData.streams.size(); i++){
       const StreamData& stream = *m_pwData.streams[i];
+      // As negotiated last: a resolution or scale changed while capturing renegotiates the stream
+      if(stream.pixelWidth > 0 && stream.pixelHeight > 0){
+        monitors[i].pixelWidth = stream.pixelWidth;
+        monitors[i].pixelHeight = stream.pixelHeight;
+      }
       monitors[i].lost = stream.lost;
       monitors[i].active = stream.streaming && !stream.lost;
       monitors[i].gpu = stream.lastFrameOnGpu;
@@ -442,6 +448,23 @@ namespace Halomux::Grabber
   }
 
 
+  void PipewireGrabber::_fallBackToSharedMemory(
+    StreamData* stream,
+    const std::string& reason
+  )
+  {
+    PipewireData* pw = stream->owner;
+    Core::Logger::warn("[gpu] ", reason, " on ", stream->label, ", falling back to the CPU path");
+    stream->dmaBufFailed = true;
+    {
+      auto lock = std::lock_guard(pw->processingInfoMutex);
+      stream->cpuReason = reason + ", shared memory";
+    }
+    stream->renegotiate = true;
+    pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+  }
+
+
   bool PipewireGrabber::_processDmaBuf(
     StreamData* stream,
     pw_buffer* pwBuffer,
@@ -457,9 +480,11 @@ namespace Halomux::Grabber
       return false;
     }
 
-    // One data per plane: compressed formats have several
+    // One data per plane: compressed formats have several. Buffers that don't tell them would
+    // never give colors, so the stream's lamps would freeze
     const auto planes = dmaBufPlanes(*pwBuffer->buffer);
     if(!planes.has_value()){
+      _fallBackToSharedMemory(stream, "unreadable DMA-BUF");
       return false;
     }
 
@@ -492,15 +517,7 @@ namespace Halomux::Grabber
 
     std::vector<cv::Vec4b> rgbaColors;
     if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors, stream->index)){
-      // Fall back to shared memory buffers for good
-      Core::Logger::warn("[gpu] GPU downscaling failed on ", stream->label, ", falling back to the CPU path");
-      stream->dmaBufFailed = true;
-      {
-        auto lock = std::lock_guard(pw->processingInfoMutex);
-        stream->cpuReason = "GPU downscaling failed, shared memory";
-      }
-      stream->renegotiate = true;
-      pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+      _fallBackToSharedMemory(stream, "GPU downscaling failed");
       return false;
     }
 
@@ -538,12 +555,14 @@ namespace Halomux::Grabber
       return false;
     }
 
-    const size_t step = data.chunk->stride > 0
-      ? static_cast<size_t>(data.chunk->stride)
-      : static_cast<size_t>(width) * 4;
+    // Read only inside the buffer: a chunk not matching the frame would be read past its end
+    const auto layout = sharedMemoryFrame(data.chunk->offset, data.chunk->stride, data.maxsize, width, height);
+    if(!layout.has_value()){
+      return false;
+    }
 
     // View on the Pipewire memory, which becomes invalid after queue_buffer()
-    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + data.chunk->offset, step);
+    const cv::Mat frameView(height, width, CV_8UC4, const_cast<uint8_t*>(readPtr) + layout->offset, layout->stride);
     const Imaging::ImageData frameViewData{.imageMatrix = frameView, .format = pixelFormat};
 
     // Downscale straight from the shared memory instead of copying the full
@@ -791,6 +810,11 @@ namespace Halomux::Grabber
       g_main_context_iteration(capture->context, TRUE);
     }
 
+    // The proxy's subscriptions are released through this context too, once it's freed
+    while(g_main_context_pending(capture->context)){
+      g_main_context_iteration(capture->context, FALSE);
+    }
+
     g_main_context_pop_thread_default(capture->context);
   }
 
@@ -872,10 +896,13 @@ namespace Halomux::Grabber
 
     // One stream per captured monitor, on the same connection
     for(auto& stream : pw->streams){
+      // Never moved to another video source once its monitor is gone, such as a camera the
+      // session manager would pick as the default: the stream ends, and the monitor counts as lost
       auto props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Video",
         PW_KEY_MEDIA_CATEGORY, "Capture",
         PW_KEY_MEDIA_ROLE, "Screen",
+        PW_KEY_NODE_DONT_RECONNECT, "true",
         NULL
       );
 

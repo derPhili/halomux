@@ -913,10 +913,24 @@ input[type=color]::-webkit-color-swatch
 }
 
 
-.channelList > p:focus-visible
+/* Selects an active lamp: the entry's name, looking like it */
+.lampSelectButton
+{
+  all: unset;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+
+.lampSelectButton:focus-visible
 {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 
@@ -1066,6 +1080,42 @@ input[type=color]::-webkit-color-swatch
 }
 
 
+/* Scaled with the widget, but never too small to grab: on a phone, the widget's share of the
+   width left them a few pixels wide */
+#tl, #tr, #bl, #br
+{
+  r: max(1.6%, 9px);
+}
+
+
+#gammaCursor
+{
+  r: max(2.4%, 9px);
+}
+
+
+/* Fingers need more than a mouse pointer */
+@media (pointer: coarse)
+{
+  #tl, #tr, #bl, #br
+  {
+    r: max(1.6%, 14px);
+  }
+
+  #gammaCursor
+  {
+    r: max(2.4%, 11px);
+  }
+}
+
+
+/* The gamma cursor reaches beyond its slider's thin area, at the widget's bottom edge */
+#svgArea, svg:has(> #gammaArea), #gammaArea
+{
+  overflow: visible;
+}
+
+
 .handler:hover
 {
   fill: var(--accentStrong);
@@ -1132,6 +1182,23 @@ body.i18nPending
 }
 
 
+/* Narrow screens such as phones: the footer wraps, so its source link stays reachable */
+@media (max-width: 640px)
+{
+  .actions
+  {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 10px 16px;
+  }
+
+  .layout
+  {
+    padding-bottom: 120px;
+  }
+}
+
+
 /* Overlay */
 
 #overlay
@@ -1158,6 +1225,13 @@ body.i18nPending
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+
+/* Focused when it opens, for screen readers to read it: no outline for that */
+.overlayContent:focus
+{
+  outline: none;
 }
 
 
@@ -1320,6 +1394,17 @@ body.i18nPending
 .errorMessage:empty
 {
   display: none;
+}
+
+
+/* Bridge whose certificate isn't signed by the Hue CA, confirmed before pairing */
+
+.unverifiedBridge:not([hidden])
+{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 

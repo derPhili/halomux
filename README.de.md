@@ -61,7 +61,7 @@ Das Paket enthält:
 
 * `halomux`: den Dienst, der die Lampen steuert, mit seiner systemd-User-Unit
 * `halomux-gui`: die Desktop-Anwendung, im Startmenü als „Halomux“
-* einen Autostart-Eintrag, der beim Login das Tray-Icon startet
+* einen Autostart-Eintrag, der beim Login das Tray-Icon startet, für Benutzer, die Halomux eingerichtet haben
 
 ### Aus dem Quellcode bauen
 
@@ -135,6 +135,8 @@ journalctl --user -u halomux.service -f
 * **Vorschau**: spielt Farbschnitte, Blitze links, rechts und beidseitig, einen langsamen Verlauf und einen Schnitt von Schwarz auf Weiß mit den aktuellen Einstellungen ab
 
 Jedes Bedienelement erklärt sich in einem Tooltip.
+
+Alles lässt sich auch mit der Tastatur bedienen. Mit Tab erreichst du die Lampen, Enter oder Leertaste wählt eine aus, und ihr Pfeil-Button verschiebt sie zwischen den Listen. Den Bereich der gewählten Lampe verschieben die Pfeiltasten um eine Zelle des Subsamples, Umschalt mit den Pfeiltasten ändert seine Größe, und Alt mit links oder rechts setzt ihn auf den vorigen oder nächsten Monitor. Hat der Cursor der Gammakorrektur den Fokus, verändern die Pfeiltasten auch sie.
 
 ### Verarbeitung auf der GPU
 

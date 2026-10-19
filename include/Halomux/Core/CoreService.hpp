@@ -4,6 +4,7 @@
 
 #include <Halomux/Core/Config.hpp>
 #include <Halomux/Core/MonitorSelection.hpp>
+#include <Halomux/Core/SetupBridgeTrust.hpp>
 #include <Halomux/Grabber/IGrabber.hpp>
 
 #include <Halomux/Hue/Api/EntertainmentConfiguration.hpp>
@@ -38,14 +39,27 @@ namespace Halomux::Core
 
     /**
      * @brief Registers Hue bridge address if valid
-     * 
+     *
+     * The setup pairs with it once it's trusted: right away if the Hue CA signed its
+     * certificate, otherwise once the user confirmed it (see acceptUnverifiedBridge()).
+     *
      * @param bridgeAddress Hue bridge address to register
-     * @return true Hue bridge address is valid and was registered
-     * @return false Hue bridge address is invalid and was discarded
+     * @return std::optional<bool> Whether its certificate is signed by the Hue CA, nothing if
+     *         no bridge answers there (the address is discarded)
      */
-    bool validateBridgeAddress(
+    std::optional<bool> validateBridgeAddress(
       const std::string& bridgeAddress
     );
+
+
+    /**
+     * @brief Trusts the validated bridge, whose certificate isn't signed by the Hue CA, as the
+     *        user confirmed that it's their bridge
+     *
+     * @return true The setup may now pair with it
+     * @return false No such bridge awaited the confirmation
+     */
+    bool acceptUnverifiedBridge();
 
 
     /**
@@ -573,6 +587,9 @@ namespace Halomux::Core
     Config& m_config;
 
     std::mutex m_profileMutex;
+
+    // The bridge the setup may pair with
+    SetupBridgeTrust m_setupBridgeTrust;
 
     std::mutex m_setupBackendMutex;
     Network::Http::Server::SetupBackend* m_setupBackend{nullptr};

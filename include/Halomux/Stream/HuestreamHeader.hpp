@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
+#include <vector>
+
+#include <Halomux/Hue/Api/Channel.hpp>
 
 
 namespace Halomux::Stream
@@ -41,4 +45,19 @@ namespace Halomux::Stream
       const std::string& entertainmentConfigurationId
     );
   };
+
+
+  /**
+   * @brief Appends a message of the Hue Entertainment API to a buffer: the header, then the
+   *        channels with their values on 16 bits, most significant byte first
+   *
+   * @param buffer Buffer, reused across messages once cleared
+   * @param header Header of the message
+   * @param channels Channels, their values clamped to [0, 1]
+   */
+  void appendHuestreamMessage(
+    std::vector<std::byte>& buffer,
+    const HuestreamHeader& header,
+    const Hue::Api::ChannelStreams& channels
+  );
 }

@@ -55,12 +55,12 @@ namespace Halomux::Core
       /**
        * @brief Replaces the lamps by those of another entertainment area, see ChannelStore::replace
        *
-       * @param areaId Entertainment area of the lamps
+       * @param areaId Entertainment area of the lamps, nothing once none is selected
        * @param channels Lamps of the area
        * @param monitors Captured monitors, read while this access holds the lock
        */
       void replace(
-        std::string areaId,
+        std::optional<std::string> areaId,
         Hue::Api::Channels channels,
         Grabber::Monitors monitors
       );

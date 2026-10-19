@@ -126,11 +126,23 @@ namespace Halomux::Network::Http::Server
     m_httpServer.addRoute(HttpMethod::Put, "/api/validateBridgeAddress", [this](const Request& req, Response& res){
       const std::string bridgeAddress = readBody(req, [](const Serialization::Json& body){return body.at("bridgeAddress").get<std::string>();});
 
-      Serialization::Json jsonResponse = {{"succeeded", m_coreService->validateBridgeAddress(bridgeAddress)}};
+      const auto certificateVerified = m_coreService->validateBridgeAddress(bridgeAddress);
+
+      Serialization::Json jsonResponse = {
+        {"succeeded", certificateVerified.has_value()},
+        {"certificateVerified", certificateVerified.value_or(false)}
+      };
 
       std::string response = jsonResponse.dump();
       res.contentType = "application/json";
       res.body = response;
+    });
+
+
+    // The user confirmed the bridge whose certificate isn't signed by the Hue CA
+    m_httpServer.addRoute(HttpMethod::Put, "/api/acceptUnverifiedBridge", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Serialization::Json{{"succeeded", m_coreService->acceptUnverifiedBridge()}}.dump();
     });
 
 

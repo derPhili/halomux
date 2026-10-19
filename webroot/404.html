@@ -8,10 +8,17 @@
     <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
   </head>
 
-  <body>
+  <body class="i18nPending">
     <main class="notFound card">
       <h2>Page not found</h2>
       <p class="hint" style="margin-top: 8px;">Go back to <a href="/">Halomux</a></p>
     </main>
+
+    <script src="Utils.js"></script>
+    <script src="I18n.js"></script>
+    <script>
+      log = console.log;
+      I18n.init().then(() => {document.title = t(document.title);});
+    </script>
   </body>
 </html>

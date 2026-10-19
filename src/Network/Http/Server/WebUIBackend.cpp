@@ -1,6 +1,7 @@
 #include <Halomux/Network/Http/Server/WebUIBackend.hpp>
 
 #include <filesystem>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -11,6 +12,7 @@
 #include <Halomux/Serialization/Channel.hpp>
 #include <Halomux/Serialization/Config.hpp>
 #include <Halomux/Serialization/Json.hpp>
+#include <Halomux/Serialization/Numbers.hpp>
 #include <Halomux/Serialization/EntertainmentConfiguration.hpp>
 #include <Halomux/Stream/Streamer.hpp>
 
@@ -286,7 +288,7 @@ namespace Halomux::Network::Http::Server
       const uint8_t channelId = channelIdOf(req);
 
       const auto [x, y, cornerType] = readBody(req, [](const Json& body){
-        return std::tuple{body.at("x").get<float>(), body.at("y").get<float>(), body.at("type").get<int>()};
+        return std::tuple{readNumber(body.at("x")), readNumber(body.at("y")), readInteger(body.at("type"), 0, 3)};
       });
       const auto uvCorner = parseUVCorner(cornerType);
       if(!uvCorner.has_value()){
@@ -316,7 +318,7 @@ namespace Halomux::Network::Http::Server
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelMonitor/:channelId", [this](const Request& req, Response& res){
       const uint8_t channelId = channelIdOf(req);
       const auto [monitor, uvs] = readBody(req, [](const Json& body){
-        return std::pair{body.at("monitor").get<size_t>(), body.at("uvs").get<Imaging::UVs>()};
+        return std::pair{readInteger(body.at("monitor"), size_t{0}, std::numeric_limits<size_t>::max()), body.at("uvs").get<Imaging::UVs>()};
       });
 
       if(!m_coreService->setChannelMonitor(channelId, monitor, uvs).has_value()){
@@ -330,7 +332,8 @@ namespace Halomux::Network::Http::Server
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelGammaFactor/:channelId", [this](const Request& req, Response& res){
       const uint8_t channelId = channelIdOf(req);
-      const float gammaFactor = readBody(req, [](const Json& body){return body.at("gammaFactor").get<float>();});
+      // The range of the gamma slider: beyond, the lamp would stay fully on or off
+      const float gammaFactor = readBody(req, [](const Json& body){return readNumber(body.at("gammaFactor"), -1.f, 1.f);});
 
       if(!m_coreService->setChannelGammaFactor(channelId, gammaFactor)){
         throw HttpError(404, "unknown channel");
@@ -348,7 +351,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setSubsampleWidth", [this](const Request& req, Response& res){
-      const unsigned subsampleWidth = readBody(req, [](const Json& body){return body.get<unsigned>();});
+      const unsigned subsampleWidth = readBody(req, [](const Json& body){return readInteger(body, 1u, Core::Config::MaxSubsampleWidth);});
       m_coreService->setSubsampleWidth(subsampleWidth);
 
       glm::ivec2 displayResolution = m_coreService->displayResolution();
@@ -365,7 +368,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setRefreshRate", [this](const Request& req, Response& res){
-      const unsigned refreshRate = readBody(req, [](const Json& body){return body.get<unsigned>();});
+      const unsigned refreshRate = readBody(req, [](const Json& body){return readInteger(body, 0u, std::numeric_limits<unsigned>::max());});
       m_coreService->setRefreshRate(refreshRate);
 
       Json jsonRefreshRate{
@@ -379,7 +382,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setTransitionSmoothing", [this](const Request& req, Response& res){
-      const float transitionSmoothing = readBody(req, [](const Json& body){return body.get<float>();});
+      const float transitionSmoothing = readBody(req, [](const Json& body){return readNumber(body);});
       m_coreService->setTransitionSmoothing(transitionSmoothing);
 
       Json jsonTransitionSmoothing{
@@ -393,7 +396,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setBrightness", [this](const Request& req, Response& res){
-      m_coreService->setBrightness(readBody(req, [](const Json& body){return body.get<float>();}));
+      m_coreService->setBrightness(readBody(req, [](const Json& body){return readNumber(body);}));
 
       res.contentType = "application/json";
       res.body = Json{{"brightness", m_coreService->brightness()}}.dump();
@@ -401,7 +404,7 @@ namespace Halomux::Network::Http::Server
 
 
     m_httpServer.addRoute(HttpMethod::Put, "/api/setHighlightBoost", [this](const Request& req, Response& res){
-      m_coreService->setHighlightBoost(readBody(req, [](const Json& body){return body.get<float>();}));
+      m_coreService->setHighlightBoost(readBody(req, [](const Json& body){return readNumber(body);}));
 
       res.contentType = "application/json";
       res.body = Json{{"highlightBoost", m_coreService->highlightBoost()}}.dump();

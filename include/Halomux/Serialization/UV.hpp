@@ -1,5 +1,9 @@
 #pragma once
 
+#include <algorithm>
+
+#include <glm/common.hpp>
+
 #include <Halomux/Serialization/JsonSerializer.hpp>
 #include <Halomux/Imaging/UV.hpp>
 
@@ -14,9 +18,14 @@ namespace Halomux::Serialization
       Imaging::UV& uv
     )
     {
+      // Corners lie on their monitor: others, such as hand-edited ones, are brought onto it
+      const auto onMonitor = [](const Json& value){
+        return static_cast<float>(std::clamp(value.get<double>(), 0.0, 1.0));
+      };
+
       uv = Imaging::UV{
-        jsonUV.at("x"),
-        jsonUV.at("y")
+        onMonitor(jsonUV.at("x")),
+        onMonitor(jsonUV.at("y"))
       };
     }
 
@@ -56,9 +65,10 @@ namespace Halomux::Serialization
       Imaging::UV min = jsonUVs.at("uvA").get<Imaging::UV>();
       Imaging::UV max = jsonUVs.at("uvB").get<Imaging::UV>();
 
+      // In either order
       uvs = Imaging::UVs{
-        .min = min,
-        .max = max
+        .min = glm::min(min, max),
+        .max = glm::max(min, max)
       };
     }
   };

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -113,6 +114,9 @@ int main()
   expect("Subsample of the reference monitor", subsampleWidthFor(256, 2560, 2560) == 256);
   expect("Subsample capped to the monitor", subsampleWidthFor(5000, 2560, 1920) == 1920);
   expect("Subsample at least one pixel", subsampleWidthFor(0, 2560, 1920) == 1);
+  // Beyond int: capped too, not cast out of range
+  expect("Huge subsample capped", subsampleWidthFor(std::numeric_limits<unsigned>::max(), 2560, 1920) == 1920);
+  expect("Huge subsample capped without reference", subsampleWidthFor(std::numeric_limits<unsigned>::max(), 0, 1920) == 1920);
 
   // minimalRegion: a region never collapses below one subsample cell
   {

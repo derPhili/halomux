@@ -26,6 +26,7 @@
 #include <Halomux/Hue/Api/Channel.hpp>
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
 
 
 using namespace std::chrono_literals;
@@ -172,11 +173,17 @@ namespace Halomux::Core
       std::make_unique<Hue::Api::ClipBridgeApi>(credentials, bridgeAddress),
       [credentials, bridgeAddress](const std::string& areaId) -> std::unique_ptr<Stream::IStreamer>{
         // Connects in the background: replacing it doesn't hold the streaming loop
-        auto streamer = std::make_unique<Stream::Streamer>(credentials, bridgeAddress);
+        // Connected by host, not by URL: IPv6 addresses without their brackets
+        auto streamer = std::make_unique<Stream::Streamer>(credentials, Hue::Api::bridgeHost(bridgeAddress));
         streamer->setEntertainmentConfigurationId(areaId);
         return streamer;
       },
       [this](const std::string& areaId, const Hue::Api::ChannelMembers& members){_onAreaSelected(areaId, members);},
+      [this](){
+        // No lamps without their area: they'd show and be saved as if it still existed
+        auto access = m_channelStore.access();
+        access.replace(std::nullopt, {}, grabber()->monitors());
+      },
       std::chrono::duration_cast<std::chrono::milliseconds>(AreaCheckInterval)
     );
 
@@ -288,14 +295,16 @@ namespace Halomux::Core
         return;
       }
 
-      newGrabber->setFrameRateLimit(m_config.refreshRate());
-
       std::shared_ptr<Grabber::IGrabber> oldGrabber;
       {
         auto channels = m_channelStore.access();
         {
           std::lock_guard grabberLock(m_grabberMutex);
           oldGrabber = std::exchange(m_grabber, newGrabber);
+
+          // Read once it's the grabber a change of the rate reaches: a change while the user
+          // selected the monitors went to the former one
+          newGrabber->setFrameRateLimit(m_config.refreshRate());
         }
 
         // Channel monitor indices refer to the new monitors from now on
@@ -368,21 +377,23 @@ namespace Halomux::Core
 
     // A new grabber captures everything until told otherwise
     if(m_grabberReplaced.exchange(false)){
-      m_channelRegions.clear();
+      m_channelRegions.reset();
       grabber->setPaused(m_capturePaused);
     }
 
-    // A monitor unplugged while capturing: its lamps go off, and the light manager says why
+    // A monitor unplugged while capturing: its lamps go off, and the light manager says why. One
+    // whose resolution changed gets the regions' cells of its new size.
     const auto now = std::chrono::steady_clock::now();
     if(now - m_lastLostMonitorsCheck >= std::chrono::seconds(1)){
       m_lastLostMonitorsCheck = now;
 
       auto monitors = grabber->monitors();
-      const bool lostChanged = monitors.size() != access.monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
-        return monitors[i].lost != access.monitors[i].lost;
+      const bool changed = monitors.size() != access.monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
+        const auto& known = access.monitors[i];
+        return monitors[i].lost != known.lost || monitors[i].pixelWidth != known.pixelWidth || monitors[i].pixelHeight != known.pixelHeight;
       });
 
-      if(lostChanged){
+      if(changed){
         access.resolveMonitors(std::move(monitors));
       }
     }
@@ -409,6 +420,7 @@ namespace Halomux::Core
     }
 
     if(regions != m_channelRegions){
+      // Told even when there are none, such as without active lamps: idle monitors stop
       grabber->setChannelRegions(regions);
       m_channelRegions = std::move(regions);
     }
@@ -429,7 +441,12 @@ namespace Halomux::Core
 
     Grabber::IGrabber::ChannelColors channelColors;
     if(syncing && !grabber->grabChannelColors(channelColors) && !previewing){
-      // Grabbers with asynchronous capture may produce slower than the core consumes
+      // Grabbers with asynchronous capture may produce slower than the core consumes. Compositors
+      // send frames on changes only: on a still screen after sync was resumed, the bridge would
+      // end the stream for want of messages. The last colors keep it alive until a frame comes.
+      if(m_areaSession){
+        m_areaSession->stream(channelStreams);
+      }
       return;
     }
 

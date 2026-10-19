@@ -78,6 +78,22 @@ int main()
     expect("No profile at all", channelsFromProfile(members, Json()).size() == 3);
   }
 
+  // Hand-edited regions and gamma factors get the light manager's limits
+  {
+    const Hue::Api::ChannelMembers members{{0, {}}, {1, {}}};
+    const Json saved = Json::array({
+      {{"channelId", 0}, {"active", true}, {"gammaFactor", 1e30}, {"uvs", {{"uvA", {{"x", 0.8}, {"y", -3.0}}}, {"uvB", {{"x", 0.2}, {"y", 1e30}}}}}},
+      {{"channelId", 1}, {"active", true}, {"gammaFactor", -5.0}, {"uvs", {{"uvA", {{"x", 1e39}, {"y", 0.0}}}, {"uvB", {{"x", 1.0}, {"y", 1.0}}}}}}
+    });
+
+    const auto channels = channelsFromProfile(members, saved);
+    const auto& uvs = channels.at(0).uvs;
+    expect("Corners in order", uvs.min.x == 0.2f && uvs.max.x == 0.8f);
+    expect("Corners inside the monitor", uvs.min.y == 0.f && uvs.max.y == 1.f);
+    expect("Gamma factor limited", channels.at(0).gammaFactor == 1.f && channels.at(1).gammaFactor == -1.f);
+    expect("Corner beyond float inside the monitor", channels.at(1).uvs.min.x == 1.f);
+  }
+
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");
     return 1;

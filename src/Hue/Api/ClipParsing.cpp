@@ -120,7 +120,7 @@ namespace Halomux::Hue::Api::ClipParsing
       if(success.is_object() && success.contains("username") && success.at("username").is_string() && success.contains("clientkey") && success.at("clientkey").is_string()){
         // The pre-shared key of the streaming connection: a key that isn't one would fail every connection
         if(!Auth::Credentials(success.at("username").get<std::string>(), success.at("clientkey").get<std::string>()).hasValidClientkey()){
-          return {.credentials = std::nullopt, .error = "the bridge sent a clientkey that isn't hexadecimal"};
+          return {.credentials = std::nullopt, .error = "the bridge sent a clientkey that isn't 32 hexadecimal digits"};
         }
 
         return {.credentials = Json{{"username", success.at("username")}, {"clientkey", success.at("clientkey")}}, .error = ""};
@@ -239,5 +239,31 @@ namespace Halomux::Hue::Api::ClipParsing
       Core::Logger::warn("Malformed entertainment area of the bridge: ", e.what());
       return std::nullopt;
     }
+  }
+
+
+  std::vector<DiscoveredBridge> discoveredBridges(
+    const Serialization::Json& response
+  )
+  {
+    std::vector<DiscoveredBridge> bridges;
+    if(!response.is_array()){
+      return bridges;
+    }
+
+    for(const auto& entry : response){
+      if(!entry.is_object() || !entry.contains("internalipaddress") || !entry.at("internalipaddress").is_string()){
+        continue;
+      }
+
+      const auto address = entry.at("internalipaddress").get<std::string>();
+      if(address.empty() || (entry.contains("id") && !entry.at("id").is_string())){
+        continue;
+      }
+
+      bridges.push_back({.id = entry.value("id", std::string{}), .address = address});
+    }
+
+    return bridges;
   }
 }

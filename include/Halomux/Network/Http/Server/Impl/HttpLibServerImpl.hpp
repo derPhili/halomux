@@ -134,6 +134,18 @@ namespace Halomux::Network::Http::Server
         httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
       });
 
+      // On every answer, refused and unknown ones too: another site framing the light manager
+      // could have its buttons clicked unseen (clickjacking), past the Origin check
+      m_service->set_default_headers({
+        {"X-Frame-Options", "DENY"},
+        {"Content-Security-Policy", "frame-ancestors 'none'"},
+        {"X-Content-Type-Options", "nosniff"}
+      });
+
+      // The requests carry small JSON documents: anything larger is refused before it's read
+      static constexpr size_t MaxRequestBodySize = 64 * 1024;
+      m_service->set_payload_max_length(MaxRequestBodySize);
+
       for(const auto& route : routes){
         auto wrapped = _wrapHandler(route.handler, route.method);
         switch(route.method)

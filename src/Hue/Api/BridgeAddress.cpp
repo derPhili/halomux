@@ -1,4 +1,9 @@
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
+
+#include <algorithm>
+#include <cctype>
 #include <string>
+#include <string_view>
 
 
 namespace Halomux::Hue::Api
@@ -51,7 +56,35 @@ namespace Halomux::Hue::Api
       address.pop_back();
     }
 
+    // The bridge answers on its standard ports only, and the streaming connection has a port of
+    // its own: a port given is dropped. IPv6 addresses are bracketed, as URLs need them.
+    if(address.starts_with('[')){
+      const size_t close = address.find(']');
+      if(close == std::string::npos){
+        return {};
+      }
+      address.erase(close + 1);
+    }
+    else if(std::count(address.begin(), address.end(), ':') == 1){
+      address.erase(address.find(':'));
+    }
+    else if(address.find(':') != std::string::npos){
+      address = "[" + address + "]";
+    }
+
     return address;
+  }
+
+
+  std::string bridgeHost(
+    const std::string& bridgeAddress
+  )
+  {
+    if(bridgeAddress.size() >= 2 && bridgeAddress.front() == '[' && bridgeAddress.back() == ']'){
+      return bridgeAddress.substr(1, bridgeAddress.size() - 2);
+    }
+
+    return bridgeAddress;
   }
 }
 

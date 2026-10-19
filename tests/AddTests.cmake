@@ -124,6 +124,9 @@ halomux_add_test(DmaBufPlanes
   INCLUDES ${LIB_PIPEWIRE_INCLUDE_DIRS}
 )
 
+# Frames in shared memory buffers, read only inside the buffer
+halomux_add_test(FrameLayout)
+
 # Matching monitors between the portal, the compositor and the profile
 halomux_add_test(Monitors
   SOURCES ${SRC}/Grabber/Monitors.cpp
@@ -212,6 +215,11 @@ halomux_add_test(LoopThread
 
 # Bridge
 
+# Bridge addresses as users enter them, for HTTPS and the streaming connection
+halomux_add_test(BridgeAddress
+  SOURCES ${SRC}/Hue/Api/BridgeAddress.cpp
+)
+
 # Reading mDNS answers, which come from the network
 halomux_add_test(BridgeDiscovery
   SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp ${SRC}/Hue/Api/BridgeTls.cpp
@@ -221,6 +229,9 @@ halomux_add_test(BridgeDiscovery
 halomux_add_test(BridgeTls
   SOURCES ${SRC}/Hue/Api/BridgeTls.cpp
 )
+
+# Which bridges the setup pairs with, whose certificate may not be signed by the Hue CA
+halomux_add_test(SetupBridgeTrust)
 
 # Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
 halomux_add_test(ClipParsing
@@ -244,6 +255,12 @@ halomux_add_test(Streamer
   DEPENDS generate_version_header
 )
 
+# Messages of the Hue Entertainment API, as the bridge reads them
+halomux_add_test(Huestream
+  SOURCES ${SRC}/Stream/HuestreamHeader.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
+)
+
 # Reading the clientkey, the pre-shared key of the streaming connection
 halomux_add_test(Credentials
   SOURCES ${SRC}/Hue/Auth/Credentials.cpp
@@ -264,6 +281,13 @@ halomux_add_test(CurlClient
 )
 
 
+# Certificate checks of the requests to the bridge, against a CA of the test's own
+halomux_add_test(TlsPolicy
+  SOURCES ${SRC}/Network/Http/Client/CurlClient.cpp
+  LIBRARIES CURL::libcurl httplib::httplib nlohmann_json::nlohmann_json
+)
+
+
 # Light manager and configuration
 
 # Which Host headers the light manager answers, against DNS rebinding
@@ -271,10 +295,20 @@ halomux_add_test(HostCheck
   SOURCES ${SRC}/Network/Http/Server/HostCheck.cpp
 )
 
+# Numbers of requests and files, read without wrapping, cutting or casting out of range
+halomux_add_test(JsonNumbers
+  LIBRARIES nlohmann_json::nlohmann_json
+)
+
 # Malformed requests get 400, unknown resources 404, in one answer shape
 halomux_add_test(HttpErrors
   SOURCES ${SRC}/Network/Http/Server/HttpServer.cpp ${SRC}/Network/Http/Server/HostCheck.cpp ${SRC}/Network/Http/Server/RouteTools.cpp
   LIBRARIES httplib::httplib nlohmann_json::nlohmann_json glm::glm
+)
+
+# The setup on a port in use, told apart from an aborted setup
+halomux_add_test(SetupBackend WITH_APP
+  LIBRARIES ${OpenCV_LIBS}
 )
 
 # Files only ever replaced by a complete content

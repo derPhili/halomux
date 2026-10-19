@@ -120,10 +120,13 @@ class WebUI
     this.confirmStopButton.addEventListener("click", () => {this._stop();});
     
     this.cancelStopButton = document.getElementById("cancelStopButton");
-    this.cancelStopButton.addEventListener("click", () => {
-      // The section too: the overlay is shown again for other messages, such as while switching areas
-      document.getElementById("confirmStopSection").style.display = "none";
-      this.overlay.style.display = "none";
+    this.cancelStopButton.addEventListener("click", () => {this._cancelStop();});
+
+    // Escape closes the shutdown question, as dialogs do
+    document.addEventListener("keydown", (event) => {
+      if(event.key == "Escape" && document.getElementById("confirmStopSection").style.display != "none"){
+        this._cancelStop();
+      }
     });
 
     this.languageSelectNode = document.getElementById("languageSelect");
@@ -331,12 +334,19 @@ class WebUI
   }
 
 
-  _setChannelActivity(channelId, active)
+  // keepFocus: the lamp was moved with its arrow, whose focus follows it into the other list
+  _setChannelActivity(channelId, active, keepFocus = false)
   {
     let promise = RequestUtils.post(`/api/setChannelActivity/${channelId}`, JSON.stringify({active : active}));
     promise.then((data) => {
       this._refreshChannelsLists(data.channels);
-      
+
+      // The lists are built anew: keyboard users would otherwise start over at the top
+      if(keepFocus){
+        const list = active ? this.activeChannelsNode : this.inactiveChannelsNode;
+        list.querySelector(`p[data-channel-id="${channelId}"] .moveLampButton`)?.focus();
+      }
+
       if("newActiveChannelId" in data){
         this._manageChannel(data.newActiveChannelId);
       }
@@ -404,17 +414,6 @@ class WebUI
         this._manageChannel(channelData.channelId);
       });
 
-      // Selected with the keyboard too
-      newChannelEntryNode.tabIndex = 0;
-      newChannelEntryNode.setAttribute("role", "button");
-      newChannelEntryNode.setAttribute("aria-pressed", "false");
-      newChannelEntryNode.addEventListener("keydown", (event) => {
-        if(event.target == newChannelEntryNode && (event.key == "Enter" || event.key == " ")){
-          event.preventDefault();
-          this._manageChannel(channelData.channelId);
-        }
-      });
-
       this._fillChannelEntry(newChannelEntryNode, newChannel);
       this.lampSwatches[newChannel.channelId] = newChannelEntryNode.querySelector(".lampSwatch");
 
@@ -437,7 +436,19 @@ class WebUI
     id.style.marginLeft = "auto";
     id.textContent = `#${channel.channelId}`;
 
-    entryNode.replaceChildren(swatch, name, id);
+    if(channel.node){
+      // Selected with the keyboard too: a button of its own beside the arrow's, as one inside
+      // another would be announced with the arrow's label
+      let select = document.createElement("button");
+      select.type = "button";
+      select.className = "lampSelectButton";
+      select.setAttribute("aria-pressed", entryNode.selected ? "true" : "false");
+      select.replaceChildren(swatch, name, id);
+      entryNode.replaceChildren(select);
+    }
+    else{
+      entryNode.replaceChildren(swatch, name, id);
+    }
 
     entryNode.title = channel.node
       ? t("{lamp}: the dot shows its current color. Click or press Enter to edit its screen region, drag to Available or use the arrow to stop driving it", {lamp : channel.formatMembers()})
@@ -447,7 +458,7 @@ class WebUI
       let missing = document.createElement("span");
       missing.className = "hint monitorMissing";
       missing.textContent = t("Monitor not captured – lamp is off");
-      entryNode.insertBefore(missing, id);
+      id.parentNode.insertBefore(missing, id);
       entryNode.title = t("The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.");
     }
 
@@ -469,9 +480,10 @@ class WebUI
     button.addEventListener("click", (event) => {
       // Not a selection of the lamp
       event.stopPropagation();
-      this._setChannelActivity(channelId, activate);
+      this._setChannelActivity(channelId, activate, true);
     });
 
+    entryNode.dataset.channelId = channelId;
     entryNode.appendChild(button);
   }
 
@@ -479,7 +491,7 @@ class WebUI
   _setItemSelected(channelNode, selected)
   {
     channelNode.selected = selected;
-    channelNode.setAttribute("aria-pressed", selected ? "true" : "false");
+    channelNode.querySelector(".lampSelectButton")?.setAttribute("aria-pressed", selected ? "true" : "false");
 
     if(channelNode.selected){
       channelNode.classList.add("selected");
@@ -555,7 +567,16 @@ class WebUI
   _buildSubsampleOptions(subsampleResolutionCandidates, subsampleWidth)
   {
     this.availableSubsamplesNode.replaceChildren();
-    for(let subsampleCandidate of [...subsampleResolutionCandidates].reverse()){
+
+    // A width chosen for monitors captured before may not divide the current ones: still listed,
+    // so the list shows the width in use instead of nothing
+    let candidates = [...subsampleResolutionCandidates];
+    if(subsampleWidth > 0 && !candidates.some(candidate => candidate.x == subsampleWidth) && this.screenWidget.width > 0){
+      candidates.push({x : subsampleWidth, y : Math.max(1, Math.round(subsampleWidth * this.screenWidget.height / this.screenWidget.width))});
+      candidates.sort((a, b) => a.x - b.x);
+    }
+
+    for(let subsampleCandidate of candidates.reverse()){
       let newOption = document.createElement("option");
       let width = subsampleCandidate.x;
       let height = subsampleCandidate.y;
@@ -900,34 +921,98 @@ class WebUI
         if(data.accepted){
           section.style.display = "none";
           this.overlay.classList.remove("notice");
-          this.overlay.style.display = "none";
+          this._showOverlay(false);
         }
       })
       .catch((error) => {log(error);});
     };
 
     this.overlay.classList.add("notice");
-    this.overlay.style.display = "block";
     section.style.display = "block";
+    this._showOverlay(true);
   }
 
 
   _askStopConfirmation()
   {
-    this.overlay.style.display = "block";
     document.getElementById("confirmStopSection").style.display = "block";
+    // On the harmless answer
+    this._showOverlay(true, this.cancelStopButton);
+  }
+
+
+  _cancelStop()
+  {
+    // The section too: the overlay is shown again for other messages, such as while switching areas
+    document.getElementById("confirmStopSection").style.display = "none";
+    this._showOverlay(false);
+  }
+
+
+  // The overlay covers the light manager: what's behind can't be reached, by the keyboard either,
+  // and the focus goes back where it was once it's closed
+  _showOverlay(shown, focusNode = null)
+  {
+    const wasShown = this.overlay.style.display == "block";
+    if(shown && !wasShown){
+      this.focusBeforeOverlay = document.activeElement;
+    }
+
+    this.overlay.style.display = shown ? "block" : "none";
+    for(let node of document.querySelectorAll("body > header, body > main, body > footer")){
+      node.inert = shown;
+    }
+
+    if(shown){
+      (focusNode || this.overlay.querySelector(".overlayContent")).focus();
+    }
+    else if(wasShown && this.focusBeforeOverlay && document.contains(this.focusBeforeOverlay)){
+      this.focusBeforeOverlay.focus();
+      this.focusBeforeOverlay = null;
+    }
   }
 
 
   _stop()
   {
+    const stopError = document.getElementById("stopError");
+    stopError.textContent = "";
+
     let promise = RequestUtils.post("/api/stop", JSON.stringify(null));
     promise.then((data) => {
-      if(data.succeeded){
-        document.getElementById("confirmStopSection").style.display = "none";
-        document.getElementById("stoppedInfoSection").style.display = "block";
+      if(!data.succeeded){
+        stopError.textContent = t("Halomux couldn't be shut down.");
+        return;
       }
+
+      document.getElementById("confirmStopSection").style.display = "none";
+      document.getElementById("stoppedInfoSection").style.display = "block";
+      this._showOverlay(true);
+      this._reloadOnceRunning();
     });
+    promise.catch((error) => {
+      log(error);
+      stopError.textContent = t("Halomux couldn't be shut down.");
+    });
+  }
+
+
+  // Started again, such as from the tray's menu: the page comes back instead of staying on
+  // "Halomux is now off". Answers until it's down are those of the service still ending.
+  _reloadOnceRunning(wasDown = false)
+  {
+    setTimeout(() => {
+      RequestUtils.get("/api/version")
+      .then(() => {
+        if(wasDown){
+          location.reload();
+        }
+        else{
+          this._reloadOnceRunning(false);
+        }
+      })
+      .catch(() => {this._reloadOnceRunning(true);});
+    }, WebUI.RestartCheckInterval);
   }
 
 
@@ -936,15 +1021,15 @@ class WebUI
     let loadingInfoSectionNode = document.getElementById("loadingInfoSection");
 
     if(show){
-      this.overlay.style.display = "block";
       loadingInfoSectionNode.style.display = "block";
       if(loadingText !== null){
         document.getElementById("loadingTextInfo").textContent = loadingText;
       }
+      this._showOverlay(true);
     }
     else{
-      this.overlay.style.display = "none";
       loadingInfoSectionNode.style.display = "none";
+      this._showOverlay(false);
     }
   }
 }
@@ -953,6 +1038,9 @@ class WebUI
 // Interval between live lamp color updates [ms]. Each update costs a frame in the web engine:
 // 4 per second keep the dots live at about half the CPU time of 8
 WebUI.LampColorsInterval = 250;
+
+// Checks whether the stopped service runs again [ms]
+WebUI.RestartCheckInterval = 2000;
 
 // Transition smoothing presets [%]
 WebUI.GamingSmoothing = 10;

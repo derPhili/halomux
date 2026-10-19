@@ -155,6 +155,12 @@ namespace Halomux::Gui
   }
 
 
+  bool DesktopApp::windowShown() const
+  {
+    return m_window && m_window->isVisible();
+  }
+
+
   void DesktopApp::_request(const QByteArray& method, const QString& path, const QByteArray& body, JsonHandler onSuccess)
   {
     QNetworkRequest request(m_baseUrl.resolved(QUrl(path)));

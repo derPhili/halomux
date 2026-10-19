@@ -14,6 +14,19 @@ KillSignal=SIGTERM
 TimeoutStopSec=15
 Restart=on-failure
 RestartSec=5
+# A failure that lasts, such as its port in use, is retried less and less often, up to every
+# five minutes, instead of every five seconds for good
+RestartSteps=6
+RestartMaxDelaySec=300
+
+# Hardening that leaves what it needs: the session's sockets (Wayland, D-Bus, Pipewire), the
+# network, the GPU and the desktop application it starts
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
 
 [Install]
 WantedBy=graphical-session.target

@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stop_token>
 #include <thread>
 
@@ -184,9 +185,6 @@ namespace Halomux::Core
 
     // Lamps, their streams and the captured monitors, shared with the web UI threads
     ChannelStore m_channelStore;
-    // The entertainment area and the stream to it. Declared after the lamps, which its checks
-    // replace when they select an area: stopped first
-    std::unique_ptr<AreaSession> m_areaSession;
     // Last check for monitors lost while capturing (streaming thread)
     std::chrono::steady_clock::time_point m_lastLostMonitorsCheck{};
 
@@ -205,7 +203,9 @@ namespace Halomux::Core
     // Set when a screen selection replaced the grabber, for the streaming thread
     std::atomic<bool> m_grabberReplaced{false};
     std::atomic<MonitorSelection> m_monitorSelection{MonitorSelection::Idle};
-    Grabber::IGrabber::ChannelRegions m_channelRegions;
+    // Regions the grabber was last told, nothing until it was told any: a new grabber captures
+    // every monitor until then, even with no lamp to follow them (streaming thread)
+    std::optional<Grabber::IGrabber::ChannelRegions> m_channelRegions;
     // Capture is paused while sync is disabled (streaming thread)
     bool m_capturePaused{false};
 
@@ -214,6 +214,11 @@ namespace Halomux::Core
 
     // Start of the running preview (steady clock ticks), 0 when none
     std::atomic<int64_t> m_previewStart{0};
+
+    // The entertainment area and the stream to it. Declared after the lamps and the grabber,
+    // which its checks read when they select an area: stopped before them, even if the start
+    // failed before the shutdown
+    std::unique_ptr<AreaSession> m_areaSession;
 
     // Screen selection in progress, joined (and aborted) before the members it uses go away.
     // Started by a web UI thread, stopped by the thread handling a signal.

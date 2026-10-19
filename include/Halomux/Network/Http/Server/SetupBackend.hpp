@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <optional>
 #include <thread>
 
 #include <Halomux/Core/Logger.hpp>
@@ -37,13 +38,21 @@ namespace Halomux::Network::Http::Server
     }
 
 
-    bool execute(
+    /**
+     * @brief Serves the setup until it's finished or aborted
+     *
+     * @param port Port of the setup page
+     * @param boundBackendIP Address it listens on
+     * @return std::optional<bool> Whether the setup was completed, nothing if it couldn't be
+     *         opened, such as on a port in use
+     */
+    std::optional<bool> execute(
       uint32_t port,
       const std::string& boundBackendIP
     )
     {
       if(!m_httpServer.bind(boundBackendIP, port)){
-        return false;
+        return std::nullopt;
       }
 
       std::thread spawnBrowserThread([port](){

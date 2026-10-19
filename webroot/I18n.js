@@ -115,8 +115,8 @@ I18n.Translations = {
     // Screen regions
     "Which part of the screen each lamp follows. With several monitors, drag a region onto another monitor to make the lamp follow it.":
       "Welchem Bildschirmbereich jede Lampe folgt. Bei mehreren Monitoren: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt.",
-    "Drag to move the region. With several monitors, drop it onto another monitor to make the lamp follow it":
-      "Ziehen, um den Bereich zu verschieben. Bei mehreren Monitoren: Auf einen anderen Monitor ziehen, damit die Lampe ihm folgt",
+    "Drag to move the region. With several monitors, drop it onto another monitor to make the lamp follow it. With the keyboard: the arrow keys move it, with Shift they resize it, with Alt left and right they put it on the previous or next monitor":
+      "Ziehen, um den Bereich zu verschieben. Bei mehreren Monitoren: Auf einen anderen Monitor ziehen, damit die Lampe ihm folgt. Mit der Tastatur: Pfeiltasten verschieben ihn, mit Umschalt ändern sie seine Größe, mit Alt links und rechts setzen sie ihn auf den vorigen oder nächsten Monitor",
     "{monitor}: captured, a lamp follows it" : "{monitor}: wird erfasst, eine Lampe folgt ihm",
     "{monitor}: no lamp follows it, so it isn't captured" : "{monitor}: Keine Lampe folgt ihm, daher wird er nicht erfasst",
     "Monitor not captured – lamp is off" : "Monitor nicht erfasst – Lampe aus",
@@ -131,8 +131,8 @@ I18n.Translations = {
     "Drag to move the bottom left corner of the region" : "Ziehen, um die untere linke Ecke des Bereichs zu verschieben",
     "Drag to move the bottom right corner of the region" : "Ziehen, um die untere rechte Ecke des Bereichs zu verschieben",
     "Gamma correction" : "Gammakorrektur",
-    "Gamma correction of this lamp: to the right, dim colors get brighter; to the left, darker. In the middle, unchanged.":
-      "Gammakorrektur dieser Lampe: Nach rechts werden dunkle Farben heller, nach links dunkler. In der Mitte unverändert.",
+    "Gamma correction of this lamp: to the right, dim colors get brighter; to the left, darker. In the middle, unchanged. The arrow keys change it too.":
+      "Gammakorrektur dieser Lampe: Nach rechts werden dunkle Farben heller, nach links dunkler. In der Mitte unverändert. Die Pfeiltasten verändern sie auch.",
     "{lamp}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it":
       "{lamp}: der Bildschirmbereich, dem diese Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Wähle die Lampe in der Liste, um ihn zu bearbeiten",
     "There are no lamps in this entertainment area. Add them in the Hue app." : "In diesem Entertainment-Bereich gibt es keine Lampen. Füge sie in der Hue-App hinzu.",
@@ -298,6 +298,11 @@ I18n.Translations = {
     "No bridge was found. Enter its address instead." : "Es wurde keine Bridge gefunden. Gib stattdessen ihre Adresse ein.",
     "Pick a bridge or enter its address." : "Wähle eine Bridge oder gib ihre Adresse ein.",
     "No Hue bridge answers at {address}." : "Unter {address} antwortet keine Hue Bridge.",
+    "The identity of this bridge can't be checked" : "Die Identität dieser Bridge lässt sich nicht prüfen",
+    "Its certificate isn't signed by the Philips Hue certification authority. Older bridges have such certificates, but so would another device in your network passing itself off as your bridge: paired with it, that device could control your Hue system." : "Ihr Zertifikat ist nicht von der Zertifizierungsstelle von Philips Hue signiert. Ältere Bridges haben solche Zertifikate, aber ebenso ein anderes Gerät in deinem Netzwerk, das sich als deine Bridge ausgibt: Damit gekoppelt, könnte es dein Hue-System steuern.",
+    "Only go on if this is the address of your Hue bridge, as the Hue app shows it under Settings → My Hue system → Bridge." : "Fahre nur fort, wenn das die Adresse deiner Hue Bridge ist, wie die Hue-App sie unter Einstellungen → Mein Hue-System → Bridge anzeigt.",
+    "This is the address of my Hue bridge." : "Das ist die Adresse meiner Hue Bridge.",
+    "Confirm that this is the address of your Hue bridge, or pick another one." : "Bestätige, dass das die Adresse deiner Hue Bridge ist, oder wähle eine andere.",
     "Pair with the bridge" : "Mit der Bridge koppeln",
     "Press the round button on top of your Hue bridge now." : "Drücke jetzt den runden Knopf oben auf deiner Hue Bridge.",
     "The app pairs as soon as the button is pressed, you don't need to click anything here." : "Die App koppelt sich, sobald der Knopf gedrückt ist. Hier musst du nichts anklicken.",
@@ -314,6 +319,12 @@ I18n.Translations = {
     "The bridge doesn't accept these credentials." : "Die Bridge akzeptiert diese Zugangsdaten nicht.",
     "The lamps are driven through an entertainment area of the bridge, which you set up in the Hue app." : "Die Lampen werden über einen Entertainment-Bereich der Bridge gesteuert, den du in der Hue-App einrichtest.",
     "{count} lamps" : "{count} Lampen",
+    "1 lamp" : "1 Lampe",
+    "Halomux couldn't be shut down." : "Halomux konnte nicht beendet werden.",
+    "Channel {id}" : "Kanal {id}",
+    "Not found – Halomux" : "Nicht gefunden – Halomux",
+    "Page not found" : "Seite nicht gefunden",
+    "Go back to" : "Zurück zu",
     "No entertainment area was found yet." : "Es wurde noch kein Entertainment-Bereich gefunden.",
     "Open the Hue app and go to Settings → Entertainment areas." : "Öffne die Hue-App und gehe zu Einstellungen → Entertainment-Bereiche.",
     "Add an area, for example \"PC\", and select the lamps around your screen." : "Füge einen Bereich hinzu, zum Beispiel „PC“, und wähle die Lampen rund um deinen Bildschirm.",

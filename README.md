@@ -61,7 +61,7 @@ The package contains:
 
 * `halomux`: the service driving the lamps, with its systemd user unit
 * `halomux-gui`: the desktop application, in the application menu as "Halomux"
-* an autostart entry starting the tray icon at login
+* an autostart entry starting the tray icon at login, for users who have set Halomux up
 
 ### Building from source
 
@@ -135,6 +135,8 @@ journalctl --user -u halomux.service -f
 * **Preview**: plays color cuts, flashes left, right and on both sides, a slow fade and a cut from black to white through the current settings
 
 Every control explains itself in a tooltip.
+
+Everything works with the keyboard too. Tab reaches the lamps, Enter or Space selects one, and its arrow button moves it between the lists. The selected lamp's region moves with the arrow keys by one cell of the subsample, Shift and the arrow keys resize it, and Alt with left or right puts it on the previous or next monitor. The arrow keys also change the gamma correction once its cursor has the focus.
 
 ### GPU processing
 
