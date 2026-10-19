@@ -442,6 +442,23 @@ namespace Halomux::Grabber
   }
 
 
+  void PipewireGrabber::_fallBackToSharedMemory(
+    StreamData* stream,
+    const std::string& reason
+  )
+  {
+    PipewireData* pw = stream->owner;
+    Core::Logger::warn("[gpu] ", reason, " on ", stream->label, ", falling back to the CPU path");
+    stream->dmaBufFailed = true;
+    {
+      auto lock = std::lock_guard(pw->processingInfoMutex);
+      stream->cpuReason = reason + ", shared memory";
+    }
+    stream->renegotiate = true;
+    pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+  }
+
+
   bool PipewireGrabber::_processDmaBuf(
     StreamData* stream,
     pw_buffer* pwBuffer,
@@ -457,9 +474,11 @@ namespace Halomux::Grabber
       return false;
     }
 
-    // One data per plane: compressed formats have several
+    // One data per plane: compressed formats have several. Buffers that don't tell them would
+    // never give colors, so the stream's lamps would freeze
     const auto planes = dmaBufPlanes(*pwBuffer->buffer);
     if(!planes.has_value()){
+      _fallBackToSharedMemory(stream, "unreadable DMA-BUF");
       return false;
     }
 
@@ -492,15 +511,7 @@ namespace Halomux::Grabber
 
     std::vector<cv::Vec4b> rgbaColors;
     if(!bufferData->gpuImage || !pw->gpu->averageRegions(*bufferData->gpuImage, subsampleWidth, subsampleHeight, rects, rgbaColors, stream->index)){
-      // Fall back to shared memory buffers for good
-      Core::Logger::warn("[gpu] GPU downscaling failed on ", stream->label, ", falling back to the CPU path");
-      stream->dmaBufFailed = true;
-      {
-        auto lock = std::lock_guard(pw->processingInfoMutex);
-        stream->cpuReason = "GPU downscaling failed, shared memory";
-      }
-      stream->renegotiate = true;
-      pw_loop_signal_event(pw_main_loop_get_loop(pw->loop), pw->renegotiateEvent);
+      _fallBackToSharedMemory(stream, "GPU downscaling failed");
       return false;
     }
 
