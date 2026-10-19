@@ -209,6 +209,22 @@ namespace Halomux::Core
   }
 
 
+  bool ChannelStore::setWallColor(
+    uint8_t channelId,
+    const std::optional<Imaging::Color>& wallColor
+  )
+  {
+    std::lock_guard lock(m_mutex);
+    auto channelIt = m_channels.find(channelId);
+    if(channelIt == m_channels.end()){
+      return false;
+    }
+
+    channelIt->second.wallColor = wallColor;
+    return true;
+  }
+
+
   Hue::Api::Channels ChannelStore::snapshot() const
   {
     std::lock_guard lock(m_mutex);

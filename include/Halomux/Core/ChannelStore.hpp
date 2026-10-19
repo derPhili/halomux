@@ -181,6 +181,19 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Sets the color of the surface a lamp shines on
+     *
+     * @param channelId Lamp
+     * @param wallColor Its color in white light, nothing for the one common to all lamps
+     * @return true The lamp exists
+     */
+    bool setWallColor(
+      uint8_t channelId,
+      const std::optional<Imaging::Color>& wallColor
+    );
+
+
+    /**
      * @brief Returns a copy of the lamps
      *
      * @return Hue::Api::Channels Lamps
