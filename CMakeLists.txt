@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10.0)
 
-project(Halomux VERSION 1.2.0)
+project(Halomux VERSION 2.0.0)
 
 # Without a build type, nothing is optimized
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
