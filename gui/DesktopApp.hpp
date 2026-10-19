@@ -54,6 +54,14 @@ namespace Halomux::Gui
 
 
     /**
+     * @brief Tells whether the window is shown
+     *
+     * @return true It exists and is visible
+     */
+    bool windowShown() const;
+
+
+    /**
      * @brief Starts the service if it doesn't answer, and shows the tray icon if asked
      *
      * @param withTray Whether to show the tray icon

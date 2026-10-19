@@ -122,8 +122,15 @@ int main(int argc, char* argv[])
         desktopApp.start(true);
       }
       else if(++waitedSeconds >= TrayWaitSeconds){
-        // No tray on this desktop: an invisible instance would be useless
         trayWait->stop();
+
+        // Opened from the desktop meanwhile: its window stays, as without a tray from the start
+        if(desktopApp.windowShown()){
+          QApplication::setQuitOnLastWindowClosed(true);
+          return;
+        }
+
+        // No tray on this desktop: an invisible instance would be useless
         QApplication::quit();
       }
     });
