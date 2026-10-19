@@ -1615,17 +1615,6 @@ body.i18nPending
 
 /* Not found */
 
-/* The selected lamp's own wall, below the screen regions */
-
-.lampWall:not([hidden])
-{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-
 /* Log page */
 
 .logsBack

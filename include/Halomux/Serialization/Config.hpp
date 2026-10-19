@@ -91,10 +91,6 @@ namespace Halomux::Serialization
         jsonConfigData["staticColors"] = *configData.staticColors;
       }
 
-      if(configData.wallColor.has_value()){
-        jsonConfigData["wallColor"] = configData.wallColor->toHex();
-      }
-
       if(configData.scenes.has_value()){
         jsonConfigData["scenes"] = *configData.scenes;
       }
@@ -203,13 +199,6 @@ namespace Halomux::Serialization
 
       if(jsonConfigData.contains("syncEnabled")){
         configData.syncEnabled = jsonConfigData.at("syncEnabled");
-      }
-
-      // Unreadable, the wall is taken as white: no compensation rather than no configuration
-      if(jsonConfigData.contains("wallColor") && jsonConfigData.at("wallColor").is_string()){
-        if(const auto wallColor = Imaging::Color::fromHex(jsonConfigData.at("wallColor").get<std::string>())){
-          configData.wallColor = *wallColor;
-        }
       }
 
       if(jsonConfigData.contains("staticColors")){

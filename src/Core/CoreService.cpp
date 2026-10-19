@@ -406,37 +406,6 @@ namespace Halomux::Core
   }
 
 
-  void CoreService::setWallTest(
-    bool active
-  )
-  {
-    m_runtime.m_wallTestStart = active ? std::chrono::steady_clock::now().time_since_epoch().count() : 0;
-  }
-
-
-  void CoreService::setWallColor(
-    const Imaging::Color& wallColor
-  )
-  {
-    m_config.setWallColor(wallColor);
-  }
-
-
-  Imaging::Color CoreService::wallColor() const
-  {
-    return m_config.wallColor();
-  }
-
-
-  bool CoreService::setChannelWallColor(
-    uint8_t channelId,
-    const std::optional<Imaging::Color>& wallColor
-  )
-  {
-    return m_runtime.m_channelStore.setWallColor(channelId, wallColor);
-  }
-
-
   float CoreService::previewRemaining() const
   {
     const int64_t previewStart = m_runtime.m_previewStart;

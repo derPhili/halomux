@@ -252,23 +252,6 @@ namespace Halomux::Core
   }
 
 
-  Imaging::Color Config::wallColor() const
-  {
-    std::lock_guard lock(m_mutex);
-    return m_configData.value().wallColor.value_or(Imaging::Color{255, 255, 255});
-  }
-
-
-  void Config::setWallColor(
-    const Imaging::Color& wallColor
-  )
-  {
-    std::unique_lock lock(m_mutex);
-    m_configData.value().wallColor = wallColor;
-    _save(lock);
-  }
-
-
   void Config::setStaticColors(
     const StaticColors& staticColors
   )
@@ -454,7 +437,6 @@ namespace Halomux::Core
       .brightness = 1.f,
       .syncEnabled = true,
       .staticColors = StaticColors{},
-      .wallColor = Imaging::Color{255, 255, 255},
       .scenes = Scenes{},
       .language = "auto",
       .noticeAccepted = std::nullopt,

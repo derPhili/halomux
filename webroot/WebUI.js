@@ -84,32 +84,6 @@ class WebUI
     }
     this.highlightBoostInputNode.addEventListener("change", (event) => {this._setHighlightBoost(event.target.valueAsNumber);});
 
-    // The wall the lamps shine on
-    this.wallColorNode = document.getElementById("wallColor");
-    this.wallColorNode.addEventListener("input", (event) => {this._setWallColor(event.target.value);});
-    document.getElementById("whiteWallButton").addEventListener("click", () => {
-      this.wallColorNode.value = "#ffffff";
-      this._setWallColor("#ffffff");
-    });
-    this.wallTestNode = document.getElementById("wallTest");
-    this.wallTestNode.addEventListener("change", (event) => {this._setWallTest(event.target.checked);});
-    // Not left on when the page goes away: the service ends it after two minutes anyway
-    window.addEventListener("pagehide", () => {
-      if(this.wallTestNode.checked){
-        fetch("/api/setWallTest", {method : "PUT", body : "false", keepalive : true, headers : {"Content-Type" : "application/json"}});
-      }
-    });
-
-    // The selected lamp's own wall
-    this.lampWallNode = document.getElementById("lampWall");
-    this.lampOwnWallNode = document.getElementById("lampOwnWall");
-    this.lampWallColorNode = document.getElementById("lampWallColor");
-    this.lampOwnWallNode.addEventListener("change", (event) => {
-      this.lampWallColorNode.disabled = !event.target.checked;
-      this._setLampWallColor(event.target.checked ? this.lampWallColorNode.value : null);
-    });
-    this.lampWallColorNode.addEventListener("input", (event) => {this._setLampWallColor(event.target.value);});
-
     this.brightnessInputNode = document.getElementById("brightness");
     this.brightnessLabelNode = document.getElementById("brightnessLabel");
     this.brightnessInputNode.addEventListener("input", (event) => {this.brightnessLabelNode.textContent = event.target.value;});
@@ -615,7 +589,6 @@ class WebUI
     this.audioReactiveNode.checked = displayInfo.selectedAudioReactive;
 
     this.brightnessInputNode.value = displayInfo.selectedBrightness;
-    this.wallColorNode.value = displayInfo.wallColor;
     this.brightnessLabelNode.textContent = Math.round(displayInfo.selectedBrightness);
 
     this.screenWidget.setDimensions(x, y, subsampleWidth, displayInfo.monitors);
@@ -744,7 +717,6 @@ class WebUI
 
       channel.uvs = channelData.uvs;
       channel.monitor = channelData.monitor;
-      channel.wallColor = channelData.wallColor ?? null;
       this.screenWidget.initChannelRegion(channel);
     });
     channelPromise.catch((error) => {log(error);});
@@ -902,102 +874,6 @@ class WebUI
     for(let preset of presets){
       preset.button.classList.toggle("active", Math.round(value) == preset.value);
     }
-  }
-
-
-  /**
-   * Sends a value as it's dragged: one request at a time per key, only the newest waiting, as an
-   * older one arriving last would be the one kept
-   */
-  _sendLatest(key, url, body, onAnswer = () => {})
-  {
-    this.latestRequests = this.latestRequests || new Map();
-    let entry = this.latestRequests.get(key) || {inFlight : false, pending : null};
-    entry.pending = {url : url, body : body, onAnswer : onAnswer};
-    this.latestRequests.set(key, entry);
-
-    if(!entry.inFlight){
-      this._sendNextLatest(entry);
-    }
-  }
-
-
-  _sendNextLatest(entry)
-  {
-    let pending = entry.pending;
-    if(!pending){
-      return;
-    }
-
-    entry.pending = null;
-    entry.inFlight = true;
-
-    RequestUtils.put(pending.url, JSON.stringify(pending.body))
-    .then((data) => {
-      if(!entry.pending){
-        pending.onAnswer(data);
-      }
-    })
-    .catch((error) => {log(error);})
-    .finally(() => {
-      entry.inFlight = false;
-      this._sendNextLatest(entry);
-    });
-  }
-
-
-  _setWallColor(wallColor)
-  {
-    this._sendLatest("wallColor", "/api/setWallColor", wallColor);
-  }
-
-
-  // White on every lamp to match the wall by eye, ended after two minutes as the service ends it
-  _setWallTest(active)
-  {
-    clearTimeout(this.wallTestTimer);
-    if(active){
-      this.wallTestTimer = setTimeout(() => {this.wallTestNode.checked = false;}, WebUI.WallTestDuration);
-    }
-
-    RequestUtils.put("/api/setWallTest", JSON.stringify(active))
-    .catch((error) => {
-      log(error);
-      this.wallTestNode.checked = false;
-    });
-  }
-
-
-  // The selected lamp's own wall color, null for the common one
-  _setLampWallColor(wallColor)
-  {
-    const channel = this.screenWidget.currentChannel;
-    if(!channel){
-      return;
-    }
-
-    channel.wallColor = wallColor;
-    this._sendLatest(`lampWall${channel.channelId}`, `/api/setChannelWallColor/${channel.channelId}`, {wallColor : wallColor});
-  }
-
-
-  // Shows the wall of the selected lamp, hides it without one
-  showLampWall(channel)
-  {
-    // Before the page is set up, such as while the screen widget is built
-    if(!this.lampWallNode){
-      return;
-    }
-
-    this.lampWallNode.hidden = !channel;
-    if(!channel){
-      return;
-    }
-
-    const own = channel.wallColor !== null && channel.wallColor !== undefined;
-    this.lampOwnWallNode.checked = own;
-    this.lampWallColorNode.disabled = !own;
-    this.lampWallColorNode.value = own ? channel.wallColor : this.wallColorNode.value;
   }
 
 
@@ -1219,9 +1095,6 @@ class WebUI
 // Interval between live lamp color updates [ms]. Each update costs a frame in the web engine:
 // 4 per second keep the dots live at about half the CPU time of 8
 WebUI.LampColorsInterval = 250;
-
-// Longest the white to match the wall is shown, as the service limits it [ms]
-WebUI.WallTestDuration = 120000;
 
 // Checks whether the stopped service runs again [ms]
 WebUI.RestartCheckInterval = 2000;

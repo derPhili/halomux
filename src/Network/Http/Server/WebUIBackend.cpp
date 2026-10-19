@@ -212,8 +212,7 @@ namespace Halomux::Network::Http::Server
         {"selectedTransitionSmoothing", m_coreService->transitionSmoothing()},
         {"selectedHighlightBoost", m_coreService->highlightBoost()},
         {"selectedAudioReactive", m_coreService->audioReactive()},
-        {"selectedBrightness", m_coreService->brightness()},
-        {"wallColor", m_coreService->wallColor().toHex()}
+        {"selectedBrightness", m_coreService->brightness()}
       };
 
       std::string response = jsonDisplayInfo.dump();
@@ -496,57 +495,6 @@ namespace Halomux::Network::Http::Server
 
 
     // DELETE METHODS
-    // The wall the lamps shine on, as #rrggbb
-    m_httpServer.addRoute(HttpMethod::Put, "/api/setWallColor", [this](const Request& req, Response& res){
-      const auto wallColor = readBody(req, [](const Json& body){
-        const auto color = Imaging::Color::fromHex(body.get<std::string>());
-        if(!color.has_value()){
-          throw std::invalid_argument("not a #rrggbb color");
-        }
-        return *color;
-      });
-      m_coreService->setWallColor(wallColor);
-
-      res.contentType = "application/json";
-      res.body = Json{{"wallColor", m_coreService->wallColor().toHex()}}.dump();
-    });
-
-
-    // A lamp's own wall as #rrggbb, null for the common one
-    m_httpServer.addRoute(HttpMethod::Put, "/api/setChannelWallColor/:channelId", [this](const Request& req, Response& res){
-      const uint8_t channelId = channelIdOf(req);
-      const auto wallColor = readBody(req, [](const Json& body) -> std::optional<Imaging::Color> {
-        const Json& value = body.at("wallColor");
-        if(value.is_null()){
-          return std::nullopt;
-        }
-
-        const auto color = Imaging::Color::fromHex(value.get<std::string>());
-        if(!color.has_value()){
-          throw std::invalid_argument("not a #rrggbb color");
-        }
-        return color;
-      });
-
-      if(!m_coreService->setChannelWallColor(channelId, wallColor)){
-        throw HttpError(404, "unknown channel");
-      }
-
-      res.contentType = "application/json";
-      res.body = webChannel(m_coreService->channels().at(channelId)).dump();
-    });
-
-
-    // White on every lamp to match the wall color by eye
-    m_httpServer.addRoute(HttpMethod::Put, "/api/setWallTest", [this](const Request& req, Response& res){
-      const bool active = readBody(req, [](const Json& body){return body.get<bool>();});
-      m_coreService->setWallTest(active);
-
-      res.contentType = "application/json";
-      res.body = Json{{"active", active}}.dump();
-    });
-
-
     m_httpServer.addRoute(HttpMethod::Delete, "/api/preview", [this](const Request& /*req*/, Response& res){
       m_coreService->stopPreview();
 
