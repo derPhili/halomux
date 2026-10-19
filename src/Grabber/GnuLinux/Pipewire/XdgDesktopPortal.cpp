@@ -23,7 +23,6 @@
 namespace Halomux::Grabber
 {
   GDBusConnection* XdgDesktopPortal::m_connection = nullptr;
-  GDBusProxy* XdgDesktopPortal::m_screencastProxy = nullptr;
 
     // Implementations
 
@@ -47,7 +46,7 @@ namespace Halomux::Grabber
       g_variant_builder_add(&builder, "{sv}", "session_handle_token", g_variant_new_string(sessionPathAndToken.second.c_str()));
 
       capture->pendingCalls++;
-      g_dbus_proxy_call(getScreencastPortalProxy(), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, capture);
+      g_dbus_proxy_call(getScreencastPortalProxy(capture), "CreateSession", g_variant_new("(a{sv})", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSessionCreatedCallback, capture);
     }
 
 
@@ -61,7 +60,7 @@ namespace Halomux::Grabber
         return false;
       }
 
-      GDBusProxy* proxy = getScreencastPortalProxy();
+      GDBusProxy* proxy = getScreencastPortalProxy(capture);
       if(!proxy){
         return false;
       }
@@ -161,6 +160,8 @@ namespace Halomux::Grabber
         g_cancellable_cancel(capture->cancellable);
         g_clear_object(&capture->cancellable);
       }
+
+      g_clear_object(&capture->screencastProxy);
     }
 
 
@@ -226,16 +227,20 @@ namespace Halomux::Grabber
     }
 
 
-    void XdgDesktopPortal::ensureScreencastPortalProxy()
+    void XdgDesktopPortal::ensureScreencastPortalProxy(
+      Capture* capture
+    )
     {
       g_autoptr(GError) error = NULL;
-      if(!m_screencastProxy){
+      if(!capture->screencastProxy){
 
         std::string interfaceName = "org.freedesktop.portal.ScreenCast";
 
-        // Shared by the captures: its own signals would be dispatched to the context of the
-        // thread creating it, which ends with its capture. Only its cached properties are used.
-        m_screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, BusName, ObjectPath, interfaceName.c_str(), NULL, &error);
+        // One per capture, created in its portal thread: a proxy follows the portal's name owner
+        // through signals dispatched to the context of the thread creating it, which ends with
+        // its capture. Shared, it kept the name of a portal that restarted since. Only its cached
+        // properties are used, not its signals.
+        capture->screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, BusName, ObjectPath, interfaceName.c_str(), NULL, &error);
 
         if(error){
           Core::Logger::warn("error retrieving D-Bus proxy: ", std::string(error->message));
@@ -245,41 +250,40 @@ namespace Halomux::Grabber
     }
 
 
-    GDBusProxy* XdgDesktopPortal::getScreencastPortalProxy()
+    GDBusProxy* XdgDesktopPortal::getScreencastPortalProxy(
+      Capture* capture
+    )
     {
-      ensureScreencastPortalProxy();
-      return m_screencastProxy;
+      ensureScreencastPortalProxy(capture);
+      return capture->screencastProxy;
     }
 
 
-    uint32_t XdgDesktopPortal::getAvailableCursorModes()
+    uint32_t XdgDesktopPortal::getAvailableCursorModes(
+      Capture* capture
+    )
     {
-      ensureScreencastPortalProxy();
-
-      if(!m_screencastProxy){
+      GDBusProxy* proxy = getScreencastPortalProxy(capture);
+      if(!proxy){
         return 0;
       }
 
-      g_autoptr(GVariant) cachedCursorModes = g_dbus_proxy_get_cached_property(m_screencastProxy, "AvailableCursorModes");
+      g_autoptr(GVariant) cachedCursorModes = g_dbus_proxy_get_cached_property(proxy, "AvailableCursorModes");
       return cachedCursorModes ? g_variant_get_uint32(cachedCursorModes) : 0;
     }
 
 
-    uint32_t XdgDesktopPortal::getScreencastVersion()
+    uint32_t XdgDesktopPortal::getScreencastVersion(
+      Capture* capture
+    )
     {
-      g_autoptr(GVariant) cached_version = NULL;
-      uint32_t version;
-
-      ensureScreencastPortalProxy();
-
-      if(!m_screencastProxy){
+      GDBusProxy* proxy = getScreencastPortalProxy(capture);
+      if(!proxy){
         return 0;
       }
 
-      cached_version = g_dbus_proxy_get_cached_property(m_screencastProxy, "version");
-      version = cached_version ? g_variant_get_uint32(cached_version) : 0;
-
-      return version;
+      g_autoptr(GVariant) cachedVersion = g_dbus_proxy_get_cached_property(proxy, "version");
+      return cachedVersion ? g_variant_get_uint32(cachedVersion) : 0;
     }
 
 
@@ -373,7 +377,7 @@ namespace Halomux::Grabber
       g_variant_builder_init(&builder, G_VARIANT_TYPE_VARDICT);
 
       capture->pendingCalls++;
-      g_dbus_proxy_call_with_unix_fd_list(getScreencastPortalProxy(), "OpenPipeWireRemote", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, NULL, capture->cancellable, onPipewireRemoteOpenedCallback, capture);
+      g_dbus_proxy_call_with_unix_fd_list(getScreencastPortalProxy(capture), "OpenPipeWireRemote", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, NULL, capture->cancellable, onPipewireRemoteOpenedCallback, capture);
     }
 
 
@@ -481,7 +485,7 @@ namespace Halomux::Grabber
         g_variant_builder_add(&builder, "{sv}", "handle_token", g_variant_new_string(pathAndToken.second.c_str()));
 
         capture->pendingCalls++;
-        g_dbus_proxy_call(getScreencastPortalProxy(), "Start", g_variant_new("(osa{sv})", capture->sessionHandle, "", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onStartedCallback, capture);
+        g_dbus_proxy_call(getScreencastPortalProxy(capture), "Start", g_variant_new("(osa{sv})", capture->sessionHandle, "", &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onStartedCallback, capture);
       }
       catch(const std::exception& e){
         Core::Logger::error(e.what());
@@ -574,7 +578,7 @@ namespace Halomux::Grabber
         Core::Logger::log("No restore token available, user will be prompted for screen selection");
       }
 
-      uint32_t available_cursor_modes = getAvailableCursorModes();
+      uint32_t available_cursor_modes = getAvailableCursorModes(capture);
       if(available_cursor_modes & CursorMode::Metadata){
         g_variant_builder_add(&builder, "{sv}", "cursor_mode", g_variant_new_uint32(CursorMode::Metadata));
       }
@@ -585,12 +589,12 @@ namespace Halomux::Grabber
         g_variant_builder_add(&builder, "{sv}", "cursor_mode", g_variant_new_uint32(CursorMode::Hidden));
       }
 
-      if(getScreencastVersion() >= 4){
+      if(getScreencastVersion(capture) >= 4){
         g_variant_builder_add(&builder, "{sv}", "persist_mode", g_variant_new_uint32(2));
       }
 
       capture->pendingCalls++;
-      g_dbus_proxy_call(getScreencastPortalProxy(), "SelectSources", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSourceSelectedCallback, capture);
+      g_dbus_proxy_call(getScreencastPortalProxy(capture), "SelectSources", g_variant_new("(oa{sv})", capture->sessionHandle, &builder), G_DBUS_CALL_FLAGS_NONE, -1, capture->cancellable, onSourceSelectedCallback, capture);
     }
 
 

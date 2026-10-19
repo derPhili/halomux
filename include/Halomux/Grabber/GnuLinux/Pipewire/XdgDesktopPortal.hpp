@@ -74,6 +74,8 @@ namespace Halomux::Grabber
       // dispatched there, never to another capture's thread
       GMainContext* context{nullptr};
       GCancellable* cancellable{nullptr};
+      // ScreenCast interface of the portal, created in the portal thread
+      GDBusProxy* screencastProxy{nullptr};
       // Portal calls in flight, whose completions are dispatched to the context (portal thread)
       int pendingCalls{0};
       // Path of the session, known from its creation on: closed even if the creation was aborted
@@ -167,13 +169,21 @@ namespace Halomux::Grabber
       CreatePathTokenType createPathTokenType
     );
 
-    static void ensureScreencastPortalProxy();
+    static void ensureScreencastPortalProxy(
+      Capture* capture
+    );
 
-    static GDBusProxy* getScreencastPortalProxy();
+    static GDBusProxy* getScreencastPortalProxy(
+      Capture* capture
+    );
 
-    static uint32_t getAvailableCursorModes();
+    static uint32_t getAvailableCursorModes(
+      Capture* capture
+    );
 
-    static uint32_t getScreencastVersion();
+    static uint32_t getScreencastVersion(
+      Capture* capture
+    );
 
     // Awaits the Response signal of a request, replacing the former one
     static void subscribeToResponse(
@@ -261,7 +271,6 @@ namespace Halomux::Grabber
   private:
     // Attributes
     static GDBusConnection* m_connection;
-    static GDBusProxy* m_screencastProxy;
 
     // Plain constants: they must stay valid whatever the static destruction order
     static constexpr const char* ObjectPath = "/org/freedesktop/portal/desktop";

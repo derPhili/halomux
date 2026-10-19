@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <future>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <stop_token>
 #include <string>
@@ -138,7 +139,9 @@ namespace
       m_portalInfo = g_dbus_node_info_new_for_xml(PortalXml, nullptr);
       m_closeInfo = g_dbus_node_info_new_for_xml(CloseXml, nullptr);
 
-      m_connection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
+      // A connection of its own, as the real portal has: a restarted portal gets a new name
+      g_autofree char* address = g_dbus_address_get_for_bus_sync(G_BUS_TYPE_SESSION, nullptr, nullptr);
+      m_connection = g_dbus_connection_new_for_address_sync(address, static_cast<GDBusConnectionFlags>(G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT | G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION), nullptr, nullptr, nullptr);
 
       static const GDBusInterfaceVTable portalVTable{_onPortalCall, _onGetProperty, nullptr, {}};
       g_dbus_connection_register_object(m_connection, "/org/freedesktop/portal/desktop", m_portalInfo->interfaces[0], &portalVTable, this, nullptr, nullptr);
@@ -149,6 +152,8 @@ namespace
 
       g_main_loop_run(m_loop);
 
+      // Releases its name, as a portal that ends does
+      g_dbus_connection_close_sync(m_connection, nullptr, nullptr);
       g_object_unref(m_connection);
       g_dbus_node_info_unref(m_portalInfo);
       g_dbus_node_info_unref(m_closeInfo);
@@ -328,7 +333,8 @@ int main()
     return 1;
   }
 
-  FakePortal portal;
+  std::optional<FakePortal> runningPortal;
+  FakePortal& portal = runningPortal.emplace();
   Core::Config config(std::filesystem::temp_directory_path() / "halomux-test-portal");
 
   // The user cancels the dialog: a choice, not a failure
@@ -359,6 +365,15 @@ int main()
       expect("A stop ends it within a second", std::chrono::steady_clock::now() - stoppedAt < 1s);
     }
     expect("A stop closes the session", closed(portal, portal.lastSession()));
+  }
+
+  // The portal restarts, such as after an update, between two selections: the next one reaches
+  // the new portal, not the name the former one had
+  {
+    runningPortal.reset();
+    FakePortal& restarted = runningPortal.emplace();
+    restarted.setStartAnswer(FakePortal::StartAnswer::Cancelled);
+    expect("Selection after a portal restart reaches the new portal", select(config) == Outcome::Cancelled);
   }
 
   if(failures > 0){

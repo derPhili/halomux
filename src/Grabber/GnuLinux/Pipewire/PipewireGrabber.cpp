@@ -791,6 +791,11 @@ namespace Halomux::Grabber
       g_main_context_iteration(capture->context, TRUE);
     }
 
+    // The proxy's subscriptions are released through this context too, once it's freed
+    while(g_main_context_pending(capture->context)){
+      g_main_context_iteration(capture->context, FALSE);
+    }
+
     g_main_context_pop_thread_default(capture->context);
   }
 
