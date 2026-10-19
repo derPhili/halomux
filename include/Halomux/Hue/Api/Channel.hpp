@@ -136,6 +136,8 @@ namespace Halomux::Hue::Api
     Imaging::UVs uvs{};
     // Monitor the region is on, nothing until it's known (profiles from before monitors per lamp)
     std::optional<Grabber::MonitorRef> monitor;
+    // Color of the surface the lamp shines on, nothing for the common one (see Config::wallColor())
+    std::optional<Imaging::Color> wallColor;
 
     // Index of the monitor among the captured ones, nothing if it isn't captured (not persisted)
     std::optional<size_t> monitorIndex;

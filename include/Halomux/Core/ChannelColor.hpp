@@ -26,14 +26,33 @@ namespace Halomux::Core::ChannelColor
     bool syncing{true};
     // The preview sequence replaces the screen content
     bool previewing{false};
+    // Color of the surface the lamps shine on, unless a lamp has its own
+    Imaging::Color wallColor{255, 255, 255};
   };
+
+
+  /**
+   * @brief Returns the color a lamp shows for a color to appear on a colored wall
+   *
+   * The wall reflects some of each primary less than others: those it reflects better are
+   * dimmed, in linear light, so that the reflection has the color's hue. The color gets darker
+   * the more colored the wall is; a primary the wall hardly reflects is only partly made up for.
+   *
+   * @param color Color to appear
+   * @param wall Color of the wall in white light, white for none
+   * @return Imaging::Color Color the lamp shows
+   */
+  Imaging::Color compensateWall(
+    const Imaging::Color& color,
+    const Imaging::Color& wall
+  );
 
 
   /**
    * @brief Returns the color to stream for a lamp, from the color it should show
    *
-   * Eases toward the color, applies the lamp's gamma, the global dimmer and the highlight boost,
-   * and updates the lamp's easing and highlight state.
+   * Makes up for the wall it shines on, eases toward the color, applies the lamp's gamma, the
+   * global dimmer and the highlight boost, and updates the lamp's easing and highlight state.
    *
    * @param channel Lamp to update
    * @param color Color the lamp should show: captured, previewed or static
