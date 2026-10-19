@@ -97,15 +97,24 @@ namespace Halomux::Imaging
       const UVs& uvs
     )
     {
-      glm::ivec2 a{uvs.min.x * static_cast<float>(width), uvs.min.y * static_cast<float>(height)};
-      glm::ivec2 b{uvs.max.x * static_cast<float>(width), uvs.max.y * static_cast<float>(height)};
+      // Clamped before the cast: a region far outside would be cast out of range
+      const auto pixel = [](float uv, int size){
+        return static_cast<int>(std::clamp(uv, 0.f, 1.f) * static_cast<float>(size));
+      };
 
-      const int x0 = std::clamp(a.x, 0, width);
-      const int y0 = std::clamp(a.y, 0, height);
-      const int x1 = std::clamp(b.x, x0, width);
-      const int y1 = std::clamp(b.y, y0, height);
+      // At least one pixel: a region narrower than one, such as one kept from a finer
+      // subsample, would average nothing and leave its lamp dark
+      const auto span = [&pixel](float from, float to, int size){
+        const int last = std::max(size - 1, 0);
+        const int begin = std::min(pixel(from, size), last);
+        const int end = std::clamp(pixel(to, size), begin + 1, std::max(size, begin + 1));
+        return std::pair{begin, size > 0 ? end - begin : 0};
+      };
 
-      return {x0, y0, x1 - x0, y1 - y0};
+      const auto [x, w] = span(uvs.min.x, uvs.max.x, width);
+      const auto [y, h] = span(uvs.min.y, uvs.max.y, height);
+
+      return {x, y, w, h};
     }
 
 

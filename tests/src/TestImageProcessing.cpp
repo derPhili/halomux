@@ -197,9 +197,36 @@ void testPerf(const std::filesystem::path& samplesDirPath)
 }
 
 
+/**
+ * @brief Checks the pixels a region covers: at least one, inside the image
+ *
+ * @return int Number of failures
+ */
+int testSubImageRect()
+{
+  int failures = 0;
+  const auto check = [&failures](const char* name, const cv::Rect& rect, const cv::Rect& expected){
+    if(rect != expected){
+      Core::Logger::error(name, ": ", rect.x, " ", rect.y, " ", rect.width, "x", rect.height);
+      failures++;
+    }
+  };
+
+  using Imaging::ImageProcessing::subImageRect;
+  check("Region", subImageRect(128, 72, {{0.25f, 0.5f}, {0.5f, 1.f}}), {32, 36, 32, 36});
+  // Narrower than a pixel, such as a region kept from a finer subsample: still averages one
+  check("Region within a pixel", subImageRect(128, 72, {{0.501f, 0.501f}, {0.502f, 0.502f}}), {64, 36, 1, 1});
+  check("Region on the far edge", subImageRect(128, 72, {{1.f, 1.f}, {1.f, 1.f}}), {127, 71, 1, 1});
+  // Beyond int once scaled: kept inside the image
+  check("Huge region", subImageRect(128, 72, {{-1e30f, -1e30f}, {1e30f, 1e30f}}), {0, 0, 128, 72});
+
+  return failures;
+}
+
+
 int main(int argc, char* argv[])
 {
-  int failures = testColorOrder() + testRescaleBounds() + testRescaleSampled();
+  int failures = testColorOrder() + testRescaleBounds() + testRescaleSampled() + testSubImageRect();
 
   // Optional sample based tests, writing their outputs next to the inputs
   if(argc >= 2){
