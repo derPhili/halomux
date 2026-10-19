@@ -14,6 +14,7 @@ namespace Halomux::Hue::Api
     {
       std::string bridgeId;
       bool requireVerification;
+      std::string publicKeyPin;
     };
 
     std::mutex registryMutex;
@@ -32,7 +33,8 @@ namespace Halomux::Hue::Api
   bool registerBridge(
     const std::string& bridgeAddress,
     const std::string& bridgeId,
-    bool requireVerification
+    bool requireVerification,
+    const std::string& publicKeyPin
   )
   {
     // Anything else could empty the expected name, which would turn off the name check
@@ -45,7 +47,7 @@ namespace Halomux::Hue::Api
     std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){return std::tolower(c);});
 
     std::lock_guard lock(registryMutex);
-    registry[bridgeAddress] = {name, requireVerification};
+    registry[bridgeAddress] = {name, requireVerification, publicKeyPin};
     return true;
   }
 
@@ -67,7 +69,8 @@ namespace Halomux::Hue::Api
       .expectedName = bridgeIt->second.bridgeId,
       .allowUnverified = !bridgeIt->second.requireVerification,
       .readPublicKey = false,
-      .pinnedPublicKey = {}
+      // Accepted unverified: then only with the key it had when it was confirmed
+      .pinnedPublicKey = bridgeIt->second.requireVerification ? std::string{} : bridgeIt->second.publicKeyPin
     };
   }
 }

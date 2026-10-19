@@ -27,6 +27,8 @@ namespace Halomux::Core
       std::string bridgeId;
       // Whether its certificate passed the check of the Hue CA, now or before
       bool verified{false};
+      // Public key of its certificate, required later if the certificate didn't pass the check
+      std::string publicKeyPin;
     };
 
 

@@ -102,6 +102,10 @@ namespace Halomux::Serialization
         jsonConfigData["bridgeCertificateVerified"] = *configData.bridgeCertificateVerified;
       }
 
+      if(configData.bridgePublicKey.has_value()){
+        jsonConfigData["bridgePublicKey"] = *configData.bridgePublicKey;
+      }
+
       if(configData.noticeAccepted.has_value()){
         jsonConfigData["noticeAccepted"] = {
           {"version", configData.noticeAccepted->version},
@@ -202,6 +206,10 @@ namespace Halomux::Serialization
 
       if(jsonConfigData.contains("bridgeCertificateVerified")){
         configData.bridgeCertificateVerified = jsonConfigData.at("bridgeCertificateVerified");
+      }
+
+      if(jsonConfigData.contains("bridgePublicKey")){
+        configData.bridgePublicKey = jsonConfigData.at("bridgePublicKey");
       }
 
       if(jsonConfigData.contains("noticeAccepted")){

@@ -137,6 +137,14 @@ int main()
     config.setBridge("192.168.0.44", "0011aabbccddeeff", false);
     expect("Same bridge at another address drops the credentials", !config.credentials().has_value());
 
+    // The public key of a bridge whose certificate isn't signed by the CA, pinned from then on
+    config.setBridge("192.168.0.45", "0011aabbccddeeff", false, "sha256//key");
+    expect("Public key saved", config.bridgePublicKey() == "sha256//key");
+    config.setBridge("192.168.0.46", "0011aabbccddee00", false);
+    expect("Another bridge has no key yet", !config.bridgePublicKey().has_value());
+    config.setBridgePublicKey("sha256//other");
+    expect("Public key learnt later", config.bridgePublicKey() == "sha256//other");
+
     // Whether a bridge would be verified, before it's taken over
     config.setBridge("192.168.0.42", "aabbccddeeff0011", true);
     expect("Verified bridge again", config.bridgeVerifiedWith("AABBCCDDEEFF0011", false));

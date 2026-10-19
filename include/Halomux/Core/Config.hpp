@@ -60,6 +60,8 @@ namespace Halomux::Core
       std::optional<std::string> bridgeId;
       // Whether the bridge's certificate passed the check once: then it always has to
       std::optional<bool> bridgeCertificateVerified{false};
+      // Public key of a bridge whose certificate didn't, required from then on
+      std::optional<std::string> bridgePublicKey;
       std::optional<std::string> restoreToken;
     };
 
@@ -219,6 +221,15 @@ namespace Halomux::Core
      * @return Optional restore token string
     */
     std::optional<std::string> restoreToken() const;
+
+
+    /**
+     * @brief Returns the public key of the bridge's certificate, required while the certificate
+     *        doesn't pass the check (see Network::Http::Client::TlsPolicy::pinnedPublicKey)
+     *
+     * @return std::optional<std::string> Its pin, nothing if unknown
+     */
+    std::optional<std::string> bridgePublicKey() const;
 
 
     // Setters
@@ -389,11 +400,23 @@ namespace Halomux::Core
      * @param bridgeAddress Address of the bridge
      * @param bridgeId Id of the bridge, the name its certificate carries
      * @param certificateVerified Whether its certificate passed the check (see setBridgeIdentity())
+     * @param publicKeyPin Public key of its certificate (see bridgePublicKey()), empty if unknown
      */
     void setBridge(
       const std::string& bridgeAddress,
       const std::string& bridgeId,
-      bool certificateVerified
+      bool certificateVerified,
+      const std::string& publicKeyPin = {}
+    );
+
+
+    /**
+     * @brief Registers the public key of the bridge's certificate, learnt after it was set up
+     *
+     * @param publicKeyPin Its pin (see bridgePublicKey())
+     */
+    void setBridgePublicKey(
+      const std::string& publicKeyPin
     );
 
 

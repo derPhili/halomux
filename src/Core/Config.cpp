@@ -334,7 +334,8 @@ namespace Halomux::Core
   void Config::setBridge(
     const std::string& bridgeAddress,
     const std::string& bridgeId,
-    bool certificateVerified
+    bool certificateVerified,
+    const std::string& publicKeyPin
   )
   {
     const bool verified = bridgeVerifiedWith(bridgeId, certificateVerified);
@@ -349,7 +350,25 @@ namespace Halomux::Core
     data.bridgeAddress = bridgeAddress;
     data.bridgeId = bridgeId;
     data.bridgeCertificateVerified = verified;
+    data.bridgePublicKey = publicKeyPin.empty() ? std::nullopt : std::optional<std::string>(publicKeyPin);
     _save(lock);
+  }
+
+
+  void Config::setBridgePublicKey(
+    const std::string& publicKeyPin
+  )
+  {
+    std::unique_lock lock(m_mutex);
+    m_configData.value().bridgePublicKey = publicKeyPin;
+    _save(lock);
+  }
+
+
+  std::optional<std::string> Config::bridgePublicKey() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().bridgePublicKey;
   }
 
 
@@ -423,6 +442,7 @@ namespace Halomux::Core
       .noticeAccepted = std::nullopt,
       .bridgeId = std::nullopt,
       .bridgeCertificateVerified = false,
+      .bridgePublicKey = std::nullopt,
       .restoreToken = std::nullopt
     };
 

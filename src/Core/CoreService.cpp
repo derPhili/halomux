@@ -71,8 +71,11 @@ namespace Halomux::Core
       return std::nullopt;
     }
 
-    // Not identified yet: only the CA of its certificate can be checked
-    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(sanitizedAddress));
+    // Not identified yet: only the CA of its certificate can be checked. Its public key is read,
+    // to be required later if the user confirms a certificate failing the check
+    auto tls = Hue::Api::bridgeTls(sanitizedAddress);
+    tls.readPublicKey = true;
+    auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, tls);
     if(!response.has_value()){
       return std::nullopt;
     }
@@ -88,7 +91,8 @@ namespace Halomux::Core
       const SetupBridgeTrust::Bridge bridge{
         .address = sanitizedAddress,
         .bridgeId = responseData.at("bridgeid").get<std::string>(),
-        .verified = m_config.bridgeVerifiedWith(responseData.at("bridgeid").get<std::string>(), response->tlsVerified())
+        .verified = m_config.bridgeVerifiedWith(responseData.at("bridgeid").get<std::string>(), response->tlsVerified()),
+        .publicKeyPin = response->publicKeyPin()
       };
       m_setupBridgeTrust.validated(bridge);
 
@@ -133,7 +137,7 @@ namespace Halomux::Core
   )
   {
     // Credentials of another bridge are dropped: they'd be sent to this one
-    m_config.setBridge(bridge.address, bridge.bridgeId, bridge.verified);
+    m_config.setBridge(bridge.address, bridge.bridgeId, bridge.verified, bridge.publicKeyPin);
     _registerBridge();
   }
 
@@ -670,13 +674,26 @@ namespace Halomux::Core
     const auto savedId = m_config.bridgeId();
     if(!savedId.has_value() || !Hue::Api::isBridgeId(*savedId) || !m_config.bridgeCertificateVerified()){
       const std::string bridgeAddress = m_config.bridgeAddress().value();
-      auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(bridgeAddress));
+
+      // Registered as saved first: the identification itself then requires the key it had
+      if(savedId.has_value()){
+        Hue::Api::registerBridge(bridgeAddress, *savedId, false, m_config.bridgePublicKey().value_or(""));
+      }
+
+      auto tls = Hue::Api::bridgeTls(bridgeAddress);
+      tls.readPublicKey = true;
+      auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/api/0/config", "GET", "", {}, tls);
 
       try{
         if(response.has_value()){
           const auto answer = response->asJson();
           if(answer.contains("bridgeid") && answer.at("bridgeid").is_string() && Hue::Api::isBridgeId(answer.at("bridgeid").get<std::string>())){
             m_config.setBridgeIdentity(answer.at("bridgeid").get<std::string>(), response->tlsVerified());
+
+            // Set up before keys were required: its key is learnt now, and required from then on
+            if(!response->tlsVerified() && !m_config.bridgePublicKey().has_value() && !response->publicKeyPin().empty()){
+              m_config.setBridgePublicKey(response->publicKeyPin());
+            }
           }
         }
       }
@@ -697,13 +714,13 @@ namespace Halomux::Core
     }
 
     const bool verified = m_config.bridgeCertificateVerified();
-    if(!Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified)){
+    if(!Hue::Api::registerBridge(m_config.bridgeAddress().value(), bridgeId.value(), verified, m_config.bridgePublicKey().value_or(""))){
       Logger::error("The bridge answered no valid id: its certificate can't be checked against it");
       return;
     }
 
     if(!verified){
-      Logger::warn("The certificate of the bridge isn't signed by the Hue CA: its identity can't be verified, so connections to it aren't protected against impersonation");
+      Logger::warn("The certificate of the bridge isn't signed by the Hue CA: only its public key, as it was when the bridge was set up, is checked");
     }
   }
 
