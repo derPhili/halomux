@@ -69,16 +69,7 @@ embed_directory("${CMAKE_SOURCE_DIR}/assets")
 set(EMBEDDED_WEBROOT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/Halomux/EmbeddedWebrootFiles.hpp")
 
 
-# Custom command to ensure re-running when files change
-add_custom_command(
-  OUTPUT ${EMBEDDED_WEBROOT_HEADER}
-  COMMAND ${CMAKE_COMMAND} -E echo "Regenerating embedded webroot header..."
-  COMMAND ${CMAKE_COMMAND} -E touch ${EMBEDDED_WEBROOT_HEADER}  # Ensures file gets updated
-  DEPENDS ${WEBROOT_FILES} ${ASSETS_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/config/EmbeddedWebrootFiles.hpp.in
-  COMMENT "Updating EmbeddedWebrootFiles.hpp because webroot or assets changed."
-)
-
-
+# Generated at configure time, which runs again when an embedded file changes (see embed_directory)
 add_custom_target(generate_webroot_header DEPENDS ${EMBEDDED_WEBROOT_HEADER})
 
 configure_file(
