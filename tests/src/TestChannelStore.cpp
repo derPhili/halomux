@@ -143,6 +143,11 @@ int main()
     Core::ChannelStore store;
     store.replace(lamps(), Desktop);
     expect("Gamma set", store.setGammaFactor(0, 0.5f) && store.snapshot().at(0).gammaFactor == 0.5f);
+
+    // A lamp shining on another surface than the others
+    expect("Own wall set", store.setWallColor(0, Imaging::Color(255, 230, 180)) && store.snapshot().at(0).wallColor == Imaging::Color(255, 230, 180));
+    expect("Common wall again", store.setWallColor(0, std::nullopt) && !store.snapshot().at(0).wallColor.has_value());
+    expect("Wall of an unknown lamp", !store.setWallColor(42, Imaging::Color(255, 230, 180)));
     expect("Invalid gamma rejected", !store.setGammaFactor(0, std::numeric_limits<float>::quiet_NaN()));
     expect("Unknown lamp's gamma rejected", !store.setGammaFactor(9, 0.f));
   }

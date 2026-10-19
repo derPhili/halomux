@@ -212,8 +212,14 @@ namespace Halomux::Core
     // Sound transients, only while Config::audioReactive() is enabled (streaming thread)
     std::unique_ptr<Audio::AudioAnalyzer> m_audioAnalyzer;
 
+    // Longest the wall test shows white, should the page that started it go away [s]
+    static constexpr float WallTestDuration = 120.f;
+
     // Start of the running preview (steady clock ticks), 0 when none
     std::atomic<int64_t> m_previewStart{0};
+
+    // Start of the white shown to match the wall color by eye (steady clock ticks), 0 when none
+    std::atomic<int64_t> m_wallTestStart{0};
 
     // The entertainment area and the stream to it. Declared after the lamps and the grabber,
     // which its checks read when they select an area: stopped before them, even if the start
