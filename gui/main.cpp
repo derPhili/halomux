@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <array>
+
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QDir>
@@ -20,6 +23,9 @@ namespace
 {
   // How long a start for the tray waits for the panel's tray to appear [s]
   constexpr int TrayWaitSeconds = 30;
+
+  // Former names of Halomux, whose configuration the service takes over (see GnuLinuxAdapter)
+  constexpr std::array<const char*, 3> LegacyNames = {"lightspill", "hue-desktop-sync", "huenicorn"};
 
   /**
    * @brief Returns the path of the service's configuration file
@@ -104,8 +110,11 @@ int main(int argc, char* argv[])
 
   // Started at login for every user of the computer: one who never used Halomux gets no tray, and
   // no service started for them, which would also contend for another user's port. The service
-  // writes its configuration on its first start.
-  if(!showWindow && !QFile::exists(serviceConfigPath())){
+  // writes its configuration on its first start, and takes over one of a former name of Halomux.
+  const bool configured = QFile::exists(serviceConfigPath()) || std::ranges::any_of(LegacyNames, [](const char* legacyName){
+    return QFile::exists(QDir::homePath() + "/.config/" + legacyName + "/config.json");
+  });
+  if(!showWindow && !configured){
     return 0;
   }
 
