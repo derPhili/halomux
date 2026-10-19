@@ -350,7 +350,7 @@ class SetupWizard
 
       this.areaListNode.replaceChildren();
       for(let area of data.areas){
-        let choice = this._choice(area.name, t("{count} lamps", {count : area.lamps}), () => {});
+        let choice = this._choice(area.name, (area.lamps == 1 ? t("1 lamp") : t("{count} lamps", {count : area.lamps})), () => {});
         choice.disabled = true;
         choice.classList.add("selected");
         this.areaListNode.appendChild(choice);
