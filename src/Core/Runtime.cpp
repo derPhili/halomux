@@ -377,7 +377,7 @@ namespace Halomux::Core
 
     // A new grabber captures everything until told otherwise
     if(m_grabberReplaced.exchange(false)){
-      m_channelRegions.clear();
+      m_channelRegions.reset();
       grabber->setPaused(m_capturePaused);
     }
 
@@ -418,6 +418,7 @@ namespace Halomux::Core
     }
 
     if(regions != m_channelRegions){
+      // Told even when there are none, such as without active lamps: idle monitors stop
       grabber->setChannelRegions(regions);
       m_channelRegions = std::move(regions);
     }

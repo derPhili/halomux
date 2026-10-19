@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stop_token>
 #include <thread>
 
@@ -202,7 +203,9 @@ namespace Halomux::Core
     // Set when a screen selection replaced the grabber, for the streaming thread
     std::atomic<bool> m_grabberReplaced{false};
     std::atomic<MonitorSelection> m_monitorSelection{MonitorSelection::Idle};
-    Grabber::IGrabber::ChannelRegions m_channelRegions;
+    // Regions the grabber was last told, nothing until it was told any: a new grabber captures
+    // every monitor until then, even with no lamp to follow them (streaming thread)
+    std::optional<Grabber::IGrabber::ChannelRegions> m_channelRegions;
     // Capture is paused while sync is disabled (streaming thread)
     bool m_capturePaused{false};
 
