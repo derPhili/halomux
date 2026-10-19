@@ -60,14 +60,45 @@ namespace Halomux::Grabber
         return false;
       }
 
-      GDBusProxy* proxy = getScreencastPortalProxy(capture);
-      if(!proxy){
-        return false;
+      // Created asynchronously: loading its properties may start the portal, which can take long
+      // at login, and a stop has to end that wait (see abort())
+      capture->pendingCalls++;
+      g_dbus_proxy_new(connection, G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, BusName, ObjectPath, "org.freedesktop.portal.ScreenCast", capture->cancellable, onProxyCreatedCallback, capture);
+
+      return true;
+    }
+
+
+    void XdgDesktopPortal::onProxyCreatedCallback(
+      GObject*,
+      GAsyncResult* res,
+      void* userData
+    )
+    {
+      auto* capture = static_cast<Capture*>(userData);
+      capture->pendingCalls--;
+
+      // One per capture, created in its portal thread: a proxy follows the portal's name owner
+      // through signals dispatched to the context of the thread creating it, which ends with
+      // its capture. Shared, it kept the name of a portal that restarted since. Only its cached
+      // properties are used, not its signals.
+      g_autoptr(GError) error = NULL;
+      capture->screencastProxy = g_dbus_proxy_new_finish(res, &error);
+      if(!capture->screencastProxy){
+        if(!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)){
+          Core::Logger::error("Could not reach the XDG desktop portal: ", std::string(error->message));
+        }
+        resolveCapture(capture, false);
+        return;
+      }
+
+      // Aborted as it was created
+      if(g_cancellable_is_cancelled(capture->cancellable)){
+        resolveCapture(capture, false);
+        return;
       }
 
       createSession(capture);
-
-      return true;
     }
 
 
@@ -227,34 +258,10 @@ namespace Halomux::Grabber
     }
 
 
-    void XdgDesktopPortal::ensureScreencastPortalProxy(
-      Capture* capture
-    )
-    {
-      g_autoptr(GError) error = NULL;
-      if(!capture->screencastProxy){
-
-        std::string interfaceName = "org.freedesktop.portal.ScreenCast";
-
-        // One per capture, created in its portal thread: a proxy follows the portal's name owner
-        // through signals dispatched to the context of the thread creating it, which ends with
-        // its capture. Shared, it kept the name of a portal that restarted since. Only its cached
-        // properties are used, not its signals.
-        capture->screencastProxy = g_dbus_proxy_new_sync(portalGetDbusConnection(), G_DBUS_PROXY_FLAGS_DO_NOT_CONNECT_SIGNALS, NULL, BusName, ObjectPath, interfaceName.c_str(), NULL, &error);
-
-        if(error){
-          Core::Logger::warn("error retrieving D-Bus proxy: ", std::string(error->message));
-          return;
-        }
-      }
-    }
-
-
     GDBusProxy* XdgDesktopPortal::getScreencastPortalProxy(
       Capture* capture
     )
     {
-      ensureScreencastPortalProxy(capture);
       return capture->screencastProxy;
     }
 

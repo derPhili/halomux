@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -129,10 +130,34 @@ namespace
       return m_lastSession;
     }
 
+
+    // Stops answering anything, such as a portal still starting up, until thawed
+    void freeze()
+    {
+      auto frozen = std::make_shared<std::promise<void>>();
+      m_thawed = std::make_shared<std::promise<void>>();
+      auto thawed = m_thawed->get_future().share();
+      g_main_context_invoke(m_context, [](void* data) -> gboolean {
+        auto* waits = static_cast<std::pair<std::shared_ptr<std::promise<void>>, std::shared_future<void>>*>(data);
+        waits->first->set_value();
+        waits->second.wait();
+        delete waits;
+        return G_SOURCE_REMOVE;
+      }, new std::pair<std::shared_ptr<std::promise<void>>, std::shared_future<void>>(frozen, thawed));
+      frozen->get_future().wait();
+    }
+
+
+    void thaw()
+    {
+      m_thawed->set_value();
+    }
+
   private:
     void _run()
     {
       GMainContext* context = g_main_context_new();
+      m_context = context;
       g_main_context_push_thread_default(context);
       m_loop = g_main_loop_new(context, FALSE);
 
@@ -266,6 +291,8 @@ namespace
 
     std::thread m_thread;
     std::promise<void> m_ready;
+    GMainContext* m_context{nullptr};
+    std::shared_ptr<std::promise<void>> m_thawed;
     GMainLoop* m_loop{nullptr};
     GDBusConnection* m_connection{nullptr};
     GDBusNodeInfo* m_portalInfo{nullptr};
@@ -365,6 +392,25 @@ int main()
       expect("A stop ends it within a second", std::chrono::steady_clock::now() - stoppedAt < 1s);
     }
     expect("A stop closes the session", closed(portal, portal.lastSession()));
+  }
+
+  // A stop while the portal doesn't answer yet, such as one still starting at login: aborted at
+  // once too, not after the D-Bus timeout
+  {
+    portal.freeze();
+    std::stop_source stop;
+    auto outcome = std::async(std::launch::async, [&](){return select(config, stop.get_token());});
+    std::this_thread::sleep_for(200ms);
+
+    const auto stoppedAt = std::chrono::steady_clock::now();
+    stop.request_stop();
+    const bool ended = outcome.wait_for(5s) == std::future_status::ready;
+    portal.thaw();
+    expect("A stop ends the wait for a portal that doesn't answer", ended);
+    if(ended){
+      expect("A stop before the portal answered counts as cancelled", outcome.get() == Outcome::Cancelled);
+      expect("A stop ends the wait for the portal within a second", std::chrono::steady_clock::now() - stoppedAt < 1s);
+    }
   }
 
   // The portal restarts, such as after an update, between two selections: the next one reaches

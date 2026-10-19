@@ -169,10 +169,6 @@ namespace Halomux::Grabber
       CreatePathTokenType createPathTokenType
     );
 
-    static void ensureScreencastPortalProxy(
-      Capture* capture
-    );
-
     static GDBusProxy* getScreencastPortalProxy(
       Capture* capture
     );
@@ -259,6 +255,12 @@ namespace Halomux::Grabber
       const char* interfaceName,
       const char* signalName,
       GVariant* parameters,
+      void* userData
+    );
+
+    static void onProxyCreatedCallback(
+      GObject* source,
+      GAsyncResult* res,
       void* userData
     );
 
