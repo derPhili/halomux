@@ -896,10 +896,13 @@ namespace Halomux::Grabber
 
     // One stream per captured monitor, on the same connection
     for(auto& stream : pw->streams){
+      // Never moved to another video source once its monitor is gone, such as a camera the
+      // session manager would pick as the default: the stream ends, and the monitor counts as lost
       auto props = pw_properties_new(
         PW_KEY_MEDIA_TYPE, "Video",
         PW_KEY_MEDIA_CATEGORY, "Capture",
         PW_KEY_MEDIA_ROLE, "Screen",
+        PW_KEY_NODE_DONT_RECONNECT, "true",
         NULL
       );
 
