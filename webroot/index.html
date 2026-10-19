@@ -75,6 +75,16 @@
                  last: across the middle, the monitors and the lamps' regions hid it -->
             <text id="legendText" x="50%" y="94%" style="text-anchor: middle; dominant-baseline: middle;"></text>
           </svg>
+
+          <!-- The selected lamp's own wall, when it shines on another surface than the others -->
+          <div class="lampWall" id="lampWall" hidden>
+            <label class="toggle" title="This lamp shines on another surface than the others, such as the ceiling: its colors make up for that surface's color instead of the common wall's">
+              <input type="checkbox" id="lampOwnWall"/>
+              <span class="toggleTrack"></span>
+              <span>Own wall for this lamp</span>
+            </label>
+            <input type="color" id="lampWallColor" value="#ffffff" title="Color of the surface this lamp shines on" disabled/>
+          </div>
         </section>
 
         <section class="card" id="sceneCard">
@@ -176,6 +186,26 @@
                 <button type="button" class="presetButton" id="moviePresetButton" title="60%: smooths hard cuts and flashes (90% after ~90 ms at 50 Hz)">Movie</button>
               </div>
             </div>
+          </div>
+
+          <div class="settingsGroup">
+            <h3 title="The lamps are seen as their light on the wall behind them: on a colored wall, their colors make up for it">Wall</h3>
+
+            <div class="setting" title="Color of the wall the lamps shine on. On a colored wall, the lamps dim the colors it reflects better, so the light on it keeps its hue; the more colored the wall, the darker the light">
+              <div class="settingHeader">
+                <label for="wallColor">Wall color</label>
+              </div>
+              <div class="inlineSetting">
+                <input type="color" id="wallColor" value="#ffffff"/>
+                <button type="button" id="whiteWallButton" title="No compensation, as for a white wall">White wall</button>
+              </div>
+            </div>
+
+            <label class="toggle" title="Shows white on every lamp, through the compensation of its wall: change the wall color until the light on the wall looks neutral white. Ends by itself after two minutes">
+              <input type="checkbox" id="wallTest"/>
+              <span class="toggleTrack"></span>
+              <span>Show white to match the wall</span>
+            </label>
           </div>
 
           <div class="settingsGroup">

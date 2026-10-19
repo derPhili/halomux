@@ -1,6 +1,7 @@
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Core/Profile.hpp>
 #include <Halomux/Hue/Api/BridgeApi.hpp>
+#include <Halomux/Serialization/Channel.hpp>
 
 using namespace Halomux;
 using Serialization::Json;
@@ -92,6 +93,24 @@ int main()
     expect("Corners inside the monitor", uvs.min.y == 0.f && uvs.max.y == 1.f);
     expect("Gamma factor limited", channels.at(0).gammaFactor == 1.f && channels.at(1).gammaFactor == -1.f);
     expect("Corner beyond float inside the monitor", channels.at(1).uvs.min.x == 1.f);
+  }
+
+  // A lamp's own wall, saved with its settings
+  {
+    const Hue::Api::ChannelMembers members{{0, {}}, {1, {}}};
+    Json withWall = lamp(0, 0.5);
+    withWall["wallColor"] = "#ffe6b4";
+    Json unreadableWall = lamp(1, 0.5);
+    unreadableWall["wallColor"] = "beige";
+
+    const auto channels = channelsFromProfile(members, Json::array({withWall, unreadableWall}));
+    expect("Own wall restored", channels.at(0).wallColor == Imaging::Color(255, 230, 180));
+    expect("Unreadable wall: the common one", !channels.at(1).wallColor.has_value() && channels.at(1).state == Hue::Api::Channel::State::Active);
+
+    Hue::Api::Channel saved = channels.at(0);
+    expect("Own wall saved", Json(saved).value("wallColor", "") == "#ffe6b4");
+    saved.wallColor.reset();
+    expect("Common wall not saved", !Json(saved).contains("wallColor"));
   }
 
   if(failures > 0){

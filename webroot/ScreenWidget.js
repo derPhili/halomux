@@ -476,6 +476,9 @@ class ScreenWidget
 
   showWidgets(show)
   {
+    // The selected lamp's wall, below the widget
+    this.webApp.showLampWall(show ? this.currentChannel : null);
+
     let display = show ? "block" : "none";
     this.uvRectangle.show(show);
     for(let [key, handle] of Object.entries(this.handles)){

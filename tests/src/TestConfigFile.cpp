@@ -97,6 +97,25 @@ int main()
     expect("Saved address without its port", config.bridgeAddress() == "192.168.0.42");
   }
 
+  // The wall the lamps shine on: white until set, saved as #rrggbb
+  {
+    Core::Config config(root);
+    expect("White wall by default", config.wallColor() == Imaging::Color(255, 255, 255));
+    config.setWallColor(Imaging::Color(255, 230, 180));
+  }
+  {
+    Core::Config config(root);
+    expect("Wall color saved", config.wallColor() == Imaging::Color(255, 230, 180));
+  }
+  {
+    std::ofstream file(configFile);
+    file << R"({"wallColor": "beige"})";
+  }
+  {
+    Core::Config config(root);
+    expect("Unreadable wall color white", config.wallColor() == Imaging::Color(255, 255, 255));
+  }
+
   // Negative numbers aren't read as huge unsigned ones: such values get their default
   {
     std::ofstream file(configFile);
