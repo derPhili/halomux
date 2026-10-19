@@ -219,7 +219,7 @@ namespace Halomux::Grabber
   IGrabber::Resolution PipewireGrabber::displayResolution() const
   {
     Resolution widest{0, 0};
-    for(const auto& monitor : m_monitors){
+    for(const auto& monitor : monitors()){
       if(monitor.pixelWidth > widest.x){
         widest = {monitor.pixelWidth, monitor.pixelHeight};
       }
@@ -336,6 +336,11 @@ namespace Halomux::Grabber
     auto lock = std::lock_guard(m_pwData.processingInfoMutex);
     for(size_t i = 0; i < monitors.size() && i < m_pwData.streams.size(); i++){
       const StreamData& stream = *m_pwData.streams[i];
+      // As negotiated last: a resolution or scale changed while capturing renegotiates the stream
+      if(stream.pixelWidth > 0 && stream.pixelHeight > 0){
+        monitors[i].pixelWidth = stream.pixelWidth;
+        monitors[i].pixelHeight = stream.pixelHeight;
+      }
       monitors[i].lost = stream.lost;
       monitors[i].active = stream.streaming && !stream.lost;
       monitors[i].gpu = stream.lastFrameOnGpu;

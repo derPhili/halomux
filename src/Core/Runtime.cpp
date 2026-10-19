@@ -381,17 +381,19 @@ namespace Halomux::Core
       grabber->setPaused(m_capturePaused);
     }
 
-    // A monitor unplugged while capturing: its lamps go off, and the light manager says why
+    // A monitor unplugged while capturing: its lamps go off, and the light manager says why. One
+    // whose resolution changed gets the regions' cells of its new size.
     const auto now = std::chrono::steady_clock::now();
     if(now - m_lastLostMonitorsCheck >= std::chrono::seconds(1)){
       m_lastLostMonitorsCheck = now;
 
       auto monitors = grabber->monitors();
-      const bool lostChanged = monitors.size() != access.monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
-        return monitors[i].lost != access.monitors[i].lost;
+      const bool changed = monitors.size() != access.monitors.size() || std::ranges::any_of(std::views::iota(size_t{0}, monitors.size()), [&](size_t i){
+        const auto& known = access.monitors[i];
+        return monitors[i].lost != known.lost || monitors[i].pixelWidth != known.pixelWidth || monitors[i].pixelHeight != known.pixelHeight;
       });
 
-      if(lostChanged){
+      if(changed){
         access.resolveMonitors(std::move(monitors));
       }
     }
