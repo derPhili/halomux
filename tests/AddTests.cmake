@@ -290,6 +290,11 @@ halomux_add_test(HttpErrors
   LIBRARIES httplib::httplib nlohmann_json::nlohmann_json glm::glm
 )
 
+# The setup on a port in use, told apart from an aborted setup
+halomux_add_test(SetupBackend WITH_APP
+  LIBRARIES ${OpenCV_LIBS}
+)
+
 # Files only ever replaced by a complete content
 halomux_add_test(AtomicFile
   SOURCES ${SRC}/Core/AtomicFile.cpp

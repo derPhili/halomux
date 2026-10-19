@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iomanip>
 #include <optional>
+#include <stdexcept>
+#include <string>
 
 #include <glm/common.hpp>
 
@@ -697,16 +699,21 @@ namespace Halomux::Core
       m_setupBackend = &sb;
     }
 
-    bool succeeded = sb.execute(port, boundBackendIP);
+    const std::optional<bool> completed = sb.execute(port, boundBackendIP);
 
     {
       std::lock_guard lock(m_setupBackendMutex);
       m_setupBackend = nullptr;
     }
 
+    // Not the user's choice: the service fails, and is started again
+    if(!completed.has_value()){
+      throw std::runtime_error("Could not open the setup on " + boundBackendIP + ":" + std::to_string(port) + ", which may be in use");
+    }
+
     m_runtime.m_openedSetup = true;
 
-    if(!succeeded){
+    if(!*completed){
       Logger::log("Initial setup was aborted");
       return false;
     }
