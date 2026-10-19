@@ -61,7 +61,7 @@ The package contains:
 
 * `halomux`: the service driving the lamps, with its systemd user unit
 * `halomux-gui`: the desktop application, in the application menu as "Halomux"
-* an autostart entry starting the tray icon at login
+* an autostart entry starting the tray icon at login, for users who have set Halomux up
 
 ### Building from source
 
