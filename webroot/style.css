@@ -1132,6 +1132,23 @@ body.i18nPending
 }
 
 
+/* Narrow screens such as phones: the footer wraps, so its source link stays reachable */
+@media (max-width: 640px)
+{
+  .actions
+  {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 10px 16px;
+  }
+
+  .layout
+  {
+    padding-bottom: 120px;
+  }
+}
+
+
 /* Overlay */
 
 #overlay
