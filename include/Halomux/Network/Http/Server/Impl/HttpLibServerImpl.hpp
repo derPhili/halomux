@@ -134,6 +134,11 @@ namespace Halomux::Network::Http::Server
         httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
       });
 
+      // Answers go out at once: httplib writes the header and the body apart, and the small
+      // body otherwise waited for the ACK of the header, delayed up to 40 ms by the client, on
+      // every request but a connection's first. Dragging a corner sends one after the other.
+      m_service->set_tcp_nodelay(true);
+
       // On every answer, refused and unknown ones too: another site framing the light manager
       // could have its buttons clicked unseen (clickjacking), past the Origin check
       m_service->set_default_headers({
