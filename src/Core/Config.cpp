@@ -9,6 +9,7 @@
 #include <fstream>
 
 #include <Halomux/Core/Logger.hpp>
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Serialization/Config.hpp>
 
 
@@ -472,6 +473,16 @@ namespace Halomux::Core
     if(!configData.restServerPort.has_value()){
       configData.restServerPort = defaultConfigData.restServerPort.value();
       requireSave = true;
+    }
+
+    // As the setup saves addresses now: former versions kept a port, which the streaming
+    // connection can't resolve
+    if(configData.bridgeAddress.has_value()){
+      const std::string sanitized = Hue::Api::sanitizeBridgeAddress(*configData.bridgeAddress);
+      if(!sanitized.empty() && sanitized != *configData.bridgeAddress){
+        configData.bridgeAddress = sanitized;
+        requireSave = true;
+      }
     }
 
     // Without it, the profile saved would be neither read nor kept: its first save would replace

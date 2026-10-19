@@ -87,6 +87,16 @@ int main()
     expect("Profile name of a new configuration", config.profileName() == "profile");
   }
 
+  // Addresses saved by former versions, which kept the port: as the setup saves them now
+  {
+    std::ofstream file(configFile);
+    file << R"({"bridgeAddress": "192.168.0.42:443"})";
+  }
+  {
+    Core::Config config(root);
+    expect("Saved address without its port", config.bridgeAddress() == "192.168.0.42");
+  }
+
   // A negative width reads as a huge unsigned one: limited like what the setter takes
   {
     std::ofstream file(configFile);
