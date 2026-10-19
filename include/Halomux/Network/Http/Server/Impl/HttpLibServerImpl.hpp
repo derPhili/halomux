@@ -142,6 +142,10 @@ namespace Halomux::Network::Http::Server
         {"X-Content-Type-Options", "nosniff"}
       });
 
+      // The requests carry small JSON documents: anything larger is refused before it's read
+      static constexpr size_t MaxRequestBodySize = 64 * 1024;
+      m_service->set_payload_max_length(MaxRequestBodySize);
+
       for(const auto& route : routes){
         auto wrapped = _wrapHandler(route.handler, route.method);
         switch(route.method)

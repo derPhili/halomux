@@ -139,6 +139,10 @@ int main()
     expect("Unknown paths can't be framed", framed(client.Get("/unknown")));
   }
 
+  // Bodies are small JSON documents: a huge one is refused before it's read into memory
+  const auto huge = client.Put("/json", std::string(1024 * 1024, ' ') + R"({"value": 3})", "application/json");
+  expect("Huge body refused", huge && huge->status == 413);
+
   const auto internalJson = client.Get("/internalJson");
   expect("Internal JSON error is a server error", internalJson && internalJson->status == 500 && errorShaped(internalJson));
   expect("Internal JSON error not disclosed", internalJson && internalJson->body.find("missing") == std::string::npos);
