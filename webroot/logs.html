@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Logs – Halomux</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="logo.svg" sizes="any" type="image/svg+xml">
+  </head>
+
+  <body class="i18nPending">
+    <header class="appHeader">
+      <img src="logo.svg" class="appLogo" alt="">
+      <h1>Halomux</h1>
+      <a href="/" class="logsBack" title="Back to the light manager">Back to Halomux</a>
+    </header>
+
+    <main class="logs card">
+      <div class="cardHeader">
+        <h2>Logs</h2>
+        <span class="hint">The last lines of the service's journal, the newest at the bottom. Updated every few seconds</span>
+      </div>
+      <p id="logsError" class="errorMessage"></p>
+      <ol id="logLines" class="logLines" aria-live="polite"></ol>
+    </main>
+
+    <script src="Utils.js"></script>
+    <script src="I18n.js"></script>
+    <script src="Logs.js"></script>
+  </body>
+</html>

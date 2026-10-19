@@ -322,6 +322,16 @@ I18n.Translations = {
     "{count} lamps" : "{count} Lampen",
     "1 lamp" : "1 Lampe",
     "Halomux couldn't be shut down." : "Halomux konnte nicht beendet werden.",
+
+    // Logs
+    "Logs" : "Logs",
+    "Logs – Halomux" : "Logs – Halomux",
+    "The last lines of the service's journal, to see what it does or why something fails" : "Die letzten Zeilen aus dem Journal des Dienstes, um zu sehen, was er tut oder warum etwas nicht klappt",
+    "Back to Halomux" : "Zurück zu Halomux",
+    "Back to the light manager" : "Zurück zur Lichtverwaltung",
+    "The last lines of the service's journal, the newest at the bottom. Updated every few seconds" : "Die letzten Zeilen aus dem Journal des Dienstes, die neuesten unten. Aktualisiert sich alle paar Sekunden",
+    "The journal can't be read, or holds no lines of Halomux yet." : "Das Journal lässt sich nicht lesen oder enthält noch keine Zeilen von Halomux.",
+    "Halomux doesn't answer." : "Halomux antwortet nicht.",
     "Channel {id}" : "Kanal {id}",
     "Not found – Halomux" : "Nicht gefunden – Halomux",
     "Page not found" : "Seite nicht gefunden",
