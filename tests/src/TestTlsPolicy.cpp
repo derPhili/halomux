@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -106,6 +107,14 @@ int main()
 
   // Only the given CA: the system's certificates don't count
   expect("Without the CA refused", !request(bridge, {.caPem = fixture("impostor.pem"), .expectedName = "001788fffe0a0b0c", .allowUnverified = false}).has_value());
+
+  // A proxy of the environment doesn't see the requests to the bridge, which is in the network
+  setenv("https_proxy", "http://127.0.0.1:1", 1);
+  setenv("HTTPS_PROXY", "http://127.0.0.1:1", 1);
+  const auto proxied = request(bridge, {.caPem = ca, .expectedName = "001788fffe0a0b0c", .allowUnverified = false});
+  expect("Bridge reached past a proxy of the environment", proxied.has_value() && proxied->tlsVerified());
+  unsetenv("https_proxy");
+  unsetenv("HTTPS_PROXY");
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

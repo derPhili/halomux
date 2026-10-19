@@ -111,6 +111,12 @@ namespace Halomux::Network::Http::Client
       std::string requestUrl = url;
       UniqueCurlSlist connectTo{nullptr};
 
+      // The bridge is in the local network: a proxy of the environment would see its traffic,
+      // and could answer in its place where its certificate can't be checked
+      if(tls.has_value()){
+        curl_easy_setopt(handle.get(), CURLOPT_NOPROXY, "*");
+      }
+
       if(!verify){
         curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(handle.get(), CURLOPT_SSL_VERIFYHOST, 0L);
