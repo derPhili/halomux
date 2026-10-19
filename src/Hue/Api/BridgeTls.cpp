@@ -59,13 +59,15 @@ namespace Halomux::Hue::Api
     const auto bridgeIt = registry.find(bridgeAddress);
     if(bridgeIt == registry.end()){
       // Not identified yet (setup): only the CA can be checked
-      return {.caPem = BridgeRootCertificate, .expectedName = {}, .allowUnverified = true};
+      return {.caPem = BridgeRootCertificate, .expectedName = {}, .allowUnverified = true, .readPublicKey = false, .pinnedPublicKey = {}};
     }
 
     return {
       .caPem = BridgeRootCertificate,
       .expectedName = bridgeIt->second.bridgeId,
-      .allowUnverified = !bridgeIt->second.requireVerification
+      .allowUnverified = !bridgeIt->second.requireVerification,
+      .readPublicKey = false,
+      .pinnedPublicKey = {}
     };
   }
 }

@@ -108,6 +108,23 @@ int main()
   // Only the given CA: the system's certificates don't count
   expect("Without the CA refused", !request(bridge, {.caPem = fixture("impostor.pem"), .expectedName = "001788fffe0a0b0c", .allowUnverified = false}).has_value());
 
+  // A bridge confirmed though its certificate isn't signed by the CA: its public key is read when
+  // it's confirmed, and pinned from then on
+  const std::string impostorPin = "sha256//4IqShtIudDSBtu2wiCQMseEc3Lvq3O7VTm5ndCQvKqE=";
+  const std::string bridgePin = "sha256//RUbpYEUE3SkBcHhUsUSwbcPH0ajnSXUfW4bmHK/ZtA4=";
+  const auto read = request(impostor, {.caPem = ca, .expectedName = "", .allowUnverified = true, .readPublicKey = true});
+  expect("Public key read", read.has_value() && read->publicKeyPin() == impostorPin);
+  const auto readVerified = request(bridge, {.caPem = ca, .expectedName = "001788fffe0a0b0c", .allowUnverified = false, .readPublicKey = true});
+  expect("Public key of a verified bridge read", readVerified.has_value() && readVerified->publicKeyPin() == bridgePin);
+
+  const auto pinned = request(impostor, {.caPem = ca, .expectedName = "001788fffe0a0b0c", .allowUnverified = true, .pinnedPublicKey = impostorPin});
+  expect("Pinned key answered, unverified", pinned.has_value() && !pinned->tlsVerified());
+  expect("Another key than the pinned one refused", !request(impostor, {.caPem = ca, .expectedName = "001788fffe0a0b0c", .allowUnverified = true, .pinnedPublicKey = bridgePin}).has_value());
+
+  // The bridge got a certificate of the CA since, such as by an update: accepted, verified
+  const auto upgraded = request(bridge, {.caPem = ca, .expectedName = "001788fffe0a0b0c", .allowUnverified = true, .pinnedPublicKey = impostorPin});
+  expect("Certificate of the CA accepted instead of the pinned key", upgraded.has_value() && upgraded->tlsVerified());
+
   // A proxy of the environment doesn't see the requests to the bridge, which is in the network
   setenv("https_proxy", "http://127.0.0.1:1", 1);
   setenv("HTTPS_PROXY", "http://127.0.0.1:1", 1);
