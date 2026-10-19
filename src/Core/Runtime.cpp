@@ -162,7 +162,8 @@ namespace Halomux::Core
       Logger::warn("Subsample width is >= ", warningThreshold, "% of the display resolution. Color computation might be intensive.");
     }
 
-    Logger::log("Configuration is ready. Feel free to modify it manually by editing ", std::quoted(m_config.configFilePath().string()));
+    // Edited while it runs, the service would write its own settings over the changes
+    Logger::log("Configuration is ready: ", std::quoted(m_config.configFilePath().string()), ". To edit it by hand, stop the service first");
 
     const auto credentials = m_config.credentials().value();
     const std::string bridgeAddress = m_config.bridgeAddress().value();
