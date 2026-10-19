@@ -53,6 +53,9 @@ int main()
   expect("Empty clientkey", !Credentials("user", "").hasValidClientkey());
   expect("Odd clientkey", !Credentials("user", "abc").hasValidClientkey());
   expect("Non-hex clientkey", !Credentials("user", "00112233445566778899aabbccddeefg").hasValidClientkey());
+  // Always 16 bytes: a shorter or longer one, such as a mistyped one, would fail every connection
+  expect("Short clientkey", !Credentials("user", "00").hasValidClientkey());
+  expect("Long clientkey", !Credentials("user", "00112233445566778899aabbccddeeff00").hasValidClientkey());
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

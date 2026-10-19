@@ -69,7 +69,7 @@ namespace Halomux::Hue::Auth
     /**
      * @brief Tells whether the clientkey is hexadecimal, as the pre-shared key of the streaming connection
      *
-     * @return true Non-empty, of even length, only hexadecimal digits
+     * @return true 32 hexadecimal digits, the 16 bytes of the bridge's clientkeys
      */
     bool hasValidClientkey() const;
 

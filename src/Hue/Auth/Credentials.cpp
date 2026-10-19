@@ -106,6 +106,10 @@ namespace Halomux::Hue::Auth
 
   bool Credentials::hasValidClientkey() const
   {
-    return hexStringToBytes(m_clientkey).has_value();
+    // The bridge's clientkeys are 16 bytes: another length, such as a mistyped key, would fail
+    // every streaming connection
+    static constexpr size_t ClientkeySize = 16;
+    const auto bytes = hexStringToBytes(m_clientkey);
+    return bytes.has_value() && bytes->size() == ClientkeySize;
   }
 }
