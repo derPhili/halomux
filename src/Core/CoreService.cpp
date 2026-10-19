@@ -52,40 +52,57 @@ namespace Halomux::Core
   }
 
 
-  bool CoreService::validateBridgeAddress(
+  std::optional<bool> CoreService::validateBridgeAddress(
     const std::string& bridgeAddress
   )
   {
+    // Until another bridge passes, none is to be paired with
+    m_setupBridgeTrust.invalidate();
+
     // Trailing slashes are already stripped by the sanitization
     std::string sanitizedAddress = Hue::Api::sanitizeBridgeAddress(bridgeAddress);
 
     if(sanitizedAddress.empty()){
-      return false;
+      return std::nullopt;
     }
 
     // Not identified yet: only the CA of its certificate can be checked
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + sanitizedAddress + "/api/0/config", "GET", "", {}, Hue::Api::bridgeTls(sanitizedAddress));
     if(!response.has_value()){
-      return false;
+      return std::nullopt;
     }
 
     try{
       auto responseData = response->asJson();
       // Its id names its certificate: without a valid one, it isn't a bridge to trust
       if(!responseData.contains("name") || !responseData.contains("bridgeid") || !responseData.at("bridgeid").is_string() || !Hue::Api::isBridgeId(responseData.at("bridgeid").get<std::string>())){
-        return false;
+        return std::nullopt;
       }
 
       m_config.setBridgeAddress(sanitizedAddress);
       m_config.setBridgeIdentity(responseData.at("bridgeid"), response->tlsVerified());
       _registerBridge();
 
-      return true;
+      // Verified once, the bridge is checked as verified from then on
+      const bool verified = m_config.bridgeCertificateVerified();
+      m_setupBridgeTrust.validated(sanitizedAddress, verified);
+      return verified;
     }
     catch(const std::exception& e){
       Logger::error(e.what());
+      return std::nullopt;
+    }
+  }
+
+
+  bool CoreService::acceptUnverifiedBridge()
+  {
+    if(!m_setupBridgeTrust.acceptUnverified()){
       return false;
     }
+
+    Logger::warn("Pairing with a bridge whose certificate isn't signed by the Hue CA, as confirmed by the user");
+    return true;
   }
 
 
@@ -93,8 +110,8 @@ namespace Halomux::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    // The setup validates the address first
-    if(!m_config.bridgeAddress().has_value()){
+    // The setup validates the address first, and pairs only with a bridge it trusts
+    if(!m_config.bridgeAddress().has_value() || !m_setupBridgeTrust.trusted(*m_config.bridgeAddress())){
       return false;
     }
 
@@ -134,6 +151,11 @@ namespace Halomux::Core
     // The setup validates the address first
     if(!m_config.bridgeAddress().has_value()){
       return {{"succeeded", false}, {"error", "no bridge address yet"}};
+    }
+
+    // Any device of the network could pass itself off as the bridge and keep the credentials
+    if(!m_setupBridgeTrust.trusted(*m_config.bridgeAddress())){
+      return {{"succeeded", false}, {"error", "the bridge isn't confirmed"}};
     }
 
     auto response = Hue::Api::ApiTools::registerNewUser(m_config.bridgeAddress().value());

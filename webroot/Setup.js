@@ -40,6 +40,9 @@ class SetupWizard
     this.bridgeCandidatesNode = document.getElementById("bridgeCandidates");
     this.bridgeSearchNode = document.getElementById("bridgeSearch");
     document.getElementById("validateAddressButton").addEventListener("click", () => {this._validateAddress();});
+    this.bridgeAddressNode.addEventListener("input", () => {this._showUnverifiedBridge(false);});
+    this.unverifiedBridgeNode = document.getElementById("unverifiedBridgeSection");
+    this.unverifiedBridgeConfirmNode = document.getElementById("unverifiedBridgeConfirm");
     document.getElementById("searchAgainButton").addEventListener("click", () => {this._searchBridges();});
 
     // Pairing
@@ -101,7 +104,7 @@ class SetupWizard
     }
 
     switch(name){
-      case "bridge": this._searchBridges(); break;
+      case "bridge": this._showUnverifiedBridge(false); this._searchBridges(); break;
       case "pairing": this._startPairing(); break;
       case "area": this._checkAreas(); break;
     }
@@ -156,6 +159,7 @@ class SetupWizard
       for(let bridge of data.bridges){
         let choice = this._choice(bridge.internalipaddress, t("Hue bridge {id}", {id : (bridge.id || "").slice(-6).toUpperCase()}), () => {
           this.bridgeAddressNode.value = bridge.internalipaddress;
+          this._showUnverifiedBridge(false);
         });
         this.bridgeCandidatesNode.appendChild(choice);
       }
@@ -204,16 +208,50 @@ class SetupWizard
       return;
     }
 
+    // Its certificate isn't signed by the Hue CA: paired only once the user confirmed the address
+    if(!this.unverifiedBridgeNode.hidden){
+      if(!this.unverifiedBridgeConfirmNode.checked){
+        this._showError("bridgeAddressError", t("Confirm that this is the address of your Hue bridge, or pick another one."));
+        return;
+      }
+
+      RequestUtils.put("/api/acceptUnverifiedBridge", JSON.stringify(null))
+      .then((data) => {
+        if(data.succeeded){
+          this._showStep("pairing");
+        }
+        else{
+          // Validated again meanwhile, from another page: start over
+          this._showUnverifiedBridge(false);
+          this._validateAddress();
+        }
+      })
+      .catch((error) => {log(error);});
+      return;
+    }
+
     RequestUtils.put("/api/validateBridgeAddress", JSON.stringify({bridgeAddress : address}))
     .then((data) => {
-      if(data.succeeded){
+      if(!data.succeeded){
+        this._showError("bridgeAddressError", t("No Hue bridge answers at {address}.", {address : address}));
+      }
+      else if(data.certificateVerified){
         this._showStep("pairing");
       }
       else{
-        this._showError("bridgeAddressError", t("No Hue bridge answers at {address}.", {address : address}));
+        this._showError("bridgeAddressError", "");
+        this._showUnverifiedBridge(true);
       }
     })
     .catch((error) => {log(error);});
+  }
+
+
+  // Warning about a bridge whose certificate isn't signed by the Hue CA, confirmed to go on
+  _showUnverifiedBridge(shown)
+  {
+    this.unverifiedBridgeNode.hidden = !shown;
+    this.unverifiedBridgeConfirmNode.checked = false;
   }
 
 

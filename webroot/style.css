@@ -1323,6 +1323,17 @@ body.i18nPending
 }
 
 
+/* Bridge whose certificate isn't signed by the Hue CA, confirmed before pairing */
+
+.unverifiedBridge:not([hidden])
+{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+
 /* Notice to accept before the setup */
 
 .noticeBox

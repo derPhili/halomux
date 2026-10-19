@@ -222,6 +222,9 @@ halomux_add_test(BridgeTls
   SOURCES ${SRC}/Hue/Api/BridgeTls.cpp
 )
 
+# Which bridges the setup pairs with, whose certificate may not be signed by the Hue CA
+halomux_add_test(SetupBridgeTrust)
+
 # Reading the bridge's CLIP v2 answers, which may be empty, errors or malformed
 halomux_add_test(ClipParsing
   SOURCES ${SRC}/Hue/Api/ClipParsing.cpp ${SRC}/Hue/Api/Channel.cpp ${SRC}/Hue/Auth/Credentials.cpp
