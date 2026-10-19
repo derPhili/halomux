@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <fstream>
+#include <limits>
 
 #include <csignal>
 
@@ -68,6 +69,18 @@ int main()
     expect("Brightness limited", config.brightness() == 1.f);
     expect("Highlight boost limited", config.highlightBoost() == 0.f);
     expect("Subsample width left automatic", config.subsampleWidth() == 0);
+  }
+
+  // A negative width reads as a huge unsigned one: limited like what the setter takes
+  {
+    std::ofstream file(configFile);
+    file << R"({"subsampleWidth": -1})";
+  }
+  {
+    Core::Config config(root);
+    expect("Huge subsample width limited", config.subsampleWidth() == Core::Config::MaxSubsampleWidth);
+    config.setSubsampleWidth(std::numeric_limits<unsigned>::max());
+    expect("Huge subsample width set limited", config.subsampleWidth() == Core::Config::MaxSubsampleWidth);
   }
 
   {

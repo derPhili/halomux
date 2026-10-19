@@ -33,6 +33,9 @@ namespace Halomux::Core
       std::string at;
     };
 
+    // Wider than any monitor: a subsample width can't exceed the image it's taken from
+    static constexpr unsigned MaxSubsampleWidth = 16384;
+
     struct Data
     {
       std::optional<unsigned> restServerPort;
@@ -251,8 +254,8 @@ namespace Halomux::Core
 
     /**
      * @brief registers the subsample width for image processing
-     * 
-     * @param subsampleWidth Subsample width
+     *
+     * @param subsampleWidth Subsample width, clamped to [1, MaxSubsampleWidth]
      */
     void setSubsampleWidth(
       unsigned subsampleWidth

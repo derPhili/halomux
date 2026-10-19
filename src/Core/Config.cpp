@@ -199,7 +199,7 @@ namespace Halomux::Core
   )
   {
     std::lock_guard lock(m_mutex);
-    m_configData.value().subsampleWidth = std::max(subsampleWidth, 1u);
+    m_configData.value().subsampleWidth = std::clamp(subsampleWidth, 1u, MaxSubsampleWidth);
     _save();
   }
 
@@ -435,6 +435,12 @@ namespace Halomux::Core
     limit(configData.transitionSmoothing, 0.f, MaxTransitionSmoothing);
     limit(configData.highlightBoost, 0.f, 1.f);
     limit(configData.brightness, 0.f, 1.f);
+
+    // 0 picks one automatically; a negative width reads as a huge one
+    if(configData.subsampleWidth.has_value() && *configData.subsampleWidth > MaxSubsampleWidth){
+      configData.subsampleWidth = MaxSubsampleWidth;
+      requireSave = true;
+    }
 
     if(!configData.restServerPort.has_value()){
       configData.restServerPort = defaultConfigData.restServerPort.value();
