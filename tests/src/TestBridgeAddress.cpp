@@ -43,6 +43,10 @@ int main()
   // The streaming connection takes the host without brackets
   expect("Host of an address", bridgeHost("192.168.0.42") == "192.168.0.42");
   expect("Host of an IPv6", bridgeHost("[fd00::42]") == "fd00::42");
+  // A zone written as in URLs (RFC 6874), which name resolution doesn't take
+  expect("Zone of a link local address", sanitizeBridgeAddress("https://[fe80::42%25eth0]/") == "[fe80::42%25eth0]");
+  expect("Host with its zone", bridgeHost("[fe80::42%25eth0]") == "fe80::42%eth0");
+  expect("Host with a plain zone", bridgeHost("[fe80::42%eth0]") == "fe80::42%eth0");
 
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");

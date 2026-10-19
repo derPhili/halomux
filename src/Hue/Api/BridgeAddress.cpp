@@ -81,7 +81,14 @@ namespace Halomux::Hue::Api
   )
   {
     if(bridgeAddress.size() >= 2 && bridgeAddress.front() == '[' && bridgeAddress.back() == ']'){
-      return bridgeAddress.substr(1, bridgeAddress.size() - 2);
+      std::string host = bridgeAddress.substr(1, bridgeAddress.size() - 2);
+
+      // A zone written as in URLs (RFC 6874): name resolution takes it plain
+      if(const size_t zone = host.find("%25"); zone != std::string::npos){
+        host.erase(zone + 1, 2);
+      }
+
+      return host;
     }
 
     return bridgeAddress;
