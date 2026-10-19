@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 
 /**
  * @brief The setup's web UI threads write the bridge address and credentials while others read
- *        them. Run with ThreadSanitizer.
+ *        them, and settings are changed from several threads. Run with ThreadSanitizer.
  */
 int main()
 {
@@ -56,7 +56,34 @@ int main()
     }
   }
 
+  // Settings changed from several threads at once: the file ends up with the last change, as a
+  // slower write of an older one doesn't replace a newer one
+  bool lastChangeSaved = true;
+  {
+    Core::Config config(root);
+    std::vector<std::thread> writers;
+    for(int w = 0; w < 4; w++){
+      writers.emplace_back([&config, w](){
+        for(int i = 0; i < 50; i++){
+          config.setBrightness(static_cast<float>(w * 50 + i) / 200.f);
+        }
+      });
+    }
+    for(auto& writer : writers){
+      writer.join();
+    }
+
+    const float inMemory = config.brightness();
+    Core::Config reloaded(root);
+    lastChangeSaved = reloaded.brightness() == inMemory;
+  }
+
   fs::remove_all(root);
+  if(!lastChangeSaved){
+    Core::Logger::error("The file doesn't hold the last change");
+    return 1;
+  }
+
   Core::Logger::log("Config threads: OK");
   return 0;
 }

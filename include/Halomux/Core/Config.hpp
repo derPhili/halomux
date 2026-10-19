@@ -435,9 +435,15 @@ namespace Halomux::Core
 
     /**
      * @brief Writes the current state of the config. Called from all setters
-     * 
+     *
+     * Serializes it under m_mutex, then releases it to write the file: readers don't wait for
+     * the disk. Concurrent saves write in the order of their changes.
+     *
+     * @param lock Lock of m_mutex, held when called, released on return
      */
-    void _save() const;
+    void _save(
+      std::unique_lock<std::mutex>& lock
+    );
 
 
     // Attributes
@@ -449,6 +455,12 @@ namespace Halomux::Core
     // while the streaming loop reads them. Values returned by reference are
     // only written during initial setup, before any concurrent access.
     mutable std::mutex m_mutex;
+    // Counts the saved changes, under m_mutex
+    uint64_t m_changeGeneration{0};
+
+    // Orders the writes of the file: the last change written, under m_writeMutex
+    std::mutex m_writeMutex;
+    uint64_t m_writtenGeneration{0};
 
     template<typename T>
     friend struct Halomux::Serialization::JsonSerializer;

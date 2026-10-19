@@ -168,9 +168,9 @@ namespace Halomux::Core
     const std::string& bridgeAddress
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().bridgeAddress.emplace(bridgeAddress);
-    _save();
+    _save(lock);
   }
 
 
@@ -178,9 +178,9 @@ namespace Halomux::Core
     const Hue::Auth::Credentials& credentials
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().credentials.emplace(credentials);
-    _save();
+    _save(lock);
   }
 
 
@@ -188,9 +188,9 @@ namespace Halomux::Core
     const std::string& profileName
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().profileName.emplace(profileName);
-    _save();
+    _save(lock);
   }
 
 
@@ -198,9 +198,9 @@ namespace Halomux::Core
     unsigned subsampleWidth
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().subsampleWidth = std::clamp(subsampleWidth, 1u, MaxSubsampleWidth);
-    _save();
+    _save(lock);
   }
 
 
@@ -208,13 +208,13 @@ namespace Halomux::Core
     unsigned refreshRate
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     if(refreshRate < 1){
       refreshRate = 1;
     }
 
     m_configData.value().refreshRate = refreshRate;
-    _save();
+    _save(lock);
   }
 
 
@@ -222,9 +222,9 @@ namespace Halomux::Core
     float transitionSmoothing
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().transitionSmoothing = std::clamp(transitionSmoothing, 0.f, 0.97f);
-    _save();
+    _save(lock);
   }
 
 
@@ -232,9 +232,9 @@ namespace Halomux::Core
     bool audioReactive
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().audioReactive = audioReactive;
-    _save();
+    _save(lock);
   }
 
 
@@ -242,9 +242,9 @@ namespace Halomux::Core
     float highlightBoost
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().highlightBoost = std::clamp(highlightBoost, 0.f, 1.0f);
-    _save();
+    _save(lock);
   }
 
 
@@ -252,9 +252,9 @@ namespace Halomux::Core
     float brightness
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().brightness = std::clamp(brightness, 0.f, 1.0f);
-    _save();
+    _save(lock);
   }
 
 
@@ -262,9 +262,9 @@ namespace Halomux::Core
     bool syncEnabled
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().syncEnabled = syncEnabled;
-    _save();
+    _save(lock);
   }
 
 
@@ -272,9 +272,9 @@ namespace Halomux::Core
     const StaticColors& staticColors
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().staticColors = staticColors;
-    _save();
+    _save(lock);
   }
 
 
@@ -283,9 +283,9 @@ namespace Halomux::Core
     const StaticColors& staticColors
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().scenes.value()[name] = staticColors;
-    _save();
+    _save(lock);
   }
 
 
@@ -293,9 +293,9 @@ namespace Halomux::Core
     const std::string& language
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().language = language;
-    _save();
+    _save(lock);
   }
 
 
@@ -325,7 +325,7 @@ namespace Halomux::Core
     bool certificateVerified
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     auto& data = m_configData.value();
 
     // Verified once, a bridge must always be: but that binds this bridge, not another one
@@ -337,7 +337,7 @@ namespace Halomux::Core
 
     data.bridgeId = bridgeId;
     data.bridgeCertificateVerified = (sameBridge && data.bridgeCertificateVerified.value_or(false)) || certificateVerified;
-    _save();
+    _save(lock);
   }
 
 
@@ -345,9 +345,9 @@ namespace Halomux::Core
     const NoticeAcceptance& acceptance
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData.value().noticeAccepted = acceptance;
-    _save();
+    _save(lock);
   }
 
 
@@ -355,12 +355,12 @@ namespace Halomux::Core
     const std::string& name
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     if(m_configData.value().scenes.value().erase(name) == 0){
       return false;
     }
 
-    _save();
+    _save(lock);
     return true;
   }
 
@@ -369,9 +369,9 @@ namespace Halomux::Core
     const std::string& restoreToken
   )
   {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
     m_configData->restoreToken = restoreToken;
-    _save();
+    _save(lock);
   }
 
 
@@ -402,7 +402,8 @@ namespace Halomux::Core
     Json jsonConfig = Json::object();
     if(!std::filesystem::exists(m_configFilePath)){
       m_configData.emplace(defaultConfigData);
-      _save();
+      std::unique_lock lock(m_mutex);
+      _save(lock);
       return false;
     }
 
@@ -462,16 +463,32 @@ namespace Halomux::Core
     }
 
     if(requireSave){
-      _save();
+      std::unique_lock lock(m_mutex);
+      _save(lock);
     }
 
     return true;
   }
 
 
-  void Config::_save() const
+  void Config::_save(
+    std::unique_lock<std::mutex>& lock
+  )
   {
+    const std::string content = Json(m_configData.value()).dump(2) + "\n";
+    const uint64_t generation = ++m_changeGeneration;
+
+    // Written without the lock: the streaming loop reads settings while the disk syncs
+    lock.unlock();
+
+    // In the order of the changes: a slower write of an older one never replaces a newer one
+    std::lock_guard writeLock(m_writeMutex);
+    if(generation < m_writtenGeneration){
+      return;
+    }
+    m_writtenGeneration = generation;
+
     // Holds the bridge credentials: written readable by its owner only, and never left truncated
-    writeFileAtomically(m_configFilePath, Json(m_configData.value()).dump(2) + "\n");
+    writeFileAtomically(m_configFilePath, content);
   }
 }
