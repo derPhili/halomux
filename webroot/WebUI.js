@@ -404,17 +404,6 @@ class WebUI
         this._manageChannel(channelData.channelId);
       });
 
-      // Selected with the keyboard too
-      newChannelEntryNode.tabIndex = 0;
-      newChannelEntryNode.setAttribute("role", "button");
-      newChannelEntryNode.setAttribute("aria-pressed", "false");
-      newChannelEntryNode.addEventListener("keydown", (event) => {
-        if(event.target == newChannelEntryNode && (event.key == "Enter" || event.key == " ")){
-          event.preventDefault();
-          this._manageChannel(channelData.channelId);
-        }
-      });
-
       this._fillChannelEntry(newChannelEntryNode, newChannel);
       this.lampSwatches[newChannel.channelId] = newChannelEntryNode.querySelector(".lampSwatch");
 
@@ -437,7 +426,19 @@ class WebUI
     id.style.marginLeft = "auto";
     id.textContent = `#${channel.channelId}`;
 
-    entryNode.replaceChildren(swatch, name, id);
+    if(channel.node){
+      // Selected with the keyboard too: a button of its own beside the arrow's, as one inside
+      // another would be announced with the arrow's label
+      let select = document.createElement("button");
+      select.type = "button";
+      select.className = "lampSelectButton";
+      select.setAttribute("aria-pressed", entryNode.selected ? "true" : "false");
+      select.replaceChildren(swatch, name, id);
+      entryNode.replaceChildren(select);
+    }
+    else{
+      entryNode.replaceChildren(swatch, name, id);
+    }
 
     entryNode.title = channel.node
       ? t("{lamp}: the dot shows its current color. Click or press Enter to edit its screen region, drag to Available or use the arrow to stop driving it", {lamp : channel.formatMembers()})
@@ -447,7 +448,7 @@ class WebUI
       let missing = document.createElement("span");
       missing.className = "hint monitorMissing";
       missing.textContent = t("Monitor not captured – lamp is off");
-      entryNode.insertBefore(missing, id);
+      id.parentNode.insertBefore(missing, id);
       entryNode.title = t("The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.");
     }
 
@@ -479,7 +480,7 @@ class WebUI
   _setItemSelected(channelNode, selected)
   {
     channelNode.selected = selected;
-    channelNode.setAttribute("aria-pressed", selected ? "true" : "false");
+    channelNode.querySelector(".lampSelectButton")?.setAttribute("aria-pressed", selected ? "true" : "false");
 
     if(channelNode.selected){
       channelNode.classList.add("selected");
