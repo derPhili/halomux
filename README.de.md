@@ -117,7 +117,7 @@ Die Lampen steuert ein Dienst (systemd-User-Unit `halomux.service`). Die Desktop
 
 Das Fenster zu schließen lässt das Tray-Icon stehen. Das Tray-Icon zu schließen lässt die Lampen weiterlaufen: Sie steuert allein der Dienst. Ein erneuter Start holt das laufende Fenster nach vorn.
 
-Auf Desktops ohne Systemabschnitt (Tray), etwa GNOME ohne eine Erweiterung wie AppIndicator, beendet das Schließen des Fensters die Anwendung, und das beim Login gestartete Tray gibt nach 30 Sekunden auf. Die Lampen laufen in beiden Fällen weiter.
+Auf Desktops ohne Systemabschnitt (Tray), etwa GNOME ohne eine Erweiterung wie AppIndicator, beendet das Schließen des Fensters die Anwendung, und das beim Login gestartete Tray gibt nach 30 Sekunden auf, außer sein Fenster wurde inzwischen geöffnet. Die Lampen laufen in beiden Fällen weiter.
 
 Ausgaben des Dienstes:
 
@@ -136,7 +136,7 @@ journalctl --user -u halomux.service -f
 
 Jedes Bedienelement erklärt sich in einem Tooltip.
 
-Alles lässt sich auch mit der Tastatur bedienen. Mit Tab erreichst du die Lampen, Enter oder Leertaste wählt eine aus, und ihr Pfeil-Button verschiebt sie zwischen den Listen. Den Bereich der gewählten Lampe verschieben die Pfeiltasten um eine Zelle des Subsamples, Umschalt mit den Pfeiltasten ändert seine Größe, und Alt mit links oder rechts setzt ihn auf den vorigen oder nächsten Monitor. Hat der Cursor der Gammakorrektur den Fokus, verändern die Pfeiltasten auch sie.
+Alles lässt sich auch mit der Tastatur bedienen. Mit Tab erreichst du die Lampen, Enter oder Leertaste wählt eine aus, und ihr Pfeil-Button verschiebt sie zwischen den Listen. Hat der Bereich der gewählten Lampe den Fokus, per Tab, verschieben ihn die Pfeiltasten um eine Zelle des Subsamples, Umschalt mit den Pfeiltasten ändert seine Größe, und Alt mit links oder rechts setzt ihn auf den vorigen oder nächsten Monitor. Hat der Cursor der Gammakorrektur den Fokus, verändern die Pfeiltasten auch sie.
 
 ### Verarbeitung auf der GPU
 

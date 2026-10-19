@@ -117,7 +117,7 @@ The lamps are driven by a service (systemd user unit `halomux.service`). The des
 
 Closing the window keeps the tray icon. Closing the tray icon keeps the lamps running: only the service drives them. Starting the application again brings the running window to the front.
 
-On desktops without a system tray (GNOME needs an extension such as AppIndicator), closing the window quits the application, and the tray started at login gives up after 30 seconds. The lamps keep running in both cases.
+On desktops without a system tray (GNOME needs an extension such as AppIndicator), closing the window quits the application, and the tray started at login gives up after 30 seconds, unless its window was opened meanwhile. The lamps keep running in both cases.
 
 Logs of the service:
 
@@ -136,7 +136,7 @@ journalctl --user -u halomux.service -f
 
 Every control explains itself in a tooltip.
 
-Everything works with the keyboard too. Tab reaches the lamps, Enter or Space selects one, and its arrow button moves it between the lists. The selected lamp's region moves with the arrow keys by one cell of the subsample, Shift and the arrow keys resize it, and Alt with left or right puts it on the previous or next monitor. The arrow keys also change the gamma correction once its cursor has the focus.
+Everything works with the keyboard too. Tab reaches the lamps, Enter or Space selects one, and its arrow button moves it between the lists. Once the selected lamp's region has the focus, through Tab, it moves with the arrow keys by one cell of the subsample, Shift and the arrow keys resize it, and Alt with left or right puts it on the previous or next monitor. The arrow keys also change the gamma correction once its cursor has the focus.
 
 ### GPU processing
 
