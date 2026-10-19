@@ -274,6 +274,11 @@ class SetupWizard
   {
     this.unverifiedBridgeNode.hidden = !shown;
     this.unverifiedBridgeConfirmNode.checked = false;
+
+    // Announced, and the confirmation next for the keyboard
+    if(shown){
+      this.unverifiedBridgeConfirmNode.focus();
+    }
   }
 
 

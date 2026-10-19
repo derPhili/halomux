@@ -982,6 +982,8 @@ class WebUI
 
   _askStopConfirmation()
   {
+    // Not the answer of a former attempt
+    document.getElementById("stopError").textContent = "";
     document.getElementById("confirmStopSection").style.display = "block";
     // On the harmless answer
     this._showOverlay(true, this.cancelStopButton);
@@ -1011,6 +1013,14 @@ class WebUI
     }
 
     if(shown){
+      // Named after its visible section's first text, for screen readers
+      const section = [...this.overlay.querySelector(".overlayContent").children].find(node => node.style.display == "block");
+      const label = section && section.querySelector("p, strong");
+      if(label){
+        label.id = label.id || `${section.id}Label`;
+        this.overlay.setAttribute("aria-labelledby", label.id);
+      }
+
       (focusNode || this.overlay.querySelector(".overlayContent")).focus();
     }
     else if(wasShown && this.focusBeforeOverlay && document.contains(this.focusBeforeOverlay)){
