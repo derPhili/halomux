@@ -323,6 +323,19 @@ I18n.Translations = {
     "1 lamp" : "1 Lampe",
     "Halomux couldn't be shut down." : "Halomux konnte nicht beendet werden.",
 
+    // Wall
+    "The lamps are seen as their light on the wall behind them: on a colored wall, their colors make up for it" : "Man sieht die Lampen als ihr Licht auf der Wand dahinter: Auf einer farbigen Wand gleichen ihre Farben das aus",
+    "Wall" : "Wand",
+    "Color of the wall the lamps shine on. On a colored wall, the lamps dim the colors it reflects better, so the light on it keeps its hue; the more colored the wall, the darker the light" : "Farbe der Wand, auf die die Lampen scheinen. Auf einer farbigen Wand dämpfen die Lampen die Farben, die sie stärker zurückwirft, damit das Licht darauf seinen Farbton behält; je farbiger die Wand, desto dunkler das Licht",
+    "Wall color" : "Wandfarbe",
+    "No compensation, as for a white wall" : "Kein Ausgleich, wie bei einer weißen Wand",
+    "White wall" : "Weiße Wand",
+    "Shows white on every lamp, through the compensation of its wall: change the wall color until the light on the wall looks neutral white. Ends by itself after two minutes" : "Zeigt auf allen Lampen Weiß, durch den Ausgleich ihrer Wand: Ändere die Wandfarbe, bis das Licht auf der Wand neutral weiß aussieht. Endet nach zwei Minuten von selbst",
+    "Show white to match the wall" : "Weiß zum Abgleich zeigen",
+    "This lamp shines on another surface than the others, such as the ceiling: its colors make up for that surface's color instead of the common wall's" : "Diese Lampe scheint auf eine andere Fläche als die anderen, etwa die Decke: Ihre Farben gleichen dann die Farbe dieser Fläche aus statt die der gemeinsamen Wand",
+    "Own wall for this lamp" : "Eigene Wand für diese Lampe",
+    "Color of the surface this lamp shines on" : "Farbe der Fläche, auf die diese Lampe scheint",
+
     // Logs
     "Logs" : "Logs",
     "Logs – Halomux" : "Logs – Halomux",
