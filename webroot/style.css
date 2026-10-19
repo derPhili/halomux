@@ -1228,6 +1228,13 @@ body.i18nPending
 }
 
 
+/* Focused when it opens, for screen readers to read it: no outline for that */
+.overlayContent:focus
+{
+  outline: none;
+}
+
+
 .overlayContent p
 {
   margin-bottom: 16px;

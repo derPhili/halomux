@@ -120,10 +120,13 @@ class WebUI
     this.confirmStopButton.addEventListener("click", () => {this._stop();});
     
     this.cancelStopButton = document.getElementById("cancelStopButton");
-    this.cancelStopButton.addEventListener("click", () => {
-      // The section too: the overlay is shown again for other messages, such as while switching areas
-      document.getElementById("confirmStopSection").style.display = "none";
-      this.overlay.style.display = "none";
+    this.cancelStopButton.addEventListener("click", () => {this._cancelStop();});
+
+    // Escape closes the shutdown question, as dialogs do
+    document.addEventListener("keydown", (event) => {
+      if(event.key == "Escape" && document.getElementById("confirmStopSection").style.display != "none"){
+        this._cancelStop();
+      }
     });
 
     this.languageSelectNode = document.getElementById("languageSelect");
@@ -909,22 +912,55 @@ class WebUI
         if(data.accepted){
           section.style.display = "none";
           this.overlay.classList.remove("notice");
-          this.overlay.style.display = "none";
+          this._showOverlay(false);
         }
       })
       .catch((error) => {log(error);});
     };
 
     this.overlay.classList.add("notice");
-    this.overlay.style.display = "block";
     section.style.display = "block";
+    this._showOverlay(true);
   }
 
 
   _askStopConfirmation()
   {
-    this.overlay.style.display = "block";
     document.getElementById("confirmStopSection").style.display = "block";
+    // On the harmless answer
+    this._showOverlay(true, this.cancelStopButton);
+  }
+
+
+  _cancelStop()
+  {
+    // The section too: the overlay is shown again for other messages, such as while switching areas
+    document.getElementById("confirmStopSection").style.display = "none";
+    this._showOverlay(false);
+  }
+
+
+  // The overlay covers the light manager: what's behind can't be reached, by the keyboard either,
+  // and the focus goes back where it was once it's closed
+  _showOverlay(shown, focusNode = null)
+  {
+    const wasShown = this.overlay.style.display == "block";
+    if(shown && !wasShown){
+      this.focusBeforeOverlay = document.activeElement;
+    }
+
+    this.overlay.style.display = shown ? "block" : "none";
+    for(let node of document.querySelectorAll("body > header, body > main, body > footer")){
+      node.inert = shown;
+    }
+
+    if(shown){
+      (focusNode || this.overlay.querySelector(".overlayContent")).focus();
+    }
+    else if(wasShown && this.focusBeforeOverlay && document.contains(this.focusBeforeOverlay)){
+      this.focusBeforeOverlay.focus();
+      this.focusBeforeOverlay = null;
+    }
   }
 
 
@@ -935,6 +971,7 @@ class WebUI
       if(data.succeeded){
         document.getElementById("confirmStopSection").style.display = "none";
         document.getElementById("stoppedInfoSection").style.display = "block";
+        this._showOverlay(true);
       }
     });
   }
@@ -945,15 +982,15 @@ class WebUI
     let loadingInfoSectionNode = document.getElementById("loadingInfoSection");
 
     if(show){
-      this.overlay.style.display = "block";
       loadingInfoSectionNode.style.display = "block";
       if(loadingText !== null){
         document.getElementById("loadingTextInfo").textContent = loadingText;
       }
+      this._showOverlay(true);
     }
     else{
-      this.overlay.style.display = "none";
       loadingInfoSectionNode.style.display = "none";
+      this._showOverlay(false);
     }
   }
 }
