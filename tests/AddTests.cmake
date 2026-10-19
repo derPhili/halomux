@@ -275,6 +275,13 @@ halomux_add_test(CurlClient
 )
 
 
+# Certificate checks of the requests to the bridge, against a CA of the test's own
+halomux_add_test(TlsPolicy
+  SOURCES ${SRC}/Network/Http/Client/CurlClient.cpp
+  LIBRARIES CURL::libcurl httplib::httplib nlohmann_json::nlohmann_json
+)
+
+
 # Light manager and configuration
 
 # Which Host headers the light manager answers, against DNS rebinding
