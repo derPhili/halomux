@@ -97,10 +97,22 @@ int main()
     expect("Saved address without its port", config.bridgeAddress() == "192.168.0.42");
   }
 
-  // A negative width reads as a huge unsigned one: limited like what the setter takes
+  // Negative numbers aren't read as huge unsigned ones: such values get their default
   {
     std::ofstream file(configFile);
-    file << R"({"subsampleWidth": -1})";
+    file << R"({"subsampleWidth": -1, "restServerPort": -1, "refreshRate": -5})";
+  }
+  {
+    Core::Config config(root);
+    expect("Negative subsample width automatic", config.subsampleWidth() == 0);
+    expect("Negative port the default one", config.restServerPort() == 8215);
+    expect("Negative refresh rate automatic", config.refreshRate() == 0);
+  }
+
+  // A width too large: limited like what the setter takes
+  {
+    std::ofstream file(configFile);
+    file << R"({"subsampleWidth": 20000})";
   }
   {
     Core::Config config(root);
