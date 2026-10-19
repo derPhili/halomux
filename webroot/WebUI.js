@@ -633,6 +633,16 @@ class WebUI
   }
 
 
+  // Selects a lamp to edit its region, unless it already is
+  selectChannel(channelId)
+  {
+    const channel = this.activeChannels[channelId];
+    if(channel && !channel.node.selected){
+      this._manageChannel(channelId);
+    }
+  }
+
+
   _manageChannel(channelId)
   {
     for(let loopChannelId of Object.keys(this.activeChannels)){
