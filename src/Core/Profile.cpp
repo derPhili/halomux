@@ -1,5 +1,7 @@
 #include <Halomux/Core/Profile.hpp>
 
+#include <algorithm>
+
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Serialization/Channel.hpp>
 #include <Halomux/Serialization/UV.hpp>
@@ -104,7 +106,9 @@ namespace Halomux::Core::Profile
           }
 
           try{
-            Hue::Api::Channel restored{saved.at("active").get<bool>(), devices, saved.at("gammaFactor").get<float>(), saved.at("uvs").get<Imaging::UVs>()};
+            // The gamma slider's range, which a hand-edited profile may leave
+            const float gammaFactor = static_cast<float>(std::clamp(saved.at("gammaFactor").get<double>(), -1.0, 1.0));
+            Hue::Api::Channel restored{saved.at("active").get<bool>(), devices, gammaFactor, saved.at("uvs").get<Imaging::UVs>()};
             restored.monitor = Serialization::monitorRefFromJson(saved);
             channel = std::move(restored);
           }
