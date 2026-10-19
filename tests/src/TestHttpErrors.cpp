@@ -143,6 +143,20 @@ int main()
   const auto huge = client.Put("/json", std::string(1024 * 1024, ' ') + R"({"value": 3})", "application/json");
   expect("Huge body refused", huge && huge->status == 413);
 
+  // Requests on a connection kept alive, as browsers send them while a corner is dragged: each
+  // answered at once, not after the 40 ms the small answer's segment waits for an ACK (Nagle)
+  {
+    httplib::Client keptAlive("127.0.0.1", port);
+    keptAlive.set_keep_alive(true);
+    keptAlive.Get("/channel/1");
+
+    const auto before = std::chrono::steady_clock::now();
+    for(int i = 0; i < 5; i++){
+      keptAlive.Get("/channel/1");
+    }
+    expect("Requests on a kept alive connection answered at once", std::chrono::steady_clock::now() - before < std::chrono::milliseconds(100));
+  }
+
   const auto internalJson = client.Get("/internalJson");
   expect("Internal JSON error is a server error", internalJson && internalJson->status == 500 && errorShaped(internalJson));
   expect("Internal JSON error not disclosed", internalJson && internalJson->body.find("missing") == std::string::npos);
