@@ -18,6 +18,10 @@ namespace Halomux::Platform
       const std::string& url
     ) const override;
 
+    virtual std::string serviceJournal(
+      size_t lines
+    ) const override;
+
   protected:
     virtual SharedGrabber _createGrabber(
       Core::Config* config,

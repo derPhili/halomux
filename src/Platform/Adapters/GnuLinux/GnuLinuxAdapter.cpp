@@ -1,7 +1,11 @@
 #include <Halomux/Platform/Adapters/GnuLinux/GnuLinuxAdapter.hpp>
 
+#include <array>
+
 #include <pwd.h>
 #include <unistd.h>
+
+#include <glib.h>
 
 #include <Halomux/Core/Logger.hpp>
 #include <Halomux/Version.hpp>
@@ -76,6 +80,34 @@ namespace Halomux::Platform
     if(system(std::string("xdg-open " + url).c_str()) != 0){
       Core::Logger::error("Failed to open browser");
     }
+  }
+
+
+  std::string GnuLinuxAdapter::serviceJournal(
+    size_t lines
+  ) const
+  {
+    // Without a shell, with fixed arguments; only the fields the light manager shows
+    const std::string unit = std::string(AppId) + ".service";
+    const std::string count = std::to_string(lines);
+    std::array<const char*, 12> arguments{
+      "journalctl", "--user", "--unit", unit.c_str(), "--lines", count.c_str(),
+      "--output", "json", "--output-fields", "__REALTIME_TIMESTAMP,PRIORITY,MESSAGE", "--no-pager", nullptr
+    };
+
+    gchar* output = nullptr;
+    gint status = 0;
+    GError* error = nullptr;
+    const auto flags = static_cast<GSpawnFlags>(G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL);
+    if(!g_spawn_sync(nullptr, const_cast<gchar**>(arguments.data()), nullptr, flags, nullptr, nullptr, &output, nullptr, &status, &error)){
+      Core::Logger::warn("Could not read the journal: ", error ? error->message : "journalctl failed");
+      g_clear_error(&error);
+      return {};
+    }
+
+    std::string journal = output ? output : "";
+    g_free(output);
+    return journal;
   }
 
 

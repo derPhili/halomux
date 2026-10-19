@@ -77,6 +77,13 @@ namespace Halomux::Network::Http::Server
 
     // GET METHODS
 
+    // The service's journal, for the log page
+    m_httpServer.addRoute(HttpMethod::Get, "/api/logs", [this](const Request& /*req*/, Response& res){
+      res.contentType = "application/json";
+      res.body = Json{{"lines", m_coreService->serviceLog()}}.dump();
+    });
+
+
     m_httpServer.addRoute(HttpMethod::Get, "/api/version", [this](const Request& /*req*/, Response& res){
       Serialization::Json jsonResponse = {
         {"version", m_coreService->version()},

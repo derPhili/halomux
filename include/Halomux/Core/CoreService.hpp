@@ -89,6 +89,15 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Returns the last lines of the service's journal, for the light manager's log page
+     *
+     * @return Serialization::Json Array of {time (ms since the epoch), level (info, warning,
+     *         error), message}, oldest first; empty if the journal can't be read
+     */
+    Serialization::Json serviceLog() const;
+
+
+    /**
      * @brief Returns the list of available entertainment configurations
      * 
      * @return EntertainmentConfigurations Available entertainment configurations, empty until the bridge answered
