@@ -331,12 +331,19 @@ class WebUI
   }
 
 
-  _setChannelActivity(channelId, active)
+  // keepFocus: the lamp was moved with its arrow, whose focus follows it into the other list
+  _setChannelActivity(channelId, active, keepFocus = false)
   {
     let promise = RequestUtils.post(`/api/setChannelActivity/${channelId}`, JSON.stringify({active : active}));
     promise.then((data) => {
       this._refreshChannelsLists(data.channels);
-      
+
+      // The lists are built anew: keyboard users would otherwise start over at the top
+      if(keepFocus){
+        const list = active ? this.activeChannelsNode : this.inactiveChannelsNode;
+        list.querySelector(`p[data-channel-id="${channelId}"] .moveLampButton`)?.focus();
+      }
+
       if("newActiveChannelId" in data){
         this._manageChannel(data.newActiveChannelId);
       }
@@ -470,9 +477,10 @@ class WebUI
     button.addEventListener("click", (event) => {
       // Not a selection of the lamp
       event.stopPropagation();
-      this._setChannelActivity(channelId, activate);
+      this._setChannelActivity(channelId, activate, true);
     });
 
+    entryNode.dataset.channelId = channelId;
     entryNode.appendChild(button);
   }
 
