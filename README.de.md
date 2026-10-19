@@ -132,7 +132,6 @@ journalctl --user -u halomux.service -f
 * **Sync** (Kopfzeile): wechselt zwischen Bildschirm und statischer Szene. Ohne Sync pausieren Bildschirmaufnahme und Sound-Analyse
 * **Statische Szene**: eine Farbe für alle Lampen, eine Farbe pro Lampe, eingebaute Szenen, deren Farben von links nach rechts über die Lampen verteilt werden, und eigene gespeicherte Szenen. Eine Auswahl schaltet Sync aus
 * **Einstellungen**: Helligkeit, Übergangsglättung (Vorlagen „Gaming“ und „Film“), Highlight-Boost (Vorlagen von „Dezent“ bis „Intensiv“), Reaktion auf Sound, Aufnahmeauflösung und Bildwiederholrate
-* **Wandfarbe** (Einstellungen): Auf einer farbigen Wand gleichen die Lampen deren Farbe aus, damit das Licht darauf seinen Farbton behält; je farbiger die Wand, desto dunkler das Licht. „Weiß zum Abgleich zeigen“ lässt alle Lampen weiß leuchten: Ändere die Wandfarbe, bis das Licht auf der Wand neutral aussieht. Eine Lampe, die auf eine andere Fläche scheint, etwa die Decke, bekommt eine eigene Wand, sobald sie ausgewählt ist; gespeichert wird sie mit dem Profil
 * **Vorschau**: spielt Farbschnitte, Blitze links, rechts und beidseitig, einen langsamen Verlauf und einen Schnitt von Schwarz auf Weiß mit den aktuellen Einstellungen ab
 * **Logs** (Fußzeile): die letzten Zeilen aus dem Journal des Dienstes, alle paar Sekunden aktualisiert, wie `journalctl --user -u halomux`
 

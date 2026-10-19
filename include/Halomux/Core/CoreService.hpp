@@ -400,48 +400,6 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Shows white on every lamp, through its wall's compensation, to match the wall color
-     *        by eye: the wall color is right once the light looks neutral
-     *
-     * @param active Whether to show it; it ends by itself after Runtime::WallTestDuration
-     */
-    void setWallTest(
-      bool active
-    );
-
-
-    /**
-     * @brief Sets the color of the surface the lamps shine on, which their colors make up for
-     *
-     * @param wallColor Its color in white light
-     */
-    void setWallColor(
-      const Imaging::Color& wallColor
-    );
-
-
-    /**
-     * @brief Returns the color of the surface the lamps shine on
-     *
-     * @return Imaging::Color Its color, white for none
-     */
-    Imaging::Color wallColor() const;
-
-
-    /**
-     * @brief Sets the color of the surface a lamp shines on
-     *
-     * @param channelId Lamp
-     * @param wallColor Its color in white light, nothing for the common one
-     * @return true The lamp exists
-     */
-    bool setChannelWallColor(
-      uint8_t channelId,
-      const std::optional<Imaging::Color>& wallColor
-    );
-
-
-    /**
      * @brief Set the global lamp brightness factor
      *
      * @param brightness Value in percent

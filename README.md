@@ -132,7 +132,6 @@ journalctl --user -u halomux.service -f
 * **Sync** (header): switches between following the screen and showing the static scene. Without sync, screen capture and sound analysis pause
 * **Static scene**: one color for all lamps, a color per lamp, built-in scenes whose colors are spread over the lamps from left to right, and your own saved scenes. Picking one turns sync off
 * **Settings**: brightness, transition smoothing (presets "Gaming" and "Movie"), highlight boost (presets from "Subtle" to "Intense"), reacting to sound, capture resolution and refresh rate
-* **Wall color** (settings): on a colored wall, the lamps make up for its color, so the light on it keeps its hue; the more colored the wall, the darker the light. "Show white to match the wall" lights all lamps white: change the wall color until the light on the wall looks neutral. A lamp shining on another surface, such as the ceiling, gets its own wall once selected, saved with the profile
 * **Preview**: plays color cuts, flashes left, right and on both sides, a slow fade and a cut from black to white through the current settings
 * **Logs** (footer): the last lines of the service's journal, updated every few seconds, the same as `journalctl --user -u halomux`
 

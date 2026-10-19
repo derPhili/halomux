@@ -110,11 +110,6 @@ namespace Halomux::Core::Profile
             const float gammaFactor = static_cast<float>(std::clamp(saved.at("gammaFactor").get<double>(), -1.0, 1.0));
             Hue::Api::Channel restored{saved.at("active").get<bool>(), devices, gammaFactor, saved.at("uvs").get<Imaging::UVs>()};
             restored.monitor = Serialization::monitorRefFromJson(saved);
-
-            // Unreadable, the lamp takes the common wall
-            if(saved.contains("wallColor") && saved.at("wallColor").is_string()){
-              restored.wallColor = Imaging::Color::fromHex(saved.at("wallColor").get<std::string>());
-            }
             channel = std::move(restored);
           }
           catch(const std::exception& e){

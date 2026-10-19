@@ -26,11 +26,6 @@ namespace Halomux::Serialization
         {"devices", Json(channel.devices)}
       };
 
-      // Only a lamp's own: the common one is the configuration's
-      if(channel.wallColor.has_value()){
-        jsonChannel["wallColor"] = channel.wallColor->toHex();
-      }
-
       if(channel.monitor.has_value()){
         const auto& geometry = channel.monitor->geometry;
         jsonChannel["monitor"] = {

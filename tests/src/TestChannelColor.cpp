@@ -46,44 +46,6 @@ namespace
  */
 int main()
 {
-  // Light reflected by a colored wall: the channels the wall reflects better are dimmed
-  {
-    using Core::ChannelColor::compensateWall;
-    expect("White wall changes nothing", compensateWall(Imaging::Color(200, 120, 40), White) == Imaging::Color(200, 120, 40));
-
-    const Imaging::Color beige{255, 230, 180};
-    const auto onBeige = compensateWall(White, beige);
-    expect("White on a beige wall loses red and green against blue", onBeige.m_b == 255 && onBeige.m_r < onBeige.m_g && onBeige.m_g < 255);
-
-    // As light: the lamp's color times the wall's reflection is neutral again
-    const auto linear = [](float value){value /= 255.f; return value > 0.04045f ? std::pow((value + 0.055f) / 1.055f, 2.4f) : value / 12.92f;};
-    expectNear("Reflected white neutral, red against blue", linear(onBeige.m_r) * linear(beige.m_r), linear(onBeige.m_b) * linear(beige.m_b), 0.01f);
-    expectNear("Reflected white neutral, green against blue", linear(onBeige.m_g) * linear(beige.m_g), linear(onBeige.m_b) * linear(beige.m_b), 0.01f);
-
-    expect("Black stays black", compensateWall(Black, beige) == Black);
-
-    // A wall reflecting almost nothing of a color: limited, not dividing by nothing
-    const auto onOrange = compensateWall(White, Imaging::Color(255, 128, 0));
-    expect("Wall without blue limited", onOrange.m_b == 255 && onOrange.m_r > 0);
-  }
-
-  // The wall a lamp shines on shapes what it streams, its own one before the common one
-  {
-    auto plain = lamp();
-    auto onWall = lamp();
-    Settings beigeWall;
-    beigeWall.wallColor = Imaging::Color(255, 230, 180);
-    const auto plainXyb = Core::ChannelColor::step(plain, White, Settings{}, 0.f);
-    const auto wallXyb = Core::ChannelColor::step(onWall, White, beigeWall, 0.f);
-    expect("Bluer on a beige wall", wallXyb.y < plainXyb.y || wallXyb.x < plainXyb.x);
-    expect("Dimmer on a beige wall", wallXyb.z < plainXyb.z);
-
-    auto ownWall = lamp();
-    ownWall.wallColor = White;
-    const auto ownXyb = Core::ChannelColor::step(ownWall, White, beigeWall, 0.f);
-    expectNear("A lamp's own wall first", ownXyb.x, plainXyb.x);
-  }
-
   {
     auto channel = lamp();
     const auto xyb = Core::ChannelColor::step(channel, Black, Settings{}, 0.f);
