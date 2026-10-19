@@ -290,14 +290,16 @@ namespace Halomux::Core
         return;
       }
 
-      newGrabber->setFrameRateLimit(m_config.refreshRate());
-
       std::shared_ptr<Grabber::IGrabber> oldGrabber;
       {
         auto channels = m_channelStore.access();
         {
           std::lock_guard grabberLock(m_grabberMutex);
           oldGrabber = std::exchange(m_grabber, newGrabber);
+
+          // Read once it's the grabber a change of the rate reaches: a change while the user
+          // selected the monitors went to the former one
+          newGrabber->setFrameRateLimit(m_config.refreshRate());
         }
 
         // Channel monitor indices refer to the new monitors from now on
