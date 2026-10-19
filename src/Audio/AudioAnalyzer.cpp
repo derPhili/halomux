@@ -137,10 +137,15 @@ namespace Halomux::Audio
     const spa_data& data = pwBuffer->buffer->datas[0];
     const auto* samples = static_cast<const float*>(data.data);
     const uint32_t channels = self->m_channels;
-    const uint32_t frames = (samples && data.chunk) ? data.chunk->size / (sizeof(float) * channels) : 0;
+
+    // Read only inside the buffer, whatever the chunk says: its offset is taken modulo the
+    // buffer's size, as SPA says, and its size cut to what's left after it
+    const uint32_t offset = data.maxsize > 0 && data.chunk ? data.chunk->offset % data.maxsize : 0;
+    const uint32_t size = data.chunk ? std::min(data.chunk->size, data.maxsize - offset) : 0;
+    const uint32_t frames = (samples && channels > 0) ? size / static_cast<uint32_t>(sizeof(float) * channels) : 0;
 
     if(frames > 0){
-      samples = reinterpret_cast<const float*>(reinterpret_cast<const uint8_t*>(samples) + data.chunk->offset);
+      samples = reinterpret_cast<const float*>(reinterpret_cast<const uint8_t*>(samples) + offset);
 
       // Mean power of this buffer per channel (mono feeds both sides)
       std::array<float, 2> energy{0.f, 0.f};
