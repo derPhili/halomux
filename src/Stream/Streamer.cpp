@@ -44,19 +44,6 @@ namespace Halomux::Stream
   }
 
 
-  uint16_t Streamer::_toUint16(
-    float value
-  )
-  {
-    // Converting an out of range (or NaN) float to an integer is undefined behavior
-    if(!(value > 0.f)){
-      return 0;
-    }
-
-    return static_cast<uint16_t>(std::min(value, 1.f) * 0xffff);
-  }
-
-
   void Streamer::_requestConnection()
   {
     {
@@ -138,17 +125,7 @@ namespace Halomux::Stream
     // Reuse the buffer's capacity across frames
     auto& requestBuffer = m_requestBuffer;
     requestBuffer.clear();
-    requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&m_header), reinterpret_cast<std::byte*>(&m_header) + sizeof(HuestreamHeader));
-
-    for(const auto& channel : channels){
-      HuestreamPayload payload;
-      payload.setChannelId(channel.id);
-      payload.setR(_toUint16(channel.r));
-      payload.setG(_toUint16(channel.g));
-      payload.setB(_toUint16(channel.b));
-
-      requestBuffer.insert(requestBuffer.end(), reinterpret_cast<std::byte*>(&payload), reinterpret_cast<std::byte*>(&payload) + sizeof(HuestreamPayload));
-    }
+    appendHuestreamMessage(requestBuffer, m_header, channels);
 
     if(!m_dtlsClient->send(requestBuffer)){
       // The session is lost: hand the client over to the connection thread

@@ -255,6 +255,12 @@ halomux_add_test(Streamer
   DEPENDS generate_version_header
 )
 
+# Messages of the Hue Entertainment API, as the bridge reads them
+halomux_add_test(Huestream
+  SOURCES ${SRC}/Stream/HuestreamHeader.cpp
+  LIBRARIES nlohmann_json::nlohmann_json glm::glm
+)
+
 # Reading the clientkey, the pre-shared key of the streaming connection
 halomux_add_test(Credentials
   SOURCES ${SRC}/Hue/Auth/Credentials.cpp

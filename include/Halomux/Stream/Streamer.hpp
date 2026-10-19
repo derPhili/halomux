@@ -13,7 +13,6 @@
 #include <Halomux/Stream/DtlsClient.hpp>
 #include <Halomux/Stream/IStreamer.hpp>
 #include <Halomux/Stream/HuestreamHeader.hpp>
-#include <Halomux/Stream/HuestreamPayload.hpp>
 
 
 namespace Halomux::Stream
@@ -80,17 +79,6 @@ namespace Halomux::Stream
 
   private:
     // Private methods
-    /**
-     * @brief Converts a normalized value to the 16 bits range, clamping it to [0, 1]
-     *
-     * @param value Normalized value
-     * @return uint16_t Value in [0, 0xffff]
-     */
-    static uint16_t _toUint16(
-      float value
-    );
-
-
     /**
      * @brief Asks the connection thread to (re)establish the DTLS connection
      *
