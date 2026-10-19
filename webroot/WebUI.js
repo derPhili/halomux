@@ -567,7 +567,16 @@ class WebUI
   _buildSubsampleOptions(subsampleResolutionCandidates, subsampleWidth)
   {
     this.availableSubsamplesNode.replaceChildren();
-    for(let subsampleCandidate of [...subsampleResolutionCandidates].reverse()){
+
+    // A width chosen for monitors captured before may not divide the current ones: still listed,
+    // so the list shows the width in use instead of nothing
+    let candidates = [...subsampleResolutionCandidates];
+    if(subsampleWidth > 0 && !candidates.some(candidate => candidate.x == subsampleWidth) && this.screenWidget.width > 0){
+      candidates.push({x : subsampleWidth, y : Math.max(1, Math.round(subsampleWidth * this.screenWidget.height / this.screenWidget.width))});
+      candidates.sort((a, b) => a.x - b.x);
+    }
+
+    for(let subsampleCandidate of candidates.reverse()){
       let newOption = document.createElement("option");
       let width = subsampleCandidate.x;
       let height = subsampleCandidate.y;
