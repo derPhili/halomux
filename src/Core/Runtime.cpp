@@ -438,7 +438,12 @@ namespace Halomux::Core
 
     Grabber::IGrabber::ChannelColors channelColors;
     if(syncing && !grabber->grabChannelColors(channelColors) && !previewing){
-      // Grabbers with asynchronous capture may produce slower than the core consumes
+      // Grabbers with asynchronous capture may produce slower than the core consumes. Compositors
+      // send frames on changes only: on a still screen after sync was resumed, the bridge would
+      // end the stream for want of messages. The last colors keep it alive until a frame comes.
+      if(m_areaSession){
+        m_areaSession->stream(channelStreams);
+      }
       return;
     }
 
