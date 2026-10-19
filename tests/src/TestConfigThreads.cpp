@@ -27,7 +27,7 @@ int main()
 
     std::thread writer([&](){
       for(int i = 0; i < 200 && !stop; i++){
-        config.setBridgeAddress("192.168.1." + std::to_string(i % 200 + 10));
+        config.setBridge("192.168.0." + std::to_string(i % 200 + 10), "aabbccddeeff0011", false);
         config.setCredentials({"user" + std::to_string(i), "00112233445566778899aabbccddeeff"});
       }
       stop = true;

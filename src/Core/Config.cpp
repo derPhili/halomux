@@ -164,16 +164,6 @@ namespace Halomux::Core
   }
 
 
-  void Config::setBridgeAddress(
-    const std::string& bridgeAddress
-  )
-  {
-    std::unique_lock lock(m_mutex);
-    m_configData.value().bridgeAddress.emplace(bridgeAddress);
-    _save(lock);
-  }
-
-
   void Config::setCredentials(
     const Hue::Auth::Credentials& credentials
   )

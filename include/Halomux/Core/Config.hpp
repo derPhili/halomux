@@ -223,16 +223,6 @@ namespace Halomux::Core
 
     // Setters
     /**
-     * @brief Registers Hue bridge address
-     * 
-     * @param bridgeAddress Address of the Hue bridge
-     */
-    void setBridgeAddress(
-      const std::string& bridgeAddress
-    );
-
-
-    /**
      * @brief Registers credentials
      * 
      * @param credentials User credentials for the Hue bridge
