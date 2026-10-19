@@ -1066,6 +1066,42 @@ input[type=color]::-webkit-color-swatch
 }
 
 
+/* Scaled with the widget, but never too small to grab: on a phone, the widget's share of the
+   width left them a few pixels wide */
+#tl, #tr, #bl, #br
+{
+  r: max(1.6%, 9px);
+}
+
+
+#gammaCursor
+{
+  r: max(2.4%, 9px);
+}
+
+
+/* Fingers need more than a mouse pointer */
+@media (pointer: coarse)
+{
+  #tl, #tr, #bl, #br
+  {
+    r: max(1.6%, 14px);
+  }
+
+  #gammaCursor
+  {
+    r: max(2.4%, 11px);
+  }
+}
+
+
+/* The gamma cursor reaches beyond its slider's thin area, at the widget's bottom edge */
+#svgArea, svg:has(> #gammaArea), #gammaArea
+{
+  overflow: visible;
+}
+
+
 .handler:hover
 {
   fill: var(--accentStrong);
