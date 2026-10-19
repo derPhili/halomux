@@ -26,6 +26,7 @@
 #include <Halomux/Hue/Api/Channel.hpp>
 
 #include <Halomux/Hue/Api/ApiTools.hpp>
+#include <Halomux/Hue/Api/BridgeAddress.hpp>
 
 
 using namespace std::chrono_literals;
@@ -172,7 +173,8 @@ namespace Halomux::Core
       std::make_unique<Hue::Api::ClipBridgeApi>(credentials, bridgeAddress),
       [credentials, bridgeAddress](const std::string& areaId) -> std::unique_ptr<Stream::IStreamer>{
         // Connects in the background: replacing it doesn't hold the streaming loop
-        auto streamer = std::make_unique<Stream::Streamer>(credentials, bridgeAddress);
+        // Connected by host, not by URL: IPv6 addresses without their brackets
+        auto streamer = std::make_unique<Stream::Streamer>(credentials, Hue::Api::bridgeHost(bridgeAddress));
         streamer->setEntertainmentConfigurationId(areaId);
         return streamer;
       },

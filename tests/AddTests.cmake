@@ -212,6 +212,11 @@ halomux_add_test(LoopThread
 
 # Bridge
 
+# Bridge addresses as users enter them, for HTTPS and the streaming connection
+halomux_add_test(BridgeAddress
+  SOURCES ${SRC}/Hue/Api/BridgeAddress.cpp
+)
+
 # Reading mDNS answers, which come from the network
 halomux_add_test(BridgeDiscovery
   SOURCES ${SRC}/Hue/Api/BridgeDiscovery.cpp ${SRC}/Hue/Api/BridgeTls.cpp
