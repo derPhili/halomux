@@ -233,16 +233,6 @@ namespace Halomux::Core
 
 
     /**
-     * @brief Registers current profile name
-     * 
-     * @param profileName Profile name to use
-     */
-    void setProfileName(
-      const std::string& profileName
-    );
-
-
-    /**
      * @brief registers the subsample width for image processing
      *
      * @param subsampleWidth Subsample width, clamped to [1, MaxSubsampleWidth]

@@ -177,16 +177,6 @@ namespace Halomux::Core
   }
 
 
-  void Config::setProfileName(
-    const std::string& profileName
-  )
-  {
-    std::unique_lock lock(m_mutex);
-    m_configData.value().profileName.emplace(profileName);
-    _save(lock);
-  }
-
-
   void Config::setSubsampleWidth(
     unsigned subsampleWidth
   )
