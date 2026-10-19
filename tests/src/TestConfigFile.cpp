@@ -96,6 +96,29 @@ int main()
   }
 
   {
+    // The setup takes over a bridge: credentials of another bridge don't go with it
+    Core::Config config(root);
+    config.setBridge("192.168.0.42", "aabbccddeeff0011", true);
+    config.setCredentials(Hue::Auth::Credentials("user", "00112233445566778899aabbccddeeff"));
+    config.setBridge("192.168.0.42", "AABBCCDDEEFF0011", false);
+    expect("Same bridge keeps its credentials", config.credentials().has_value());
+    expect("Same bridge stays verified when taken over again", config.bridgeCertificateVerified());
+    config.setBridge("192.168.0.43", "0011aabbccddeeff", false);
+    expect("Another bridge drops the credentials", !config.credentials().has_value());
+    expect("Another bridge's address saved", config.bridgeAddress() == "192.168.0.43");
+    expect("Another bridge isn't verified", !config.bridgeCertificateVerified());
+    config.setCredentials(Hue::Auth::Credentials("user", "00112233445566778899aabbccddeeff"));
+    config.setBridge("192.168.0.44", "0011aabbccddeeff", false);
+    expect("Same bridge at another address drops the credentials", !config.credentials().has_value());
+
+    // Whether a bridge would be verified, before it's taken over
+    config.setBridge("192.168.0.42", "aabbccddeeff0011", true);
+    expect("Verified bridge again", config.bridgeVerifiedWith("AABBCCDDEEFF0011", false));
+    expect("Other bridge unverified", !config.bridgeVerifiedWith("0011aabbccddeeff", false));
+    expect("Other bridge verified by its certificate", config.bridgeVerifiedWith("0011aabbccddeeff", true));
+  }
+
+  {
     // A full disk while saving: the configuration on disk, with the credentials, stays as it was
     {
       Core::Config config(root);

@@ -401,6 +401,36 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Takes over the bridge the setup trusts: its address and identity
+     *
+     * Credentials paired with another bridge, or at another address, are dropped: they'd be sent
+     * to this one.
+     *
+     * @param bridgeAddress Address of the bridge
+     * @param bridgeId Id of the bridge, the name its certificate carries
+     * @param certificateVerified Whether its certificate passed the check (see setBridgeIdentity())
+     */
+    void setBridge(
+      const std::string& bridgeAddress,
+      const std::string& bridgeId,
+      bool certificateVerified
+    );
+
+
+    /**
+     * @brief Tells whether a bridge would count as verified once its identity is registered
+     *
+     * @param bridgeId Id of the bridge
+     * @param certificateVerified Whether its certificate passed the check now
+     * @return true It did, or the same bridge did before
+     */
+    bool bridgeVerifiedWith(
+      const std::string& bridgeId,
+      bool certificateVerified
+    ) const;
+
+
+    /**
      * @brief Registers the identity of the bridge
      *
      * @param bridgeId Id of the bridge, the name its certificate carries
@@ -443,6 +473,18 @@ namespace Halomux::Core
      */
     void _save(
       std::unique_lock<std::mutex>& lock
+    );
+
+
+    /**
+     * @brief Tells whether a bridge is the one saved, whatever the case of its id
+     *
+     * @param data Configuration, read under m_mutex
+     * @param bridgeId Id of the bridge
+     */
+    static bool _isSavedBridge(
+      const Data& data,
+      const std::string& bridgeId
     );
 
 

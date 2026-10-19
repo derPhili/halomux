@@ -303,6 +303,7 @@ I18n.Translations = {
     "Only go on if this is the address of your Hue bridge, as the Hue app shows it under Settings → My Hue system → Bridge." : "Fahre nur fort, wenn das die Adresse deiner Hue Bridge ist, wie die Hue-App sie unter Einstellungen → Mein Hue-System → Bridge anzeigt.",
     "This is the address of my Hue bridge." : "Das ist die Adresse meiner Hue Bridge.",
     "Confirm that this is the address of your Hue bridge, or pick another one." : "Bestätige, dass das die Adresse deiner Hue Bridge ist, oder wähle eine andere.",
+    "Another address was checked meanwhile. Continue to check this one again." : "Inzwischen wurde eine andere Adresse geprüft. Fahre fort, um diese erneut zu prüfen.",
     "Pair with the bridge" : "Mit der Bridge koppeln",
     "Press the round button on top of your Hue bridge now." : "Drücke jetzt den runden Knopf oben auf deiner Hue Bridge.",
     "The app pairs as soon as the button is pressed, you don't need to click anything here." : "Die App koppelt sich, sobald der Knopf gedrückt ist. Hier musst du nichts anklicken.",

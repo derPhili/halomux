@@ -19,20 +19,29 @@ namespace Halomux::Core
   class SetupBridgeTrust
   {
   public:
+    // A bridge the setup validated
+    struct Bridge
+    {
+      std::string address;
+      // The name its certificate carries
+      std::string bridgeId;
+      // Whether its certificate passed the check of the Hue CA, now or before
+      bool verified{false};
+    };
+
+
     /**
      * @brief Records the bridge the setup validated, replacing the former one
      *
-     * @param address Its address
-     * @param certificateVerified Whether the Hue CA signed its certificate
+     * @param bridge The bridge, trusted at once if verified
      */
     void validated(
-      const std::string& address,
-      bool certificateVerified
+      const Bridge& bridge
     )
     {
       std::lock_guard lock(m_mutex);
-      m_address = address;
-      m_trusted = certificateVerified;
+      m_bridge = bridge;
+      m_trusted = bridge.verified;
     }
 
 
@@ -42,7 +51,7 @@ namespace Halomux::Core
     void invalidate()
     {
       std::lock_guard lock(m_mutex);
-      m_address.reset();
+      m_bridge.reset();
       m_trusted = false;
     }
 
@@ -51,18 +60,21 @@ namespace Halomux::Core
      * @brief Trusts the validated bridge as the user confirmed it, though its certificate isn't
      *        signed by the Hue CA
      *
-     * @return true A bridge awaited the confirmation
-     * @return false None was validated, or it was already trusted
+     * @param address Address the user confirmed: another validated meanwhile isn't confirmed
+     * @return std::optional<Bridge> The bridge now trusted, also if it already was; nothing if
+     *         none was validated at that address
      */
-    bool acceptUnverified()
+    std::optional<Bridge> acceptUnverified(
+      const std::string& address
+    )
     {
       std::lock_guard lock(m_mutex);
-      if(!m_address.has_value() || m_trusted){
-        return false;
+      if(!m_bridge.has_value() || m_bridge->address != address){
+        return std::nullopt;
       }
 
       m_trusted = true;
-      return true;
+      return m_bridge;
     }
 
 
@@ -77,12 +89,12 @@ namespace Halomux::Core
     ) const
     {
       std::lock_guard lock(m_mutex);
-      return m_trusted && m_address == address;
+      return m_trusted && m_bridge.has_value() && m_bridge->address == address;
     }
 
   private:
     mutable std::mutex m_mutex;
-    std::optional<std::string> m_address;
+    std::optional<Bridge> m_bridge;
     bool m_trusted{false};
   };
 }

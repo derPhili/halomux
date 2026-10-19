@@ -320,23 +320,66 @@ namespace Halomux::Core
   }
 
 
+  bool Config::_isSavedBridge(
+    const Data& data,
+    const std::string& bridgeId
+  )
+  {
+    const auto lowercase = [](std::string id){
+      std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c){return std::tolower(c);});
+      return id;
+    };
+
+    return data.bridgeId.has_value() && lowercase(*data.bridgeId) == lowercase(bridgeId);
+  }
+
+
+  bool Config::bridgeVerifiedWith(
+    const std::string& bridgeId,
+    bool certificateVerified
+  ) const
+  {
+    std::lock_guard lock(m_mutex);
+    const auto& data = m_configData.value();
+
+    // Verified once, a bridge must always be: but that binds this bridge, not another one
+    return certificateVerified || (_isSavedBridge(data, bridgeId) && data.bridgeCertificateVerified.value_or(false));
+  }
+
+
+  void Config::setBridge(
+    const std::string& bridgeAddress,
+    const std::string& bridgeId,
+    bool certificateVerified
+  )
+  {
+    const bool verified = bridgeVerifiedWith(bridgeId, certificateVerified);
+
+    std::unique_lock lock(m_mutex);
+    auto& data = m_configData.value();
+
+    if(!_isSavedBridge(data, bridgeId) || data.bridgeAddress != bridgeAddress){
+      data.credentials.reset();
+    }
+
+    data.bridgeAddress = bridgeAddress;
+    data.bridgeId = bridgeId;
+    data.bridgeCertificateVerified = verified;
+    _save(lock);
+  }
+
+
   void Config::setBridgeIdentity(
     const std::string& bridgeId,
     bool certificateVerified
   )
   {
+    const bool verified = bridgeVerifiedWith(bridgeId, certificateVerified);
+
     std::unique_lock lock(m_mutex);
     auto& data = m_configData.value();
-
-    // Verified once, a bridge must always be: but that binds this bridge, not another one
-    const auto lowercase = [](std::string id){
-      std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c){return std::tolower(c);});
-      return id;
-    };
-    const bool sameBridge = data.bridgeId.has_value() && lowercase(*data.bridgeId) == lowercase(bridgeId);
-
     data.bridgeId = bridgeId;
-    data.bridgeCertificateVerified = (sameBridge && data.bridgeCertificateVerified.value_or(false)) || certificateVerified;
+    data.bridgeCertificateVerified = verified;
     _save(lock);
   }
 
