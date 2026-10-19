@@ -127,7 +127,7 @@ journalctl --user -u halomux.service -f
 
 ### Light manager
 
-* **Screen regions**: the part of the screen each active lamp follows, with a gamma correction per lamp. With several monitors, they are shown as arranged on the desktop: drag a region onto another monitor to make the lamp follow it. A monitor no lamp follows isn't captured and costs nothing
+* **Screen regions**: the part of the screen each active lamp follows, with a gamma correction per lamp. Click a region, or the lamp in the list, to edit it. With several monitors, they are shown as arranged on the desktop: drag a region onto another monitor to make the lamp follow it. A monitor no lamp follows isn't captured and costs nothing
 * **Monitors** (header): the captured monitors. "Monitors…" opens the desktop's screen selection again, to capture other monitors; until it's confirmed, everything keeps running as before
 * **Sync** (header): switches between following the screen and showing the static scene. Without sync, screen capture and sound analysis pause
 * **Static scene**: one color for all lamps, a color per lamp, built-in scenes whose colors are spread over the lamps from left to right, and your own saved scenes. Picking one turns sync off

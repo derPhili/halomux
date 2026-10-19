@@ -167,7 +167,7 @@ class ScreenWidget
     none : "",
     noChannel : "There are no lamps in this entertainment area. Add them in the Hue app.",
     pleaseDrag : "Drag a lamp from Available to Active, or use its arrow, to drive it.",
-    pleaseSelect : "Select an active lamp to edit its region"
+    pleaseSelect : "Click a region or select an active lamp to edit it"
   };
 
 
@@ -664,10 +664,13 @@ class ScreenWidget
       rectNode.classList.add("previewRegion");
 
       let titleNode = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      titleNode.textContent = t("{lamp}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it", {lamp : activeChannel.formatMembers()});
+      titleNode.textContent = t("{lamp}: the screen region this lamp follows, filled with its current color. Click it, or select the lamp in the list, to edit it", {lamp : activeChannel.formatMembers()});
       rectNode.appendChild(titleNode);
       rectNode.style.fill = this.regionColors[activeChannelId] || ScreenWidget.IdleRegionFill;
       this.previewRegions[activeChannelId] = rectNode;
+
+      // A click on a lamp's region selects it, as in the list
+      rectNode.addEventListener("click", () => {this.webApp.selectChannel(activeChannel.channelId);});
 
       new Rectangle(rectNode).setGeometry(geometry.x, geometry.y, geometry.width, geometry.height);
 

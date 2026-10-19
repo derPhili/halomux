@@ -127,7 +127,7 @@ journalctl --user -u halomux.service -f
 
 ### Lichtsteuerung
 
-* **Bildschirmbereiche**: der Teil des Bildschirms, dem jede aktive Lampe folgt, mit einer Gammakorrektur pro Lampe. Bei mehreren Monitoren erscheinen sie so angeordnet wie auf dem Desktop: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt. Ein Monitor, dem keine Lampe folgt, wird nicht erfasst und kostet nichts
+* **Bildschirmbereiche**: der Teil des Bildschirms, dem jede aktive Lampe folgt, mit einer Gammakorrektur pro Lampe. Zum Bearbeiten klickst du auf einen Bereich oder auf die Lampe in der Liste. Bei mehreren Monitoren erscheinen sie so angeordnet wie auf dem Desktop: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt. Ein Monitor, dem keine Lampe folgt, wird nicht erfasst und kostet nichts
 * **Monitore** (Kopfzeile): die erfassten Monitore. „Monitore…“ öffnet die Bildschirmauswahl des Desktops erneut, um andere Monitore zu erfassen; bis zur Bestätigung läuft alles weiter wie bisher
 * **Sync** (Kopfzeile): wechselt zwischen Bildschirm und statischer Szene. Ohne Sync pausieren Bildschirmaufnahme und Sound-Analyse
 * **Statische Szene**: eine Farbe für alle Lampen, eine Farbe pro Lampe, eingebaute Szenen, deren Farben von links nach rechts über die Lampen verteilt werden, und eigene gespeicherte Szenen. Eine Auswahl schaltet Sync aus

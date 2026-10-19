@@ -123,9 +123,9 @@ I18n.Translations = {
     "The monitor this lamp followed isn't captured. Choose it again with \"Monitors…\", or drag the region onto a captured monitor.":
       "Der Monitor, dem diese Lampe gefolgt ist, wird nicht erfasst. Wähle ihn über „Monitore…“ erneut oder zieh den Bereich auf einen erfassten Monitor.",
     "Screen regions" : "Bildschirmbereiche",
-    "Select an active lamp, then drag the corners of its region" : "Aktive Lampe auswählen, dann die Ecken ihres Bereichs ziehen",
-    "Each colored rectangle is the screen region a lamp follows, filled with the lamp's current color. Select an active lamp in the list to edit its region.":
-      "Jedes farbige Rechteck ist der Bildschirmbereich, dem eine Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Wähle eine aktive Lampe in der Liste, um ihren Bereich zu bearbeiten.",
+    "Click a region or select an active lamp, then drag its corners" : "Bereich anklicken oder aktive Lampe auswählen, dann seine Ecken ziehen",
+    "Each colored rectangle is the screen region a lamp follows, filled with the lamp's current color. Click one, or select an active lamp in the list, to edit its region.":
+      "Jedes farbige Rechteck ist der Bildschirmbereich, dem eine Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Klicke auf eines oder wähle eine aktive Lampe in der Liste, um ihren Bereich zu bearbeiten.",
     "Drag to move the top left corner of the region" : "Ziehen, um die obere linke Ecke des Bereichs zu verschieben",
     "Drag to move the top right corner of the region" : "Ziehen, um die obere rechte Ecke des Bereichs zu verschieben",
     "Drag to move the bottom left corner of the region" : "Ziehen, um die untere linke Ecke des Bereichs zu verschieben",
@@ -133,11 +133,11 @@ I18n.Translations = {
     "Gamma correction" : "Gammakorrektur",
     "Gamma correction of this lamp: to the right, dim colors get brighter; to the left, darker. In the middle, unchanged. The arrow keys change it too.":
       "Gammakorrektur dieser Lampe: Nach rechts werden dunkle Farben heller, nach links dunkler. In der Mitte unverändert. Die Pfeiltasten verändern sie auch.",
-    "{lamp}: the screen region this lamp follows, filled with its current color. Select the lamp in the list to edit it":
-      "{lamp}: der Bildschirmbereich, dem diese Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Wähle die Lampe in der Liste, um ihn zu bearbeiten",
+    "{lamp}: the screen region this lamp follows, filled with its current color. Click it, or select the lamp in the list, to edit it":
+      "{lamp}: der Bildschirmbereich, dem diese Lampe folgt, gefüllt mit ihrer aktuellen Farbe. Klicke darauf oder wähle die Lampe in der Liste, um ihn zu bearbeiten",
     "There are no lamps in this entertainment area. Add them in the Hue app." : "In diesem Entertainment-Bereich gibt es keine Lampen. Füge sie in der Hue-App hinzu.",
     "Drag a lamp from Available to Active, or use its arrow, to drive it." : "Ziehe eine Lampe von „Verfügbar“ nach „Aktiv“ oder nutze ihren Pfeil, um sie zu steuern.",
-    "Select an active lamp to edit its region" : "Wähle eine aktive Lampe, um ihren Bereich zu bearbeiten",
+    "Click a region or select an active lamp to edit it" : "Klicke auf einen Bereich oder wähle eine aktive Lampe, um ihn zu bearbeiten",
 
     // Static scene
     "Colors the lamps show while sync is off" : "Farben, die die Lampen zeigen, solange Sync aus ist",
