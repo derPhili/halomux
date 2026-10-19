@@ -2,7 +2,9 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
+#include <Halomux/Hue/Api/BridgeDiscovery.hpp>
 #include <Halomux/Hue/Api/EntertainmentConfiguration.hpp>
 #include <Halomux/Serialization/Json.hpp>
 
@@ -81,5 +83,17 @@ namespace Halomux::Hue::Api::ClipParsing
   std::optional<ChannelMembers> channelMembers(
     const Serialization::Json& response,
     const std::string& areaId
+  );
+
+
+  /**
+   * @brief Reads the bridges of the answer of the Hue discovery service (discovery.meethue.com)
+   *
+   * @param response Answer of the service, from the internet
+   * @return std::vector<DiscoveredBridge> Bridges with an address, malformed entries left out,
+   *         none if the answer isn't a list (such as an error)
+   */
+  std::vector<DiscoveredBridge> discoveredBridges(
+    const Serialization::Json& response
   );
 }

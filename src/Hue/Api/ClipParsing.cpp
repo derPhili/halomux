@@ -240,4 +240,30 @@ namespace Halomux::Hue::Api::ClipParsing
       return std::nullopt;
     }
   }
+
+
+  std::vector<DiscoveredBridge> discoveredBridges(
+    const Serialization::Json& response
+  )
+  {
+    std::vector<DiscoveredBridge> bridges;
+    if(!response.is_array()){
+      return bridges;
+    }
+
+    for(const auto& entry : response){
+      if(!entry.is_object() || !entry.contains("internalipaddress") || !entry.at("internalipaddress").is_string()){
+        continue;
+      }
+
+      const auto address = entry.at("internalipaddress").get<std::string>();
+      if(address.empty() || (entry.contains("id") && !entry.at("id").is_string())){
+        continue;
+      }
+
+      bridges.push_back({.id = entry.value("id", std::string{}), .address = address});
+    }
+
+    return bridges;
+  }
 }

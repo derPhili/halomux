@@ -148,6 +148,22 @@ int main()
     expect("Error answer has no members", !channelMembers(Json::parse(R"({"errors": [{"description": "x"}], "data": []})"), "a").has_value());
   }
 
+  // The discovery service of Philips, an answer from the internet
+  {
+    const auto bridges = discoveredBridges(Json::parse(R"([
+      {"id": "001788fffe0a0b0c", "internalipaddress": "192.168.0.42", "port": 443},
+      {"id": 5, "internalipaddress": "192.168.0.43"},
+      {"internalipaddress": "192.168.0.44"},
+      {"id": "001788fffe0a0b0d"},
+      {"id": "001788fffe0a0b0e", "internalipaddress": ""},
+      "garbage"
+    ])"));
+    expect("Discovered bridges", bridges.size() == 2);
+    expect("Discovered bridge read", !bridges.empty() && bridges[0].id == "001788fffe0a0b0c" && bridges[0].address == "192.168.0.42");
+    expect("Discovered bridge without id", bridges.size() == 2 && bridges[1].id.empty() && bridges[1].address == "192.168.0.44");
+    expect("Discovery answer that isn't a list", discoveredBridges(Json::parse(R"({"error": "rate limited"})")).empty());
+  }
+
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");
     return 1;

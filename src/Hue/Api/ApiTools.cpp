@@ -106,15 +106,19 @@ namespace Halomux::Hue::Api
 
   Serialization::Json ApiTools::autodetectedBridge()
   {
-    // In the local network first, as Philips recommends: no internet access needed
-    const auto localBridges = discoverBridges(std::chrono::milliseconds(1500));
-    if(!localBridges.empty()){
+    const auto answer = [](const std::vector<DiscoveredBridge>& bridges){
       Serialization::Json jsonBridges = Serialization::Json::array();
-      for(const auto& bridge : localBridges){
+      for(const auto& bridge : bridges){
         jsonBridges.push_back({{"id", bridge.id}, {"internalipaddress", bridge.address}});
       }
 
-      return {{"succeeded", true}, {"bridges", jsonBridges}};
+      return Serialization::Json{{"succeeded", true}, {"bridges", jsonBridges}};
+    };
+
+    // In the local network first, as Philips recommends: no internet access needed
+    const auto localBridges = discoverBridges(std::chrono::milliseconds(1500));
+    if(!localBridges.empty()){
+      return answer(localBridges);
     }
 
     auto detectedBridgeResponse = Network::Http::Client::sendRequest("https://discovery.meethue.com/", "GET");
@@ -123,9 +127,13 @@ namespace Halomux::Hue::Api
       return {{"succeeded", false}, {"error", "Could not reach discovery service. Please check your internet connection."}};
     }
 
-    auto bridges = detectedBridgeResponse.value().asJson();
-
-    return {{"succeeded", true}, {"bridges", bridges}};
+    // From the internet: an error page or a rate limit is no answer either
+    try{
+      return answer(ClipParsing::discoveredBridges(detectedBridgeResponse->asJson()));
+    }
+    catch(const std::exception&){
+      return {{"succeeded", false}, {"error", "The discovery service sent an unexpected answer."}};
+    }
   }
 
 
