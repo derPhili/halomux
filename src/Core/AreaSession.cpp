@@ -251,7 +251,9 @@ namespace Halomux::Core
       std::lock_guard lock(m_stateMutex);
       auto areaIt = m_areas.find(areaId);
       if(areaIt == m_areas.end()){
-        Logger::error("Unknown entertainment area ", areaId);
+        // Ids come from requests too: one of any length isn't copied whole into the journal
+        static constexpr size_t LoggedIdLength = 64;
+        Logger::error("Unknown entertainment area ", areaId.substr(0, LoggedIdLength), areaId.size() > LoggedIdLength ? "…" : "");
         return false;
       }
       area = *areaIt;
