@@ -596,15 +596,16 @@ namespace Halomux::Core
 
   bool CoreService::saveProfile()
   {
+    // Read, changed and written by one save at a time: concurrent saves would drop each other's
+    // area, and an older snapshot written last would make its area the current one again
+    std::lock_guard lock(m_profileMutex);
+
     // The lamps with the area they belong to, read together: an area switch can't mix them up
     const auto lamps = m_runtime.m_channelStore.areaSnapshot();
     if(!lamps.areaId.has_value()){
       Logger::error("There is currently no valid entertainment configuration selected.");
       return false;
     }
-
-    // Read, changed and written by one save at a time: concurrent saves would drop each other's area
-    std::lock_guard lock(m_profileMutex);
 
     // The other areas' lamp settings are kept
     const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
