@@ -712,6 +712,17 @@ namespace Halomux::Core
   }
 
 
+  void CoreService::identifyBridgeIfUnknown()
+  {
+    const auto savedId = m_config.bridgeId();
+    if(savedId.has_value() && Hue::Api::isBridgeId(*savedId)){
+      return;
+    }
+
+    _identifyBridge();
+  }
+
+
   void CoreService::_identifyBridge()
   {
     // Bridges set up before the certificate checks, or whose certificate never passed them, are

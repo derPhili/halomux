@@ -558,6 +558,13 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Identifies the bridge if it couldn't be at the start, such as a bridge of a former
+     *        version offline then: until it is, its certificate's name can't be checked
+     */
+    void identifyBridgeIfUnknown();
+
+
+    /**
      * @brief Aborts the initial setup if it is currently running
      *
      */

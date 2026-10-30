@@ -52,9 +52,22 @@ namespace Halomux::Core
   }
 
 
+  void AreaSession::setCheckHook(
+    std::function<void()> hook
+  )
+  {
+    std::lock_guard lock(m_operationMutex);
+    m_checkHook = std::move(hook);
+  }
+
+
   void AreaSession::tick()
   {
     std::lock_guard lock(m_operationMutex);
+
+    if(m_checkHook){
+      m_checkHook();
+    }
 
     const std::optional<std::string> current = currentAreaId();
     if(!current.has_value()){
