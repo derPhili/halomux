@@ -691,7 +691,15 @@ namespace Halomux::Core
     }
 
     // The other areas' lamp settings are kept
-    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
+    // A profile that can't be read, such as one edited by hand, isn't replaced: the other areas'
+    // settings would be lost with it
+    const auto savedProfile = getProfile();
+    if(!savedProfile.has_value() && std::filesystem::exists(profilePath())){
+      Logger::error("Not saving the profile over ", std::quoted(profilePath().string()), ", which can't be read: fix or remove it first");
+      return false;
+    }
+
+    const Serialization::Json profile = Profile::withArea(savedProfile.value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
 
     // Never left truncated, whatever happens while writing
     return writeFileAtomically(profilePath(), profile.dump(2) + "\n");
