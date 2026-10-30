@@ -69,6 +69,12 @@ namespace Halomux::Platform
       if(system(("systemd-run --user --quiet --collect " + desktopApplication + " >/dev/null 2>&1").c_str()) == 0){
         return;
       }
+
+      // Without a user manager, such as outside a systemd session: started directly, which
+      // then ends with the service
+      if(system((desktopApplication + " >/dev/null 2>&1 &").c_str()) == 0){
+        return;
+      }
     }
 
     // A browser started from here would belong to the service: confined by its hardening, and
