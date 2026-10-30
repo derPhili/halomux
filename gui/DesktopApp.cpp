@@ -1,5 +1,7 @@
 #include "DesktopApp.hpp"
 
+#include <unistd.h>
+
 #include <QApplication>
 #include <QDir>
 #include <QJsonArray>
@@ -26,11 +28,13 @@ namespace Halomux::Gui
     QString instancePath(const char* suffix)
     {
       QString directory = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-      if(directory.isEmpty()){
-        directory = QDir::tempPath();
+      if(!directory.isEmpty()){
+        return QString("%1/%2-gui.%3").arg(directory, AppId, suffix);
       }
 
-      return QString("%1/%2-gui.%3").arg(directory, AppId, suffix);
+      // The temporary directory is shared: named after the user, so another user's file can
+      // neither block this instance nor be talked to
+      return QString("%1/%2-gui.%3.%4").arg(QDir::tempPath(), AppId, QString::number(getuid()), suffix);
     }
   }
 
