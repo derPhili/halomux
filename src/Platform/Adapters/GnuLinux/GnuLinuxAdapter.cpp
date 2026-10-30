@@ -90,9 +90,10 @@ namespace Halomux::Platform
     // Without a shell, with fixed arguments; only the fields the light manager shows
     const std::string unit = std::string(AppId) + ".service";
     const std::string count = std::to_string(lines);
-    std::array<const char*, 12> arguments{
+    // --all: long lines would be left out (null) otherwise
+    std::array<const char*, 13> arguments{
       "journalctl", "--user", "--unit", unit.c_str(), "--lines", count.c_str(),
-      "--output", "json", "--output-fields", "__REALTIME_TIMESTAMP,PRIORITY,MESSAGE", "--no-pager", nullptr
+      "--output", "json", "--output-fields", "__REALTIME_TIMESTAMP,PRIORITY,MESSAGE", "--all", "--no-pager", nullptr
     };
 
     gchar* output = nullptr;
