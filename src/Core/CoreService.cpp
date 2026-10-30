@@ -178,6 +178,12 @@ namespace Halomux::Core
       return false;
     }
 
+    // Sent as a header: anything else than the bridge's characters has no place in it
+    if(!credentials.hasValidUsername()){
+      Logger::error("The username isn't one of the bridge");
+      return false;
+    }
+
     const Network::Http::Client::Headers headers = {{"hue-application-key", credentials.username()}};
     auto response = Network::Http::Client::sendRequest(Hue::Api::HttpProtocol + bridgeAddress + "/clip/v2/resource/bridge", "GET", "", headers, Hue::Api::bridgeTls(bridgeAddress));
     if(!response.has_value()){
