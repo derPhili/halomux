@@ -54,6 +54,9 @@ int main()
   // A device posing as the bridge can't fill the memory
   expect("Oversized answer refused", !Network::Http::Client::sendRequest(base + "/huge", "GET").has_value());
 
+  // A header value with a line break would add headers of its own to the request
+  expect("Header with a line break refused", !Network::Http::Client::sendRequest(base + "/usual", "GET", "", {{"hue-application-key", "abc\r\nInjected: yes"}}).has_value());
+
   server.stop();
   listener.join();
 
