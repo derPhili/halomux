@@ -166,9 +166,11 @@ int main()
     expect("Current area not stopped", !h.bridge->called("stop pc"));
   }
 
-  // Bridge offline at startup: the session keeps trying
+  // Bridge offline at startup: the session keeps trying, and runs the check hook each time
   {
     Harness h;
+    int hooked = 0;
+    h.session->setCheckHook([&hooked](){hooked++;});
     h.bridge->reachable = false;
     h.session->start("pc");
     expect("Nothing selected while offline", !h.session->currentAreaId().has_value());
@@ -178,6 +180,7 @@ int main()
     h.session->tick();
     expect("Selected once the bridge answers", h.session->currentAreaId() == "pc");
     expect("Streaming started then", h.bridge->called("start pc"));
+    expect("Check hook run at each check", hooked == 2);
   }
 
   // No area yet: created later in the Hue app

@@ -67,6 +67,14 @@ namespace Halomux::Hue::Auth
 
 
     /**
+     * @brief Tells whether the username is one the bridge gives, as it goes into an HTTP header
+     *
+     * @return true 1 to 128 letters, digits, dashes or underscores
+     */
+    bool hasValidUsername() const;
+
+
+    /**
      * @brief Tells whether the clientkey is hexadecimal, as the pre-shared key of the streaming connection
      *
      * @return true 32 hexadecimal digits, the 16 bytes of the bridge's clientkeys

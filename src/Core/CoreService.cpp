@@ -89,11 +89,25 @@ namespace Halomux::Core
         return std::nullopt;
       }
 
-      // Verified once, the bridge is checked as verified from then on
+      const std::string bridgeId = responseData.at("bridgeid").get<std::string>();
+
+      // The certificate of a bridge verified before fails the check now: another device answering
+      // its id, or a bridge whose certificate broke. Neither is trusted on the user's word alone
+      if(!response->tlsVerified() && m_config.bridgeVerifiedWith(bridgeId, false)){
+        Logger::error("The certificate of the known bridge ", bridgeId, " doesn't pass the check anymore: not trusting ", sanitizedAddress);
+        return std::nullopt;
+      }
+
+      // An unverified bridge is pinned to its key once confirmed: without one, it can't be
+      if(!response->tlsVerified() && response->publicKeyPin().empty()){
+        Logger::error("The public key of the certificate of ", sanitizedAddress, " can't be read: it can't be confirmed");
+        return std::nullopt;
+      }
+
       const SetupBridgeTrust::Bridge bridge{
         .address = sanitizedAddress,
-        .bridgeId = responseData.at("bridgeid").get<std::string>(),
-        .verified = m_config.bridgeVerifiedWith(responseData.at("bridgeid").get<std::string>(), response->tlsVerified()),
+        .bridgeId = bridgeId,
+        .verified = response->tlsVerified(),
         .publicKeyPin = response->publicKeyPin()
       };
       m_setupBridgeTrust.validated(bridge);
@@ -125,10 +139,10 @@ namespace Halomux::Core
       return false;
     }
 
-    if(m_config.bridgeAddress() != bridge->address || m_config.bridgeId() != bridge->bridgeId){
-      Logger::warn("Pairing with a bridge whose certificate isn't signed by the Hue CA, as confirmed by the user");
-      _takeOverBridge(*bridge);
-    }
+    // Taken over even if it's the bridge saved, such as after a pairing cancelled before: its key
+    // may have changed since, and it has to be registered for the checks of the pairing
+    Logger::warn("Pairing with a bridge whose certificate isn't signed by the Hue CA, as confirmed by the user");
+    _takeOverBridge(*bridge);
 
     return true;
   }
@@ -161,6 +175,12 @@ namespace Halomux::Core
     // The bridge only checks the username: a mistyped clientkey would fail every streaming connection
     if(!credentials.hasValidClientkey()){
       Logger::error("The clientkey isn't 32 hexadecimal digits");
+      return false;
+    }
+
+    // Sent as a header: anything else than the bridge's characters has no place in it
+    if(!credentials.hasValidUsername()){
+      Logger::error("The username isn't one of the bridge");
       return false;
     }
 
@@ -671,7 +691,15 @@ namespace Halomux::Core
     }
 
     // The other areas' lamp settings are kept
-    const Serialization::Json profile = Profile::withArea(getProfile().value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
+    // A profile that can't be read, such as one edited by hand, isn't replaced: the other areas'
+    // settings would be lost with it
+    const auto savedProfile = getProfile();
+    if(!savedProfile.has_value() && std::filesystem::exists(profilePath())){
+      Logger::error("Not saving the profile over ", std::quoted(profilePath().string()), ", which can't be read: fix or remove it first");
+      return false;
+    }
+
+    const Serialization::Json profile = Profile::withArea(savedProfile.value_or(Serialization::Json()), *lamps.areaId, Serialization::Json(lamps.channels));
 
     // Never left truncated, whatever happens while writing
     return writeFileAtomically(profilePath(), profile.dump(2) + "\n");
@@ -681,6 +709,17 @@ namespace Halomux::Core
   void CoreService::stop()
   {
     m_runtime.stop();
+  }
+
+
+  void CoreService::identifyBridgeIfUnknown()
+  {
+    const auto savedId = m_config.bridgeId();
+    if(savedId.has_value() && Hue::Api::isBridgeId(*savedId)){
+      return;
+    }
+
+    _identifyBridge();
   }
 
 

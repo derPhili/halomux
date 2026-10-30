@@ -40,6 +40,12 @@ int main()
   expect("Port of an IPv6 dropped", sanitizeBridgeAddress("https://[fd00::42]:443/") == "[fd00::42]");
   expect("Unclosed bracket refused", sanitizeBridgeAddress("[fd00::42").empty());
 
+  // Characters that would change the meaning of the URL, or can't be in a host, are refused
+  for(const char* odd : {"user@192.168.0.42", "hue-bridge.local?x", "hue-bridge.local#x", "hue bridge", "[fd00::42]x", "[fd00::4g]", "user@hue.local/api"}){
+    expect(odd, sanitizeBridgeAddress(odd).empty());
+  }
+  expect("Zone with a dash kept", sanitizeBridgeAddress("[fe80::42%25br-lan]") == "[fe80::42%25br-lan]");
+
   // The streaming connection takes the host without brackets
   expect("Host of an address", bridgeHost("192.168.0.42") == "192.168.0.42");
   expect("Host of an IPv6", bridgeHost("[fd00::42]") == "fd00::42");

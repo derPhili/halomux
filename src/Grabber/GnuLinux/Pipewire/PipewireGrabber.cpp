@@ -672,6 +672,13 @@ namespace Halomux::Grabber
 
     Core::Logger::warn("Capture of ", stream->label, " ended", (error ? std::string(": ") + error : std::string()), ". Its lamps stay off while syncing");
 
+    // Before its format, such as a monitor unplugged as the capture starts: the start won't
+    // complete, and needn't wait for its timeout
+    if(!stream->hasFormat && !stream->owner->promiseSetAlready){
+      stream->owner->screenDataReadyPromise.set_value(false);
+      stream->owner->promiseSetAlready = true;
+    }
+
     // Its last colors would be handed out forever
     auto lock = std::lock_guard(stream->owner->channelsMutex);
     stream->hasColors = false;

@@ -92,8 +92,10 @@ namespace Halomux::Grabber
         return;
       }
 
-      // Aborted as it was created
-      if(g_cancellable_is_cancelled(capture->cancellable)){
+      // Aborted as it was created, or torn down already: the answer may be dispatched after the
+      // teardown ran, which cleared the cancellable. A session created now would never be closed
+      if(!capture->running || !capture->cancellable || g_cancellable_is_cancelled(capture->cancellable)){
+        g_clear_object(&capture->screencastProxy);
         resolveCapture(capture, false);
         return;
       }

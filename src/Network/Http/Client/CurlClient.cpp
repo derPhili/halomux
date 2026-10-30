@@ -263,6 +263,14 @@ namespace Halomux::Network::Http::Client
     const std::optional<TlsPolicy>& tls
   )
   {
+    // A line break in a header would add headers of its own to the request
+    for(const auto& [name, value] : headers){
+      if(name.find_first_of("\r\n") != std::string::npos || value.find_first_of("\r\n") != std::string::npos){
+        Core::Logger::error("HTTP request refused: a header holds a line break");
+        return std::nullopt;
+      }
+    }
+
     std::string responseString;
     std::string publicKeyPin;
     CURLcode code = perform(url, method, body, headers, tls, true, true, responseString, publicKeyPin);

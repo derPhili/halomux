@@ -39,13 +39,37 @@ namespace
 
 
   /**
+   * @brief Returns the configuration file the service will read: its own, or the one of a former
+   *        name it takes over on its first start
+   *
+   * @return QString Path of the first one found, the service's own if none
+   */
+  QString effectiveConfigPath()
+  {
+    if(QFile::exists(serviceConfigPath())){
+      return serviceConfigPath();
+    }
+
+    for(const char* legacyName : LegacyNames){
+      const QString legacyPath = QDir::homePath() + "/.config/" + legacyName + "/config.json";
+      if(QFile::exists(legacyPath)){
+        return legacyPath;
+      }
+    }
+
+    return serviceConfigPath();
+  }
+
+
+  /**
    * @brief Returns the configuration of the service
    *
    * @return QJsonObject Content of its configuration file, empty if it can't be read
    */
   QJsonObject serviceConfig()
   {
-    QFile configFile(serviceConfigPath());
+    // Its port, address and language are those the service will take over too
+    QFile configFile(effectiveConfigPath());
     if(!configFile.open(QIODevice::ReadOnly)){
       return {};
     }
@@ -111,10 +135,7 @@ int main(int argc, char* argv[])
   // Started at login for every user of the computer: one who never used Halomux gets no tray, and
   // no service started for them, which would also contend for another user's port. The service
   // writes its configuration on its first start, and takes over one of a former name of Halomux.
-  const bool configured = QFile::exists(serviceConfigPath()) || std::ranges::any_of(LegacyNames, [](const char* legacyName){
-    return QFile::exists(QDir::homePath() + "/.config/" + legacyName + "/config.json");
-  });
-  if(!showWindow && !configured){
+  if(!showWindow && !QFile::exists(effectiveConfigPath())){
     return 0;
   }
 

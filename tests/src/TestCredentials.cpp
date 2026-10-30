@@ -57,6 +57,13 @@ int main()
   expect("Short clientkey", !Credentials("user", "00").hasValidClientkey());
   expect("Long clientkey", !Credentials("user", "00112233445566778899aabbccddeeff00").hasValidClientkey());
 
+  // The username goes into an HTTP header: the characters of the bridge's usernames only
+  expect("Valid username", Credentials("AbCdEf0123456789-_abcdefghijklmnopqrstuv", "00112233445566778899aabbccddeeff").hasValidUsername());
+  expect("Empty username", !Credentials("", "00112233445566778899aabbccddeeff").hasValidUsername());
+  expect("Username with a line break", !Credentials("user\r\nInjected: yes", "00112233445566778899aabbccddeeff").hasValidUsername());
+  expect("Username with a space", !Credentials("user name", "00112233445566778899aabbccddeeff").hasValidUsername());
+  expect("Overlong username", !Credentials(std::string(129, 'a'), "00112233445566778899aabbccddeeff").hasValidUsername());
+
   if(failures > 0){
     Core::Logger::error(failures, " check(s) failed");
     return 1;

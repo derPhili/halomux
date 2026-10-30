@@ -93,6 +93,17 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Runs something before each check, in the checks' thread, such as identifying the
+     *        bridge that couldn't be reached at the start
+     *
+     * @param hook What to run, nothing for none
+     */
+    void setCheckHook(
+      std::function<void()> hook
+    );
+
+
+    /**
      * @brief Streams the colors of a frame, if an area is selected
      *
      * @param channels Colors per channel
@@ -151,6 +162,7 @@ namespace Halomux::Core
     StreamerFactory m_streamerFactory;
     SelectedCallback m_onSelected;
     LostCallback m_onLost;
+    std::function<void()> m_checkHook;
     std::chrono::milliseconds m_watchInterval;
 
     // Serializes the operations talking to the bridge: selections and checks

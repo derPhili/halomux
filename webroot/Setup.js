@@ -114,6 +114,8 @@ class SetupWizard
 
   _stopTimers()
   {
+    // Answers of the pairing still on their way are for a step left
+    this.pairingGeneration = (this.pairingGeneration || 0) + 1;
     clearTimeout(this.pairingTimer);
     clearTimeout(this.areaTimer);
     this.pairingTimer = null;
@@ -143,8 +145,17 @@ class SetupWizard
     this.bridgeSearchNode.style.display = "";
     this.bridgeCandidatesNode.replaceChildren();
 
+    // Only the last search started lists its bridges: searching again while one runs, or
+    // leaving and coming back, would list them twice
+    this.searchGeneration = (this.searchGeneration || 0) + 1;
+    const generation = this.searchGeneration;
+
     RequestUtils.get("/api/autodetectBridge")
     .then((data) => {
+      if(generation != this.searchGeneration || this.currentStep != "bridge"){
+        return;
+      }
+
       this.bridgeSearchNode.style.display = "none";
 
       if(!data.succeeded){
@@ -172,7 +183,9 @@ class SetupWizard
     })
     .catch((error) => {
       log(error);
-      this.bridgeSearchNode.style.display = "none";
+      if(generation == this.searchGeneration){
+        this.bridgeSearchNode.style.display = "none";
+      }
     });
   }
 
@@ -289,14 +302,18 @@ class SetupWizard
     this.pairingDeadline = Date.now() + SetupWizard.PairingTimeout;
     this.retryPairingButton.style.display = "none";
     this._showError("pairingError", "");
-    this._tryPairing();
+
+    // Only the pairing started last goes on: an answer of a former one, such as after going
+    // back and forward, would pair or poll a second time
+    this.pairingGeneration = (this.pairingGeneration || 0) + 1;
+    this._tryPairing(this.pairingGeneration);
   }
 
 
   // Registering fails until the button was pressed: try again every few seconds
-  _tryPairing()
+  _tryPairing(generation)
   {
-    if(this.currentStep != "pairing"){
+    if(this.currentStep != "pairing" || generation != this.pairingGeneration){
       return;
     }
 
@@ -312,6 +329,10 @@ class SetupWizard
 
     RequestUtils.put("/api/registerNewUser", JSON.stringify(null))
     .then((data) => {
+      if(this.currentStep != "pairing" || generation != this.pairingGeneration){
+        return;
+      }
+
       if(data.succeeded){
         this._paired();
         return;
@@ -322,11 +343,11 @@ class SetupWizard
         this._showError("pairingError", t("The bridge refused the pairing: {error}", {error : data.error}));
       }
 
-      this.pairingTimer = setTimeout(() => {this._tryPairing();}, SetupWizard.PairingInterval);
+      this.pairingTimer = setTimeout(() => {this._tryPairing(generation);}, SetupWizard.PairingInterval);
     })
     .catch((error) => {
       log(error);
-      this.pairingTimer = setTimeout(() => {this._tryPairing();}, SetupWizard.PairingInterval);
+      this.pairingTimer = setTimeout(() => {this._tryPairing(generation);}, SetupWizard.PairingInterval);
     });
   }
 
