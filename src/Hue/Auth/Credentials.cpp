@@ -1,5 +1,7 @@
 #include <Halomux/Hue/Auth/Credentials.hpp>
 
+#include <algorithm>
+#include <cctype>
 #include <optional>
 
 
@@ -101,6 +103,14 @@ namespace Halomux::Hue::Auth
     }
 
     return std::move(*bytes);
+  }
+
+
+  bool Credentials::hasValidUsername() const
+  {
+    static constexpr size_t MaxUsernameSize = 128;
+    const auto allowed = [](unsigned char c){return std::isalnum(c) || c == '-' || c == '_';};
+    return !m_username.empty() && m_username.size() <= MaxUsernameSize && std::all_of(m_username.begin(), m_username.end(), allowed);
   }
 
 

@@ -227,8 +227,19 @@ namespace Halomux::Serialization
 
       if(jsonConfigData.contains("noticeAccepted")){
         const Json& jsonAcceptance = jsonConfigData.at("noticeAccepted");
+        // A version that isn't a whole number in range counts as none accepted
+        unsigned version = 0;
+        try{
+          if(jsonAcceptance.contains("version")){
+            version = readInteger(jsonAcceptance.at("version"), 0u, std::numeric_limits<unsigned>::max());
+          }
+        }
+        catch(const std::invalid_argument&){
+          Halomux::Core::Logger::warn("Ignoring the invalid version of the accepted notice: ", jsonAcceptance.at("version").dump());
+        }
+
         configData.noticeAccepted = Halomux::Core::Config::NoticeAcceptance{
-          .version = jsonAcceptance.value("version", 0u),
+          .version = version,
           .at = jsonAcceptance.value("at", std::string{})
         };
       }

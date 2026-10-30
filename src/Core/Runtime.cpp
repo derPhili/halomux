@@ -188,6 +188,10 @@ namespace Halomux::Core
       std::chrono::duration_cast<std::chrono::milliseconds>(AreaCheckInterval)
     );
 
+    // A bridge of a former version offline at the start: identified for the certificate checks
+    // once it answers
+    m_areaSession->setCheckHook([this](){m_coreService->identifyBridgeIfUnknown();});
+
     m_areaSession->start(Profile::currentArea(m_coreService->getProfile().value_or(Serialization::Json())));
 
     return true;

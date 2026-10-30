@@ -317,6 +317,9 @@ halomux_add_test(Journal
   LIBRARIES nlohmann_json::nlohmann_json
 )
 
+# Log lines as the journal gets them, one per message
+halomux_add_test(Logger)
+
 # Files only ever replaced by a complete content
 halomux_add_test(AtomicFile
   SOURCES ${SRC}/Core/AtomicFile.cpp

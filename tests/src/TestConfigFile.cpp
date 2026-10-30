@@ -109,6 +109,16 @@ int main()
     expect("Negative refresh rate automatic", config.refreshRate() == 0);
   }
 
+  // The accepted notice's version isn't wrapped: a negative one would count as any future version
+  {
+    std::ofstream file(configFile);
+    file << R"({"noticeAccepted": {"version": -1, "at": "2026-10-19T12:00:00Z"}})";
+  }
+  {
+    Core::Config config(root);
+    expect("Negative notice version not accepted", !config.noticeAccepted().has_value() || config.noticeAccepted()->version == 0);
+  }
+
   // A width too large: limited like what the setter takes
   {
     std::ofstream file(configFile);

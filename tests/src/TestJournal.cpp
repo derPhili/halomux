@@ -30,13 +30,14 @@ int main()
     R"({"__REALTIME_TIMESTAMP":"1792400003000000","PRIORITY":"3","MESSAGE":"halomux.service: Main process exited, status=1/FAILURE"})" "\n"
     R"({"__REALTIME_TIMESTAMP":"1792400004000000","PRIORITY":"4","MESSAGE":"Some warning of systemd"})" "\n"
     R"({"__REALTIME_TIMESTAMP":"1792400005000000","PRIORITY":"6","MESSAGE":[104,105]})" "\n"
+    R"({"__REALTIME_TIMESTAMP":"1792400006000000","PRIORITY":"6","MESSAGE":[255,65,195]})" "\n"
     "not json\n"
     R"({"PRIORITY":"6","MESSAGE":"No time"})" "\n";
 
   const auto lines = Core::parseJournal(journal);
-  expect("Readable lines kept", lines.size() == 6);
+  expect("Readable lines kept", lines.size() == 7);
 
-  if(lines.size() == 6){
+  if(lines.size() == 7){
     expect("Time in milliseconds", lines[0].time == 1792400000123);
     expect("Message", lines[0].message == "Started Halomux." && lines[0].level == Core::JournalLine::Level::Info);
     expect("Warning of the service, its prefix dropped", lines[1].level == Core::JournalLine::Level::Warning && lines[1].message == "The bridge is unreachable");
@@ -44,6 +45,8 @@ int main()
     expect("Error by priority", lines[3].level == Core::JournalLine::Level::Error);
     expect("Warning by priority", lines[4].level == Core::JournalLine::Level::Warning);
     expect("Binary message read as text", lines[5].message == "hi");
+    // Bytes that aren't UTF-8 would fail the JSON answer of the whole log: replaced
+    expect("Invalid UTF-8 replaced", lines[6].message == "\xEF\xBF\xBD" "A" "\xEF\xBF\xBD");
   }
 
   expect("Empty journal", Core::parseJournal("").empty());

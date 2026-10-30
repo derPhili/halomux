@@ -14,11 +14,22 @@ class LogPage
 
     this._refresh();
     setInterval(() => {this._refresh();}, LogPage.RefreshInterval);
+    // Caught up as soon as the page is looked at again
+    document.addEventListener("visibilitychange", () => {
+      if(!document.hidden){
+        this._refresh();
+      }
+    });
   }
 
 
   _refresh()
   {
+    // Each update runs journalctl in the service: not for a page nobody looks at
+    if(document.hidden){
+      return;
+    }
+
     RequestUtils.get("/api/logs")
     .then((data) => {
       this.errorNode.textContent = data.lines.length == 0 ? t("The journal can't be read, or holds no lines of Halomux yet.") : "";
