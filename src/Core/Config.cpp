@@ -115,6 +115,13 @@ namespace Halomux::Core
   }
 
 
+  bool Config::lightsOn() const
+  {
+    std::lock_guard lock(m_mutex);
+    return m_configData.value().lightsOn.value_or(true);
+  }
+
+
   Config::StaticColors Config::staticColors() const
   {
     std::lock_guard lock(m_mutex);
@@ -248,6 +255,16 @@ namespace Halomux::Core
   {
     std::unique_lock lock(m_mutex);
     m_configData.value().syncEnabled = syncEnabled;
+    _save(lock);
+  }
+
+
+  void Config::setLightsOn(
+    bool lightsOn
+  )
+  {
+    std::unique_lock lock(m_mutex);
+    m_configData.value().lightsOn = lightsOn;
     _save(lock);
   }
 
@@ -436,6 +453,7 @@ namespace Halomux::Core
       .audioReactive = false,
       .brightness = 1.f,
       .syncEnabled = true,
+      .lightsOn = true,
       .staticColors = StaticColors{},
       .scenes = Scenes{},
       .language = "auto",

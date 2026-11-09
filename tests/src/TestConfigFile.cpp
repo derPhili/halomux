@@ -109,6 +109,18 @@ int main()
     expect("Negative refresh rate automatic", config.refreshRate() == 0);
   }
 
+  // Lamps switched off stay off across restarts, until switched on
+  {
+    Core::Config config(root);
+    expect("Lamps on by default", config.lightsOn());
+    config.setLightsOn(false);
+  }
+  {
+    Core::Config config(root);
+    expect("Lamps off kept", !config.lightsOn());
+    config.setLightsOn(true);
+  }
+
   // The accepted notice's version isn't wrapped: a negative one would count as any future version
   {
     std::ofstream file(configFile);
