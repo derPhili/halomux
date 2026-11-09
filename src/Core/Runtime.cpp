@@ -192,6 +192,9 @@ namespace Halomux::Core
     // once it answers
     m_areaSession->setCheckHook([this](){m_coreService->identifyBridgeIfUnknown();});
 
+    // Switched off before the service stopped: not streamed to, and left as they are
+    m_areaSession->setLightsOn(m_config.lightsOn());
+
     m_areaSession->start(Profile::currentArea(m_coreService->getProfile().value_or(Serialization::Json())));
 
     return true;
@@ -357,11 +360,14 @@ namespace Halomux::Core
 
   void Runtime::_update()
   {
-    // Without sync, the lamps show the static colors: nothing to capture or listen to
+    // Without sync, the lamps show the static colors: nothing to capture or listen to. With the
+    // lamps off, nothing to show at all
     const bool syncing = m_config.syncEnabled();
+    const bool lightsOn = m_config.lightsOn();
+    const bool capturing = syncing && lightsOn;
 
     // Start or stop listening to the sound when the setting changes
-    if((m_config.audioReactive() && syncing) != static_cast<bool>(m_audioAnalyzer)){
+    if((m_config.audioReactive() && capturing) != static_cast<bool>(m_audioAnalyzer)){
       if(m_audioAnalyzer){
         m_audioAnalyzer.reset();
       }
@@ -403,14 +409,24 @@ namespace Halomux::Core
       }
     }
 
-    if(syncing == m_capturePaused){
-      m_capturePaused = !syncing;
+    if(capturing == m_capturePaused){
+      m_capturePaused = !capturing;
       grabber->setPaused(m_capturePaused);
 
       // A jump between the static colors and the screen is no highlight
       for(auto& [channelId, channel] : channels){
         channel.hasPreviousMeasuredBrightness = false;
       }
+    }
+
+    // Lamps off: nothing is streamed, and the light manager shows them dark
+    if(!lightsOn){
+      std::lock_guard lock(m_currentColorsMutex);
+      m_currentColorsSnapshot = channelStreams;
+      for(auto& stream : m_currentColorsSnapshot){
+        stream.r = stream.g = stream.b = 0.f;
+      }
+      return;
     }
 
     const Config::StaticColors staticColors = syncing ? Config::StaticColors{} : m_config.staticColors();
