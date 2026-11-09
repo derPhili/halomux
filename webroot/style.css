@@ -640,6 +640,39 @@ input[type=range]::-moz-range-thumb
 }
 
 
+/* Lamps off and on */
+
+.lightsButton
+{
+  margin-left: auto;
+  min-height: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+.lightsButton + .syncToggle
+{
+  margin-left: 0;
+}
+
+
+/* Off: the button to switch them on stands out, the sync waits for it */
+body.lightsOff .lightsButton
+{
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+
+body.lightsOff .syncToggle
+{
+  opacity: 0.55;
+}
+
+
 /* Sync switch */
 
 .syncToggle

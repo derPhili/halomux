@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -104,6 +105,30 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Switches the lamps off or on again
+     *
+     * Off, nothing is streamed to the bridge and the checks don't start it again; the lamps of
+     * the selected area, and of areas selected meanwhile, are switched off on the bridge. Before
+     * the start, it only keeps the area from being streamed to: lamps switched on in the Hue app
+     * since stay on. On, the lamps are switched on and streamed to again.
+     *
+     * @param on Whether the lamps are on
+     * @return true The bridge accepted for every lamp, or there was nothing to switch
+     */
+    bool setLightsOn(
+      bool on
+    );
+
+
+    /**
+     * @brief Tells whether the lamps are on, see setLightsOn()
+     *
+     * @return true They are
+     */
+    bool lightsOn() const;
+
+
+    /**
      * @brief Streams the colors of a frame, if an area is selected
      *
      * @param channels Colors per channel
@@ -151,7 +176,11 @@ namespace Halomux::Core
     std::unique_ptr<Stream::IStreamer> _takeStreamer();
     // Selects the saved area, or another one if it no longer exists
     void _ensureSelection(bool loadAreas = true);
-    bool _select(const std::string& areaId);
+    // switchOffWhenOff: with the lamps off, switches the area's lamps off too, as for an area the
+    // user selects, unlike at the start
+    bool _select(const std::string& areaId, bool switchOffWhenOff = false);
+    // The selected area, if any, with m_operationMutex held
+    std::optional<Hue::Api::EntertainmentConfigurationEntry> _currentArea() const;
 
     void _watch(
       std::stop_token stopToken
@@ -168,6 +197,8 @@ namespace Halomux::Core
     // Serializes the operations talking to the bridge: selections and checks
     std::mutex m_operationMutex;
     std::string m_savedAreaId;
+    // Whether the lamps are on: off, nothing is streamed (see setLightsOn())
+    std::atomic<bool> m_lightsOn{true};
     bool m_unreachableReported{false};
     bool m_noAreaReported{false};
 

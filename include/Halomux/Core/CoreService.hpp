@@ -219,6 +219,14 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Returns whether the lamps are on
+     *
+     * @return true They are: off, nothing is captured nor streamed
+     */
+    bool lightsOn() const;
+
+
+    /**
      * @brief Returns the colors shown while sync is disabled
      *
      * @return Config::StaticColors Color by channel ID
@@ -406,6 +414,20 @@ namespace Halomux::Core
      */
     void setBrightness(
       float brightness
+    );
+
+
+    /**
+     * @brief Switches the lamps off, stopping the sync, or on again
+     *
+     * Off, nothing is captured nor streamed, and the lamps of the area are switched off on the
+     * bridge; kept across restarts.
+     *
+     * @param on Whether to switch them on
+     * @return true The bridge accepted for every lamp
+     */
+    bool setLightsOn(
+      bool on
     );
 
 

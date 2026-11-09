@@ -113,7 +113,7 @@ Danach in der Lichtsteuerung die Lampen von „Verfügbar“ nach „Aktiv“ zi
 Die Lampen steuert ein Dienst (systemd-User-Unit `halomux.service`). Die Desktop-Anwendung zeigt seine Oberfläche:
 
 * Linksklick auf das Tray-Icon: Fenster öffnen oder schließen
-* Rechtsklick: Sync an/aus, statische Szenen, Vorschau, Dienst starten (wenn er nicht läuft)
+* Rechtsklick: Lampen aus/an, Sync an/aus, statische Szenen, Vorschau, Dienst starten (wenn er nicht läuft)
 
 Das Fenster zu schließen lässt das Tray-Icon stehen. Das Tray-Icon zu schließen lässt die Lampen weiterlaufen: Sie steuert allein der Dienst. Ein erneuter Start holt das laufende Fenster nach vorn.
 
@@ -129,6 +129,7 @@ journalctl --user -u halomux.service -f
 
 * **Bildschirmbereiche**: der Teil des Bildschirms, dem jede aktive Lampe folgt, mit einer Gammakorrektur pro Lampe. Zum Bearbeiten klickst du auf einen Bereich oder auf die Lampe in der Liste. Bei mehreren Monitoren erscheinen sie so angeordnet wie auf dem Desktop: Zieh einen Bereich auf einen anderen Monitor, damit die Lampe ihm folgt. Ein Monitor, dem keine Lampe folgt, wird nicht erfasst und kostet nichts
 * **Monitore** (Kopfzeile): die erfassten Monitore. „Monitore…“ öffnet die Bildschirmauswahl des Desktops erneut, um andere Monitore zu erfassen; bis zur Bestätigung läuft alles weiter wie bisher
+* **Lampen aus** (Kopfzeile): stoppt den Sync und schaltet die Lampen des Entertainment-Bereichs aus, wie der Schalter in der Hue-App. Bis „Lampen an“ wird nichts aufgenommen oder gestreamt, auch nach einem Neustart; Lampen, die du inzwischen in der Hue-App eingeschaltet hast, bleiben beim nächsten Start an
 * **Sync** (Kopfzeile): wechselt zwischen Bildschirm und statischer Szene. Ohne Sync pausieren Bildschirmaufnahme und Sound-Analyse
 * **Statische Szene**: eine Farbe für alle Lampen, eine Farbe pro Lampe, eingebaute Szenen, deren Farben von links nach rechts über die Lampen verteilt werden, und eigene gespeicherte Szenen. Eine Auswahl schaltet Sync aus
 * **Einstellungen**: Helligkeit, Übergangsglättung (Vorlagen „Gaming“ und „Film“), Highlight-Boost (Vorlagen von „Dezent“ bis „Intensiv“), Reaktion auf Sound, Aufnahmeauflösung und Bildwiederholrate

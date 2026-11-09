@@ -129,10 +129,12 @@ namespace Halomux::Gui
     QSystemTrayIcon m_tray;
     QMenu m_menu;
     QAction* m_openAction{nullptr};
+    QAction* m_lightsAction{nullptr};
     QAction* m_syncAction{nullptr};
     QMenu* m_scenesMenu{nullptr};
     QAction* m_previewAction{nullptr};
     bool m_previewRunning{false};
+    bool m_lightsOn{true};
     QAction* m_startServiceAction{nullptr};
     QAction* m_quitAction{nullptr};
     QTimer m_refreshTimer;
