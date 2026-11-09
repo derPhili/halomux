@@ -1,5 +1,7 @@
 #include <Halomux/Hue/Api/ApiTools.hpp>
 
+#include <algorithm>
+
 #include <Halomux/Version.hpp>
 #include <Halomux/Hue/Api/BridgeAddress.hpp>
 #include <Halomux/Hue/Api/BridgeDiscovery.hpp>
@@ -64,6 +66,39 @@ namespace Halomux::Hue::Api
       Network::Http::Client::Headers headers = {{"hue-application-key", username}};
 
       std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/entertainment_configuration/" + entertainmentConfigurationEntry.first;
+
+      const auto response = Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers, bridgeTls(bridgeAddress));
+      if(!response.has_value()){
+        return false;
+      }
+
+      try{
+        return ClipParsing::succeeded(response->asJson());
+      }
+      catch(const std::exception&){
+        return false;
+      }
+    }
+
+
+    bool setLightOn(
+      const std::string& lightId,
+      const std::string& username,
+      const std::string& bridgeAddress,
+      bool on
+    )
+    {
+      // Goes into the URL's path: a resource id of the bridge only (lowercase UUID)
+      const bool idValid = !lightId.empty() && std::all_of(lightId.begin(), lightId.end(), [](unsigned char c){
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || c == '-';
+      });
+      if(!idValid){
+        return false;
+      }
+
+      const Serialization::Json jsonBody = {{"on", {{"on", on}}}};
+      const Network::Http::Client::Headers headers = {{"hue-application-key", username}};
+      const std::string url = HttpProtocol + bridgeAddress + "/clip/v2/resource/light/" + lightId;
 
       const auto response = Network::Http::Client::sendRequest(url, "PUT", jsonBody.dump(), headers, bridgeTls(bridgeAddress));
       if(!response.has_value()){

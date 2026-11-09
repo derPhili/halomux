@@ -105,6 +105,11 @@ class WebUI
       preset.button.addEventListener("click", () => {this._setTransitionSmoothing(preset.value);});
     }
 
+    // Lamps off, stopping the sync, or on again
+    this.lightsOn = true;
+    this.lightsButton = document.getElementById("lightsButton");
+    this.lightsButton.addEventListener("click", () => {this._setLightsOn(!this.lightsOn);});
+
     this.previewButton = document.getElementById("previewButton");
     this.previewButtonTitle = this.previewButton.title;
     this.previewEnd = null;
@@ -153,7 +158,8 @@ class WebUI
     // Refreshed periodically: the grabber falls back to the CPU at runtime if the GPU path fails,
     // and monitors start or stop being captured as lamps move
     this._refreshProcessingInfo();
-    setInterval(() => {this._refreshProcessingInfo(); this._refreshMonitors();}, 5000);
+    // Also catches the lamps switched off or on, or the sync changed, from the tray
+    setInterval(() => {this._refreshProcessingInfo(); this._refreshMonitors(); this._refreshLightMode();}, 5000);
 
     this._refreshLampColors();
     this.staticScene.init();
@@ -628,8 +634,56 @@ class WebUI
   }
 
 
+  _setLightsOn(on)
+  {
+    this.lightsButton.disabled = true;
+
+    RequestUtils.put("/api/setLightsOn", JSON.stringify(on))
+    .then((data) => {
+      this.showLightsOn(data.lightsOn);
+      if(!data.succeeded){
+        this.processingInfoNode.textContent = t("The bridge didn't switch every lamp");
+      }
+    })
+    .catch((error) => {log(error);})
+    .finally(() => {this.lightsButton.disabled = false;});
+  }
+
+
+  // Shows whether the lamps are on: off, the button switches them on again
+  showLightsOn(on)
+  {
+    const changed = on !== this.lightsOn;
+    this.lightsOn = on;
+    // Named after what it does next
+    this.lightsButton.textContent = t(on ? "Lamps off" : "Lamps on");
+    document.body.classList.toggle("lightsOff", !on);
+
+    if(changed){
+      this._refreshProcessingInfo();
+    }
+  }
+
+
+  _refreshLightMode()
+  {
+    RequestUtils.get("/api/lightMode")
+    .then((lightMode) => {
+      this.showLightsOn(lightMode.lightsOn);
+      this.staticScene.showSync(lightMode.syncEnabled);
+    })
+    .catch((error) => {log(error);});
+  }
+
+
   _refreshProcessingInfo()
   {
+    if(!this.lightsOn){
+      this.processingInfoNode.textContent = t("Lamps off · capture paused");
+      this.statusDotNode.classList.remove("gpu", "cpu");
+      return;
+    }
+
     if(!this.syncEnabled){
       this.processingInfoNode.textContent = t("Capture paused · static scene");
       this.statusDotNode.classList.remove("gpu", "cpu");
@@ -638,7 +692,7 @@ class WebUI
 
     RequestUtils.get("/api/processingInfo")
     .then((processingInfo) => {
-      if(!this.syncEnabled){
+      if(!this.syncEnabled || !this.lightsOn){
         return;
       }
 

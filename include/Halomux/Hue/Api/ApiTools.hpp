@@ -71,6 +71,22 @@ namespace Halomux::Hue::Api
     );
 
     /**
+     * @brief Switches a lamp on or off, as its switch in the Hue app does
+     *
+     * @param lightId Id of its light resource, as the bridge gives it
+     * @param username Username credential for the HTTPS request
+     * @param bridgeAddress Address of the Hue bridge
+     * @param on Whether to switch it on
+     * @return true The bridge accepted
+     */
+    bool setLightOn(
+      const std::string& lightId,
+      const std::string& username,
+      const std::string& bridgeAddress,
+      bool on
+    );
+
+    /**
      * @brief Returns the resolved Hue bridge IP address
      * 
      * @return Serialization::Json Object containing Hue bridge address and request status

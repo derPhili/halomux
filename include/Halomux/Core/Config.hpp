@@ -52,6 +52,8 @@ namespace Halomux::Core
       std::optional<bool> audioReactive{false};
       std::optional<float> brightness{1.f};
       std::optional<bool> syncEnabled{true};
+      // Switched off, nothing is streamed and the lamps are off (see AreaSession::setLightsOn())
+      std::optional<bool> lightsOn{true};
       std::optional<StaticColors> staticColors{StaticColors{}};
       std::optional<Scenes> scenes{Scenes{}};
       std::optional<std::string> language{"auto"};
@@ -192,6 +194,14 @@ namespace Halomux::Core
 
 
     /**
+     * @brief Returns whether the lamps are on: off, nothing is captured nor streamed
+     *
+     * @return true The lamps are on
+     */
+    bool lightsOn() const;
+
+
+    /**
      * @brief Returns the colors shown while sync is disabled
      *
      * @return StaticColors Color by channel ID, channels without one are left to the caller
@@ -310,6 +320,16 @@ namespace Halomux::Core
     */
     void setSyncEnabled(
       bool syncEnabled
+    );
+
+
+    /**
+     * @brief Registers whether the lamps are on, kept across restarts
+     *
+     * @param lightsOn Whether the lamps are on
+     */
+    void setLightsOn(
+      bool lightsOn
     );
 
 

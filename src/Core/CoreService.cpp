@@ -389,6 +389,23 @@ namespace Halomux::Core
   }
 
 
+  bool CoreService::lightsOn() const
+  {
+    return m_config.lightsOn();
+  }
+
+
+  bool CoreService::setLightsOn(
+    bool on
+  )
+  {
+    // Saved first: switching off, the streaming loop stops at its next update
+    m_config.setLightsOn(on);
+
+    return !m_runtime.m_areaSession || m_runtime.m_areaSession->setLightsOn(on);
+  }
+
+
   Config::StaticColors CoreService::staticColors() const
   {
     return m_config.staticColors();

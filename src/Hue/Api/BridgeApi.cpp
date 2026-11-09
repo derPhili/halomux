@@ -63,4 +63,19 @@ namespace Halomux::Hue::Api
   {
     return ApiTools::streamingActive({areaId, {}}, m_credentials.username(), m_bridgeAddress);
   }
+
+
+  bool ClipBridgeApi::setLightsOn(
+    const Devices& lights,
+    bool on
+  )
+  {
+    // Each lamp, even if one refuses: as many as possible follow
+    bool all = true;
+    for(const auto& light : lights){
+      all = ApiTools::setLightOn(light.id, m_credentials.username(), m_bridgeAddress, on) && all;
+    }
+
+    return all;
+  }
 }

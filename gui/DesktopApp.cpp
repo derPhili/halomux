@@ -192,6 +192,12 @@ namespace Halomux::Gui
 
     m_menu.addSeparator();
 
+    // Stops the sync and switches the lamps off, or switches them on again
+    m_lightsAction = m_menu.addAction(QString());
+    connect(m_lightsAction, &QAction::triggered, this, [this](){
+      _request("PUT", "/api/setLightsOn", m_lightsOn ? "false" : "true", [this](const QJsonObject&){_refresh();});
+    });
+
     m_syncAction = m_menu.addAction(QString());
     m_syncAction->setCheckable(true);
     connect(m_syncAction, &QAction::triggered, this, [this](bool checked){
@@ -231,6 +237,7 @@ namespace Halomux::Gui
   void DesktopApp::_retranslate()
   {
     m_openAction->setText(Texts::tr("Open"));
+    m_lightsAction->setText(Texts::tr(m_lightsOn ? "Switch lamps off" : "Switch lamps on"));
     m_syncAction->setText(Texts::tr("Sync with screen and sound"));
     m_scenesMenu->setTitle(Texts::tr("Static scene"));
     m_previewAction->setText(Texts::tr(m_previewRunning ? "Stop preview" : "Preview settings"));
@@ -256,9 +263,17 @@ namespace Halomux::Gui
     m_previewAction->setText(Texts::tr(m_previewRunning ? "Stop preview" : "Preview settings"));
     m_previewAction->setIcon(QIcon::fromTheme(m_previewRunning ? "media-playback-stop" : "media-playback-start"));
 
+    m_lightsOn = lightMode.value("lightsOn").toBool(true);
+    m_lightsAction->setText(Texts::tr(m_lightsOn ? "Switch lamps off" : "Switch lamps on"));
+    m_lightsAction->setIcon(QIcon::fromTheme(m_lightsOn ? "system-shutdown" : "system-run"));
+
+    // Nothing to preview on lamps that are off; sync and scenes apply once they're on again
+    m_previewAction->setEnabled(m_lightsOn);
+
     const bool syncEnabled = lightMode.value("syncEnabled").toBool();
     m_syncAction->setChecked(syncEnabled);
-    m_tray.setToolTip(QString("%1\n%2").arg(AppName, Texts::tr(syncEnabled ? "Sync on" : "Static scene")));
+    const QString state = !m_lightsOn ? Texts::tr("Lamps off") : Texts::tr(syncEnabled ? "Sync on" : "Static scene");
+    m_tray.setToolTip(QString("%1\n%2").arg(AppName, state));
 
     m_scenesMenu->clear();
 

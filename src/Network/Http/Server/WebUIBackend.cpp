@@ -245,6 +245,7 @@ namespace Halomux::Network::Http::Server
 
       Json jsonLightMode = {
         {"syncEnabled", m_coreService->syncEnabled()},
+        {"lightsOn", m_coreService->lightsOn()},
         {"staticColors", m_coreService->staticColors()},
         {"scenes", m_coreService->scenes()},
         {"builtinScenes", jsonBuiltinScenes},
@@ -431,6 +432,15 @@ namespace Halomux::Network::Http::Server
 
       res.contentType = "application/json";
       res.body = Json{{"syncEnabled", m_coreService->syncEnabled()}}.dump();
+    });
+
+
+    // Lamps off, stopping the sync, or on again
+    m_httpServer.addRoute(HttpMethod::Put, "/api/setLightsOn", [this](const Request& req, Response& res){
+      const bool switched = m_coreService->setLightsOn(readBody(req, [](const Json& body){return body.get<bool>();}));
+
+      res.contentType = "application/json";
+      res.body = Json{{"lightsOn", m_coreService->lightsOn()}, {"succeeded", switched}}.dump();
     });
 
 

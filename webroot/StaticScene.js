@@ -72,6 +72,7 @@ class StaticScenePanel
       this._renderCustomScenes();
       this._updateSync(lightMode.syncEnabled);
       this._updateStaticColors(lightMode.staticColors);
+      this.webUI.showLightsOn(lightMode.lightsOn);
     })
     .catch((error) => {log(error);});
   }
@@ -373,6 +374,15 @@ class StaticScenePanel
     RequestUtils.put("/api/setSyncEnabled", JSON.stringify(syncEnabled))
     .then((data) => {this._updateSync(data.syncEnabled);})
     .catch((error) => {log(error);});
+  }
+
+
+  // The sync as changed elsewhere, such as from the tray
+  showSync(syncEnabled)
+  {
+    if(syncEnabled !== this.syncEnabled){
+      this._updateSync(syncEnabled);
+    }
   }
 
 

@@ -87,6 +87,10 @@ namespace Halomux::Serialization
         jsonConfigData["syncEnabled"] = *configData.syncEnabled;
       }
 
+      if(configData.lightsOn.has_value()){
+        jsonConfigData["lightsOn"] = *configData.lightsOn;
+      }
+
       if(configData.staticColors.has_value()){
         jsonConfigData["staticColors"] = *configData.staticColors;
       }
@@ -199,6 +203,10 @@ namespace Halomux::Serialization
 
       if(jsonConfigData.contains("syncEnabled")){
         configData.syncEnabled = jsonConfigData.at("syncEnabled");
+      }
+
+      if(jsonConfigData.contains("lightsOn")){
+        configData.lightsOn = jsonConfigData.at("lightsOn");
       }
 
       if(jsonConfigData.contains("staticColors")){
