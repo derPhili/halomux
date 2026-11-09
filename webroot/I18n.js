@@ -98,6 +98,11 @@ I18n.Translations = {
       "Sync an: Die Lampen folgen dem Bildschirm (und dem Sound, falls aktiviert).\nSync aus: Die Lampen zeigen die statische Szene, die Bildschirmaufnahme pausiert.",
     "Sync" : "Sync",
     "Sync off" : "Sync aus",
+    "Lamps off: stops the sync and switches the lamps of the entertainment area off, as the Hue app's switch does. Nothing is captured or streamed until they're switched on again, also after a restart" : "Lampen aus: Stoppt den Sync und schaltet die Lampen des Entertainment-Bereichs aus, wie der Schalter in der Hue-App. Bis sie wieder eingeschaltet werden, wird nichts aufgenommen oder gestreamt, auch nach einem Neustart",
+    "Lamps off" : "Lampen aus",
+    "Lamps on" : "Lampen an",
+    "Lamps off · capture paused" : "Lampen aus · Aufnahme pausiert",
+    "The bridge didn't switch every lamp" : "Die Bridge hat nicht alle Lampen geschaltet",
     "Where captured frames are processed.\nGPU (green): frames stay in video memory (DMA-BUF), lowest CPU load.\nCPU (orange): fallback through shared memory.":
       "Wo die aufgenommenen Bilder verarbeitet werden.\nGPU (grün): Die Bilder bleiben im Grafikspeicher (DMA-BUF), geringste CPU-Last.\nCPU (orange): Ausweichweg über Shared Memory.",
     "Capture paused · static scene" : "Aufnahme pausiert · statische Szene",

@@ -113,7 +113,7 @@ Then, in the light manager, drag your lamps from "Available" to "Active", select
 The lamps are driven by a service (systemd user unit `halomux.service`). The desktop application shows its user interface:
 
 * Left click on the tray icon: open or close the window
-* Right click: sync on/off, static scenes, preview, start the service if it isn't running
+* Right click: lamps off/on, sync on/off, static scenes, preview, start the service if it isn't running
 
 Closing the window keeps the tray icon. Closing the tray icon keeps the lamps running: only the service drives them. Starting the application again brings the running window to the front.
 
@@ -129,6 +129,7 @@ journalctl --user -u halomux.service -f
 
 * **Screen regions**: the part of the screen each active lamp follows, with a gamma correction per lamp. Click a region, or the lamp in the list, to edit it. With several monitors, they are shown as arranged on the desktop: drag a region onto another monitor to make the lamp follow it. A monitor no lamp follows isn't captured and costs nothing
 * **Monitors** (header): the captured monitors. "Monitors…" opens the desktop's screen selection again, to capture other monitors; until it's confirmed, everything keeps running as before
+* **Lamps off** (header): stops the sync and switches the lamps of the entertainment area off, as the Hue app's switch does. Nothing is captured or streamed until "Lamps on", also after a restart; lamps switched on in the Hue app meanwhile are left on at the next start
 * **Sync** (header): switches between following the screen and showing the static scene. Without sync, screen capture and sound analysis pause
 * **Static scene**: one color for all lamps, a color per lamp, built-in scenes whose colors are spread over the lamps from left to right, and your own saved scenes. Picking one turns sync off
 * **Settings**: brightness, transition smoothing (presets "Gaming" and "Movie"), highlight boost (presets from "Subtle" to "Intense"), reacting to sound, capture resolution and refresh rate
