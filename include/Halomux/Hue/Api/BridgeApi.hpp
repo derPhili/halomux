@@ -63,6 +63,19 @@ namespace Halomux::Hue::Api
     virtual std::optional<bool> streamingActive(
       const std::string& areaId
     ) = 0;
+
+
+    /**
+     * @brief Switches lamps on or off, as their switch in the Hue app does
+     *
+     * @param lights Lamps of an area
+     * @param on Whether to switch them on
+     * @return true The bridge accepted for every lamp
+     */
+    virtual bool setLightsOn(
+      const Devices& lights,
+      bool on
+    ) = 0;
   };
 
 
@@ -91,6 +104,11 @@ namespace Halomux::Hue::Api
 
     std::optional<bool> streamingActive(
       const std::string& areaId
+    ) override;
+
+    bool setLightsOn(
+      const Devices& lights,
+      bool on
     ) override;
 
   private:

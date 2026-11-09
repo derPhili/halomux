@@ -48,7 +48,72 @@ namespace Halomux::Core
   )
   {
     std::lock_guard lock(m_operationMutex);
-    return _select(areaId);
+    return _select(areaId, true);
+  }
+
+
+  bool AreaSession::setLightsOn(
+    bool on
+  )
+  {
+    std::lock_guard lock(m_operationMutex);
+    if(on == m_lightsOn){
+      return true;
+    }
+    m_lightsOn = on;
+
+    const auto area = _currentArea();
+    if(!area.has_value()){
+      // Nothing selected yet, such as before the start: the selection follows the setting
+      return true;
+    }
+
+    if(!on){
+      // The DTLS session is closed before the bridge is asked to stop streaming, which gives the
+      // lamps their state from before back: switched off then
+      _takeStreamer().reset();
+      m_bridge->setStreaming(*area, false);
+      const bool switched = m_bridge->setLightsOn(area->second.devices, false);
+      Logger::log("Switched the lamps of ", area->second.name, " off");
+      return switched;
+    }
+
+    const bool switched = m_bridge->setLightsOn(area->second.devices, true);
+
+    // A refusal (such as another application streaming) is retried by the checks
+    if(!m_bridge->setStreaming(*area, true)){
+      Logger::warn("The bridge refused to stream to ", area->second.name, ", trying again later");
+    }
+
+    {
+      std::lock_guard streamerLock(m_streamerMutex);
+      m_streamer = m_streamerFactory(area->first);
+    }
+
+    Logger::log("Switched the lamps of ", area->second.name, " on, streaming to them again");
+    return switched;
+  }
+
+
+  bool AreaSession::lightsOn() const
+  {
+    return m_lightsOn;
+  }
+
+
+  std::optional<Hue::Api::EntertainmentConfigurationEntry> AreaSession::_currentArea() const
+  {
+    std::lock_guard stateLock(m_stateMutex);
+    if(!m_currentAreaId.has_value()){
+      return std::nullopt;
+    }
+
+    const auto areaIt = m_areas.find(*m_currentAreaId);
+    if(areaIt == m_areas.end()){
+      return std::nullopt;
+    }
+
+    return *areaIt;
   }
 
 
@@ -72,6 +137,11 @@ namespace Halomux::Core
     const std::optional<std::string> current = currentAreaId();
     if(!current.has_value()){
       _ensureSelection();
+      return;
+    }
+
+    // Lamps switched off: not streamed to, so nothing to start again
+    if(!m_lightsOn){
       return;
     }
 
@@ -249,7 +319,8 @@ namespace Halomux::Core
 
 
   bool AreaSession::_select(
-    const std::string& areaId
+    const std::string& areaId,
+    bool switchOffWhenOff
   )
   {
     // Possibly created in the Hue app since the areas were loaded
@@ -294,18 +365,21 @@ namespace Halomux::Core
     // streaming loop
     _takeStreamer().reset();
 
-    if(former.has_value()){
+    if(former.has_value() && m_lightsOn){
       m_bridge->setStreaming(*former, false);
     }
 
-    // A refusal (such as another application streaming) is retried by the checks
-    if(!m_bridge->setStreaming(area, true)){
-      Logger::warn("The bridge refused to stream to ", area.second.name, ", trying again later");
-    }
+    if(m_lightsOn){
+      // A refusal (such as another application streaming) is retried by the checks
+      if(!m_bridge->setStreaming(area, true)){
+        Logger::warn("The bridge refused to stream to ", area.second.name, ", trying again later");
+      }
 
-    {
       std::lock_guard streamerLock(m_streamerMutex);
       m_streamer = m_streamerFactory(areaId);
+    }
+    else if(switchOffWhenOff){
+      m_bridge->setLightsOn(area.second.devices, false);
     }
 
     {
@@ -313,7 +387,12 @@ namespace Halomux::Core
       m_currentAreaId = areaId;
     }
 
-    Logger::log("Streaming to the entertainment area ", area.second.name);
+    if(m_lightsOn){
+      Logger::log("Streaming to the entertainment area ", area.second.name);
+    }
+    else{
+      Logger::log("Selected the entertainment area ", area.second.name, ", not streaming to it while the lamps are off");
+    }
     m_onSelected(areaId, *members);
     return true;
   }

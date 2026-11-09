@@ -56,6 +56,14 @@ namespace
       return reachable && (!active || acceptStart);
     }
 
+    bool setLightsOn(const Hue::Api::Devices& lights, bool on) override
+    {
+      for(const auto& light : lights){
+        calls.push_back((on ? "light on " : "light off ") + light.id);
+      }
+      return reachable;
+    }
+
     std::optional<bool> streamingActive(const std::string& areaId) override
     {
       calls.push_back("status " + areaId);
@@ -164,6 +172,44 @@ int main()
     expect("Switch refused while the bridge is unreachable", !h.session->select("garage"));
     expect("Current area kept", h.session->currentAreaId() == "pc");
     expect("Current area not stopped", !h.bridge->called("stop pc"));
+  }
+
+  // Lamps switched off: no stream, the lamps off on the bridge, and the checks don't restart it
+  {
+    Harness h({{"pc", {.name = "PC", .devices = {{.id = "light-1", .name = "Play"}, {.id = "light-2", .name = "Strip"}}}}});
+    h.session->start("pc");
+    h.bridge->calls.clear();
+
+    expect("Lamps switched off", h.session->setLightsOn(false));
+    expect("Stream stopped", h.bridge->called("stop pc"));
+    expect("Each lamp off", h.bridge->called("light off light-1") && h.bridge->called("light off light-2"));
+    expect("Area kept", h.session->currentAreaId() == "pc");
+
+    h.bridge->calls.clear();
+    h.bridge->status = false;
+    h.session->tick();
+    expect("Checks don't start the stream while off", !h.bridge->called("start pc"));
+
+    const size_t streamers = h.streamersCreated.size();
+    expect("Lamps switched on", h.session->setLightsOn(true));
+    expect("Each lamp on", h.bridge->called("light on light-1") && h.bridge->called("light on light-2"));
+    expect("Stream started again", h.bridge->called("start pc") && h.streamersCreated.size() == streamers + 1);
+  }
+
+  // Off at the start, such as switched off before the service restarted: nothing streamed, and
+  // the lamps left as they are, which the Hue app may have switched on since
+  {
+    Harness h({{"pc", {.name = "PC", .devices = {{.id = "light-1", .name = "Play"}}}}});
+    h.session->setLightsOn(false);
+    h.session->start("pc");
+    expect("Area selected while off", h.session->currentAreaId() == "pc");
+    expect("No stream while off", !h.bridge->called("start pc") && h.streamersCreated.empty());
+    expect("Lamps left alone at the start", !h.bridge->called("light off light-1"));
+
+    // Switching to another area while off: its lamps go off too
+    h.bridge->configuredAreas.insert({"garage", {.name = "Garage", .devices = {{.id = "light-9", .name = "Garage"}}}});
+    expect("Switched while off", h.session->select("garage"));
+    expect("Other area's lamps off", h.bridge->called("light off light-9") && !h.bridge->called("start garage"));
   }
 
   // Bridge offline at startup: the session keeps trying, and runs the check hook each time
