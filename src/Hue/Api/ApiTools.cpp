@@ -29,7 +29,7 @@ namespace Halomux::Hue::Api
       }
 
       try{
-        return response->asJson();
+        return std::optional<Serialization::Json>(std::in_place, response->asJson());
       }
       catch(const std::exception&){
         return std::nullopt;
