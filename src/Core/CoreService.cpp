@@ -876,7 +876,7 @@ namespace Halomux::Core
     if(!pp.empty() && std::filesystem::exists(pp) && std::filesystem::is_regular_file(pp)){
       try{
         std::ifstream profileFile(pp);
-        return Serialization::Json::parse(profileFile);
+        return std::optional<Serialization::Json>(std::in_place, Serialization::Json::parse(profileFile));
       }
       catch(const std::exception& e){
         Logger::error("Ignoring invalid profile ", std::quoted(pp.string()), ": ", e.what());
